@@ -2,6 +2,7 @@ import {
     Component,
     inject,
     OnInit,
+    signal,
     ChangeDetectionStrategy,
 } from '@angular/core';
 import {
@@ -15,12 +16,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RuntimeCapabilitiesService } from '@iptvnator/services';
+import { ImportScopeComponent } from '../import-scope/import-scope.component';
 
 @Component({
     selector: 'app-url-upload',
     templateUrl: './url-upload.component.html',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
+        ImportScopeComponent,
         MatFormFieldModule,
         MatInputModule,
         ReactiveFormsModule,
@@ -37,6 +40,9 @@ export class UrlUploadComponent implements OnInit {
         userAgent: FormControl<string>;
     }>;
     readonly isDesktop = this.runtime.isElectron;
+    /** Section scope: live channels vs VOD (movies + series). */
+    readonly importLive = signal(true);
+    readonly importVod = signal(true);
 
     ngOnInit(): void {
         const urlRegex = '(https?://.*?)';
@@ -51,6 +57,8 @@ export class UrlUploadComponent implements OnInit {
     }
 
     clearForm(): void {
+        this.importLive.set(true);
+        this.importVod.set(true);
         this.form.reset({
             playlistName: '',
             playlistUrl: '',

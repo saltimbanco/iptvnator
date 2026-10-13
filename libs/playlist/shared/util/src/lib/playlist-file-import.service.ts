@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { PlaylistActions } from '@iptvnator/m3u-state';
-import { Playlist } from '@iptvnator/shared/interfaces';
+import {
+    Playlist,
+    PlaylistImportScope,
+} from '@iptvnator/shared/interfaces';
+import { applyImportScopeToPlaylist } from '@iptvnator/shared/m3u-utils';
 
 const M3U_EXTENSIONS = ['.m3u', '.m3u8'];
 
@@ -41,17 +45,20 @@ export class PlaylistFileImportService {
         return M3U_EXTENSIONS.some((ext) => lower.endsWith(ext));
     }
 
-    async importFromNativeDialog(): Promise<NativePlaylistFileImportResult> {
+    async importFromNativeDialog(
+        scope?: PlaylistImportScope
+    ): Promise<NativePlaylistFileImportResult> {
         const openPlaylistFromFile = this.getNativeFileDialog();
         if (!openPlaylistFromFile) {
             return { ok: false, reason: 'read-error' };
         }
 
         try {
-            const playlist = await openPlaylistFromFile();
-            if (!playlist) {
+            const parsed = await openPlaylistFromFile();
+            if (!parsed) {
                 return { ok: false, reason: 'cancelled' };
             }
+            const playlist = applyImportScopeToPlaylist(parsed, scope);
 
             this.store.dispatch(PlaylistActions.addPlaylist({ playlist }));
 
@@ -73,7 +80,8 @@ export class PlaylistFileImportService {
      */
     async importFromPath(
         filePath: string,
-        fileName?: string
+        fileName?: string,
+        scope?: PlaylistImportScope
     ): Promise<PlaylistFileImportResult> {
         const title = this.normalizeTitle(
             fileName?.trim() || this.baseNameFromPath(filePath)
@@ -89,10 +97,11 @@ export class PlaylistFileImportService {
         }
 
         try {
-            const playlist = await parseFromPath(filePath, title);
-            if (!playlist) {
+            const parsed = await parseFromPath(filePath, title);
+            if (!parsed) {
                 return { ok: false, reason: 'read-error' };
             }
+            const playlist = applyImportScopeToPlaylist(parsed, scope);
 
             this.store.dispatch(PlaylistActions.addPlaylist({ playlist }));
 
@@ -102,7 +111,10 @@ export class PlaylistFileImportService {
         }
     }
 
-    async importFile(file: File): Promise<PlaylistFileImportResult> {
+    async importFile(
+        file: File,
+        scope?: PlaylistImportScope
+    ): Promise<PlaylistFileImportResult> {
         if (!this.isSupportedFile(file)) {
             return { ok: false, reason: 'unsupported' };
         }
@@ -125,6 +137,8 @@ export class PlaylistFileImportService {
                 playlist,
                 title,
                 path: this.getFilePath(file),
+                importLive: scope?.importLive,
+                importVod: scope?.importVod,
             })
         );
 

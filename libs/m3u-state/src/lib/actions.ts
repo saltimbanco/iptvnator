@@ -40,6 +40,8 @@ export const PlaylistActions = createActionGroup({
             playlist: string;
             title: string;
             path?: string;
+            importLive?: boolean;
+            importVod?: boolean;
         }>(),
         'Set Active Playlist': props<{ playlistId: string }>(),
         'Update Playlist Positions': props<{

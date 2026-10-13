@@ -363,7 +363,11 @@ export class PlaylistEffects {
                         action.uploadType,
                         action.playlist,
                         action.title,
-                        action.path
+                        action.path,
+                        {
+                            importLive: action.importLive,
+                            importVod: action.importVod,
+                        }
                     )
                 )
             ),

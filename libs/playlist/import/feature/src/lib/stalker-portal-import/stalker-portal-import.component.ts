@@ -41,10 +41,12 @@ import {
     isFullStalkerPortalUrl,
     normalizeStalkerMacAddress,
     Playlist,
+    storedImportScopeFlags,
     type StalkerDerivedDeviceIds,
     validateStalkerMacAddressControl,
 } from '@iptvnator/shared/interfaces';
 import { PasswordVisibilityToggleDirective } from '@iptvnator/ui/components/password-visibility-toggle';
+import { ImportScopeComponent } from '../import-scope/import-scope.component';
 import {
     type StalkerImportFeedback,
     toStalkerImportFeedback,
@@ -65,6 +67,7 @@ interface StalkerSettledIdentity {
 @Component({
     imports: [
         FormsModule,
+        ImportScopeComponent,
         MatCheckboxModule,
         MatFormFieldModule,
         MatIcon,
@@ -140,6 +143,9 @@ export class StalkerPortalImportComponent {
     readonly translate = inject(TranslateService);
 
     readonly isLoading = signal(false);
+    /** Section scope: live channels vs VOD (movies + series). */
+    readonly importLive = signal(true);
+    readonly importVod = signal(true);
 
     /**
      * Why the last import was refused, shown under the portal URL the same
@@ -351,6 +357,8 @@ export class StalkerPortalImportComponent {
         this.invalidatePendingDerivation();
         this.derivesDeviceIds.set(false);
         this.feedback.set(null);
+        this.importLive.set(true);
+        this.importVod.set(true);
         // A cleared form is a fresh entry: the next password starts masked.
         this.passwordToggle()?.hide();
         this.form.controls.deviceId1.enable();
@@ -567,6 +575,10 @@ export class StalkerPortalImportComponent {
                 stalkerTimeslot,
                 stalkerAccountInfo,
                 ...toStalkerPlaylistIdentityFields(stalkerIdentity),
+                ...storedImportScopeFlags({
+                    importLive: this.importLive(),
+                    importVod: this.importVod(),
+                }),
             } as Playlist;
 
             this.store.dispatch(PlaylistActions.addPlaylist({ playlist }));

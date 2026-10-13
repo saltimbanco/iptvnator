@@ -115,3 +115,62 @@ test('@sources @pwa gives the Stalker form the shared labels and a masked passwo
         dialog.getByRole('button', { name: 'Add playlist', exact: true })
     ).toBeVisible();
 });
+
+test('@sources @pwa bulk-imports two M3U URLs with per-row VOD scope', async ({
+    page,
+}) => {
+    const dialog = await openMethod(page, /Bulk import/i);
+
+    await setInputValue(
+        dialog.getByRole('textbox', { name: 'Sources to import' }),
+        JSON.stringify({
+            sources: [
+                {
+                    type: 'm3u-url',
+                    title: 'Bulk Live Only',
+                    url: `${XTREAM_MOCK_SERVER}/bulk-one.m3u`,
+                    importVod: false,
+                },
+                {
+                    type: 'm3u-url',
+                    title: 'Bulk Full',
+                    url: `${XTREAM_MOCK_SERVER}/bulk-two.m3u`,
+                },
+            ],
+        })
+    );
+
+    const rows = dialog.getByRole('listitem');
+    await expect(rows).toHaveCount(2);
+    await expect(
+        rows.first().getByRole('textbox', { name: 'Playlist title' })
+    ).toHaveValue('Bulk Live Only');
+    await expect(
+        rows.nth(1).getByRole('textbox', { name: 'Playlist title' })
+    ).toHaveValue('Bulk Full');
+    await expect(
+        rows.first().getByRole('checkbox', { name: 'Live channels' })
+    ).toBeChecked();
+    await expect(
+        rows.first().getByRole('checkbox', { name: /VOD/ })
+    ).not.toBeChecked();
+    // The last checked box disables instead of clearing: unchecking it is
+    // refused, so enable VOD first and then switch Live off for real.
+    await expect(
+        rows.first().getByRole('checkbox', { name: 'Live channels' })
+    ).toBeDisabled();
+    await rows.first().getByRole('checkbox', { name: /VOD/ }).click();
+    await expect(
+        rows.first().getByRole('checkbox', { name: 'Live channels' })
+    ).toBeEnabled();
+    await rows.first().getByRole('checkbox', { name: 'Live channels' }).click();
+    await expect(
+        rows.first().getByRole('checkbox', { name: 'Live channels' })
+    ).not.toBeChecked();
+
+    const add = dialog.getByRole('button', { name: 'Import 2 sources' });
+    await expect(add).toBeEnabled();
+    await add.click();
+    await expect(dialog).toBeHidden();
+    await page.waitForURL(/playlists/);
+});

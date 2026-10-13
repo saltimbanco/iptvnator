@@ -8,8 +8,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
 import {
     aggregateFavoriteChannels,
+    applyImportScopeToPlaylist,
     createFavoritesPlaylist,
     createPlaylistObject,
+    filterM3uItemsByImportScope,
     resolvePlaylistEpgSourceState,
 } from '@iptvnator/shared/m3u-utils';
 import { DBMode, NgxIndexedDBService } from 'ngx-indexed-db';
@@ -1232,7 +1234,8 @@ export class PlaylistsService {
         uploadType: 'FILE' | 'URL' | 'TEXT',
         playlist: string,
         title: string,
-        path?: string
+        path?: string,
+        scope?: { importLive?: boolean; importVod?: boolean }
     ) {
         try {
             // Dynamic import keeps the parser out of the eager bundle;
@@ -1240,12 +1243,20 @@ export class PlaylistsService {
             const parserModule = await import('iptv-playlist-parser');
             const parse = resolvePlaylistParser(parserModule);
             const parsedPlaylist = parse(playlist);
-            return createPlaylistObject(
+            const created = createPlaylistObject(
                 title,
-                parsedPlaylist,
+                {
+                    ...parsedPlaylist,
+                    items: filterM3uItemsByImportScope(
+                        parsedPlaylist.items,
+                        scope
+                    ),
+                },
                 path,
                 uploadType
             );
+            // Remember a partial scope on the row so refreshes keep it.
+            return applyImportScopeToPlaylist(created, scope);
         } catch (error) {
             this.snackBar.open(
                 this.translateService.instant('HOME.PARSING_ERROR'),

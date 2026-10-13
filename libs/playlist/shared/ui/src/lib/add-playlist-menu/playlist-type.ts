@@ -4,4 +4,5 @@ export type PlaylistType =
     | 'text'
     | 'file'
     | 'stalker'
-    | 'auto';
+    | 'auto'
+    | 'bulk';

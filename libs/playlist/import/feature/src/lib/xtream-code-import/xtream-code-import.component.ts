@@ -3,6 +3,7 @@ import {
     EventEmitter,
     Output,
     inject,
+    signal,
     viewChild,
     ChangeDetectionStrategy,
 } from '@angular/core';
@@ -29,7 +30,9 @@ import {
     extractXtreamCredentialsFromUrl,
     normalizeXtreamServerUrl,
     Playlist,
+    storedImportScopeFlags,
 } from '@iptvnator/shared/interfaces';
+import { ImportScopeComponent } from '../import-scope/import-scope.component';
 
 function xtreamServerUrlValidator(
     control: AbstractControl
@@ -50,6 +53,7 @@ function xtreamServerUrlValidator(
 @Component({
     imports: [
         FormsModule,
+        ImportScopeComponent,
         MatFormFieldModule,
         MatIcon,
         MatIconButton,
@@ -94,6 +98,9 @@ export class XtreamCodeImportComponent {
 
     readonly store = inject(Store);
     readonly connectionTest = createXtreamConnectionTestState(this.form);
+    /** Section scope: live channels vs VOD (movies + series). */
+    readonly importLive = signal(true);
+    readonly importVod = signal(true);
     private readonly passwordToggle = viewChild(
         PasswordVisibilityToggleDirective
     );
@@ -109,6 +116,8 @@ export class XtreamCodeImportComponent {
     clearForm(): void {
         // A cleared form is a fresh entry: the next password starts masked.
         this.passwordToggle()?.hide();
+        this.importLive.set(true);
+        this.importVod.set(true);
         this.form.reset({
             _id: createRandomId(),
             title: '',
@@ -134,6 +143,10 @@ export class XtreamCodeImportComponent {
                     password: connection.password,
                     serverUrl: connection.serverUrl,
                     username: connection.username,
+                    ...storedImportScopeFlags({
+                        importLive: this.importLive(),
+                        importVod: this.importVod(),
+                    }),
                 } as Playlist,
             })
         );

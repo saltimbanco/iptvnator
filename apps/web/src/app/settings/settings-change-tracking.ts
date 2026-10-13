@@ -11,6 +11,7 @@ export const SETTINGS_CONTROL_SECTIONS: Readonly<Record<string, string>> = {
     startupWindowMode: 'general',
     stripCountryPrefix: 'general',
     portalConnectivityGuard: 'general',
+    disableVod: 'general',
     player: 'playback',
     streamFormat: 'playback',
     showCaptions: 'playback',
@@ -90,7 +91,5 @@ export function sectionOfSettingsPath(path: string): string | null {
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-    return (
-        typeof value === 'object' && value !== null && !Array.isArray(value)
-    );
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

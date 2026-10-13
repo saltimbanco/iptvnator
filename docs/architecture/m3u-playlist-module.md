@@ -466,6 +466,42 @@ refresh.
 `playlist-auto-refresh.e2e.ts` guards this by restarting the app against a killed
 playlist server.
 
+## Import Scope And Bulk Import
+
+Every source can import **live channels** and **VOD (movies + series)**
+independently. The scope lives on the row as `Playlist.importLive?` /
+`Playlist.importVod?`, where absent means "import" so pre-scope sources keep
+their full catalog. Only opt-outs are persisted (`storedImportScopeFlags`),
+and `normalizeImportScope` refuses a scope that disables everything.
+
+- **M3U** — `applyImportScopeToPlaylist()` (`libs/shared/m3u-utils`) drops
+  the excluded section's items (via the `isLikelyM3uVod` heuristic) and stamps
+  the opt-out. It runs at every point a fresh item list is built: renderer
+  parsing (`PlaylistsService.handlePlaylistParsing`, fed by the `parsePlaylist`
+  action), the URL fetch results (`ElectronService` / `PwaService`), the
+  Electron refresh worker (`PlaylistRefreshPayload` carries the scope), the
+  manual file/URL refresh paths, and startup auto-update
+  (`preserveAutoUpdatedPlaylistFields`). Refreshes therefore keep a partial
+  scope instead of resurrecting the skipped section.
+- **Xtream** — the content store (`with-content.feature.ts`) only fetches,
+  caches and reloads the enabled sections; disabled ones stay empty with a
+  `ready` load state. `importVod: false` skips both movies and series.
+- **Stalker** — the category/content loaders
+  (`with-stalker-content.feature.ts`) serve empty lists for excluded sections
+  without contacting the portal.
+- **Bulk import** — the add-source dialog's `bulk` method pastes many provider
+  handouts (or loads a `.txt`/`.json` file) and imports every recognized
+  source at once. Free text runs through `detectProviderImportCandidates`;
+  JSON accepts `{ "sources": [...] }` (or a bare array) of
+  `{type: 'xtream' | 'stalker' | 'm3u-url', ...connection, title?,
+  importLive?, importVod?}` items (`bulkEntriesFromJson`,
+  `libs/shared/interfaces`). Each row carries its own title plus Live/VOD
+  toggles. Portal rows persist in one `addManyPlaylists`; M3U rows go through
+  the regular URL/text pipelines with the row's scope attached.
+- **Backup/restore** — `PlaylistBackupBaseEntry` carries the same opt-outs
+  (absent = no opinion, the merged playlist keeps its scope), and M3U restores
+  re-parse through the scope filter.
+
 ## State Management (libs/m3u-state/)
 
 ### State Structure

@@ -259,6 +259,10 @@ export class XtreamCollectionDetailComponent implements ViewInPortalHandoff {
             userAgent: playlist.userAgent,
             referrer: playlist.referrer,
             origin: playlist.origin,
+            // Keep the import scope so reinstalling this playlist view
+            // cannot re-enable a section the source opted out of.
+            ...(playlist.importLive === false ? { importLive: false } : {}),
+            ...(playlist.importVod === false ? { importVod: false } : {}),
         };
     }
 
