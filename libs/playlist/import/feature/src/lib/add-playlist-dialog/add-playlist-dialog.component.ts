@@ -25,8 +25,10 @@ import {
     PLAYLIST_PARSE_BY_URL,
     ProviderImportCandidate,
     SOURCE_TYPE_ICONS,
+    storedImportScopeFlags,
 } from '@iptvnator/shared/interfaces';
 import { AutoImportComponent } from '../auto-import/auto-import.component';
+import { BulkImportComponent } from '../bulk-import/bulk-import.component';
 import { FileUploadComponent } from '../file-upload/file-upload.component';
 import { StalkerPortalImportComponent } from '../stalker-portal-import/stalker-portal-import.component';
 import { TextImportComponent } from '../text-import/text-import.component';
@@ -34,9 +36,10 @@ import { UrlUploadComponent } from '../url-upload/url-upload.component';
 import { XtreamCodeImportComponent } from '../xtream-code-import/xtream-code-import.component';
 
 /**
- * Flat 5-method option model — replaces the prior category × subtype matrix
+ * Flat 7-method option model — replaces the prior category × subtype matrix
  * (M3U/Xtream/Stalker × URL/File/Text) which created 9 combinations of which
- * only 5 were real. Now each entry IS a method, no nesting.
+ * only 5 were real. Now each entry IS a method, no nesting. `auto` detects a
+ * single source from pasted provider text, `bulk` imports many at once.
  */
 export interface PlaylistMethodOption {
     value: PlaylistType;
@@ -59,6 +62,7 @@ const METHOD_BY_CANDIDATE_KIND: Record<
 @Component({
     imports: [
         AutoImportComponent,
+        BulkImportComponent,
         FileUploadComponent,
         MatButtonModule,
         MatDialogModule,
@@ -91,6 +95,7 @@ export class AddPlaylistDialogComponent {
     readonly xtreamImport = viewChild(XtreamCodeImportComponent);
     readonly stalkerImport = viewChild(StalkerPortalImportComponent);
     readonly autoImport = viewChild(AutoImportComponent);
+    readonly bulkImport = viewChild(BulkImportComponent);
 
     readonly method = signal<PlaylistType>('url');
 
@@ -153,6 +158,12 @@ export class AddPlaylistDialogComponent {
             icon: 'auto_awesome',
             labelKey: 'HOME.ADD_PLAYLIST.METHOD_AUTO_LABEL',
             subKey: 'HOME.ADD_PLAYLIST.METHOD_AUTO_SUB',
+        },
+        {
+            value: 'bulk',
+            icon: 'library_add',
+            labelKey: 'HOME.ADD_PLAYLIST.METHOD_BULK_LABEL',
+            subKey: 'HOME.ADD_PLAYLIST.METHOD_BULK_SUB',
         },
     ];
 
@@ -292,6 +303,10 @@ export class AddPlaylistDialogComponent {
             url: playlistUrl,
             ...(playlistName ? { title: playlistName } : {}),
             ...(userAgent ? { userAgent } : {}),
+            ...storedImportScopeFlags({
+                importLive: this.urlUpload()?.importLive?.(),
+                importVod: this.urlUpload()?.importVod?.(),
+            }),
         });
         this.closeDialog();
     }
@@ -306,6 +321,10 @@ export class AddPlaylistDialogComponent {
                 uploadType: 'TEXT',
                 playlist,
                 title: this.translateService.instant('HOME.IMPORTED_AS_TEXT'),
+                ...storedImportScopeFlags({
+                    importLive: this.textImport()?.importLive?.(),
+                    importVod: this.textImport()?.importVod?.(),
+                }),
             })
         );
         this.closeDialog();
@@ -331,6 +350,9 @@ export class AddPlaylistDialogComponent {
             case 'auto':
                 this.autoImport()?.clearForm();
                 break;
+            case 'bulk':
+                this.bulkImport()?.clearForm();
+                break;
         }
     }
 
@@ -345,6 +367,11 @@ export class AddPlaylistDialogComponent {
                 return !!this.xtreamImport()?.isTestingConnection;
             case 'stalker':
                 return !!this.stalkerImport()?.isLoading();
+            case 'bulk':
+                return (
+                    !this.bulkImport()?.hasEntries() ||
+                    !!this.bulkImport()?.isImporting()
+                );
             default:
                 return false;
         }

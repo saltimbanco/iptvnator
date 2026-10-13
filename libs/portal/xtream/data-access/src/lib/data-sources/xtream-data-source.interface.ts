@@ -49,6 +49,9 @@ export interface XtreamPlaylistData {
     origin?: string;
     serverTimezone?: string;
     allowedOutputFormats?: string[];
+    /** Section import scope; absent means the full catalog. */
+    importLive?: boolean;
+    importVod?: boolean;
 }
 
 /**

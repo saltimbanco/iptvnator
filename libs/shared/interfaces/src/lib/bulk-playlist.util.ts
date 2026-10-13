@@ -1,0 +1,280 @@
+import { createRandomId } from './random-id.util';
+import {
+    ProviderImportCandidate,
+    ProviderImportKind,
+} from './provider-import-detection.util';
+import { Playlist } from './playlist.interface';
+import {
+    normalizeImportScope,
+    storedImportScopeFlags,
+} from './playlist-import-scope.util';
+
+/**
+ * One row of a bulk import: a detected source plus its section scope.
+ * `id` is a client-side row key (not the playlist id); `valid` tells the
+ * preview whether the row carries enough data to import.
+ */
+export interface BulkImportEntry {
+    id: string;
+    kind: ProviderImportKind;
+    title: string;
+    importLive: boolean;
+    importVod: boolean;
+    valid: boolean;
+    candidate: ProviderImportCandidate;
+}
+
+/** Portal rows import directly; M3U rows need a fetch/parse step first. */
+export function isDirectBulkPlaylistEntry(entry: BulkImportEntry): boolean {
+    return entry.kind === 'xtream' || entry.kind === 'stalker';
+}
+
+export function candidatesToBulkEntries(
+    candidates: readonly ProviderImportCandidate[]
+): BulkImportEntry[] {
+    return candidates.map((candidate, index) => ({
+        id: createRandomId(),
+        kind: candidate.kind,
+        title:
+            candidate.suggestedTitle?.trim() ||
+            `Source ${index + 1}`,
+        importLive: true,
+        importVod: true,
+        valid: isImportableCandidate(candidate),
+        candidate,
+    }));
+}
+
+export function isImportableCandidate(
+    candidate: ProviderImportCandidate
+): boolean {
+    switch (candidate.kind) {
+        case 'xtream':
+            return Boolean(
+                candidate.serverUrl &&
+                    candidate.username &&
+                    candidate.password
+            );
+        case 'stalker':
+            return Boolean(candidate.portalUrl && candidate.macAddress);
+        case 'm3u-url':
+            return Boolean(candidate.url);
+        case 'm3u-text':
+            return Boolean(candidate.text?.trim());
+    }
+}
+
+/**
+ * Structured bulk file shape: an explicit source list that needs no
+ * detection. Accepts `{ "sources": [...] }` or a bare array. Every item
+ * needs a `type` plus the connection fields of that type; `title`,
+ * `importLive` and `importVod` are optional.
+ */
+export interface BulkFileXtreamSource {
+    type: 'xtream';
+    title?: string;
+    serverUrl: string;
+    username: string;
+    password?: string;
+    importLive?: boolean;
+    importVod?: boolean;
+}
+
+export interface BulkFileStalkerSource {
+    type: 'stalker';
+    title?: string;
+    portalUrl: string;
+    macAddress: string;
+    serialNumber?: string;
+    deviceId1?: string;
+    deviceId2?: string;
+    signature1?: string;
+    signature2?: string;
+    username?: string;
+    password?: string;
+    importLive?: boolean;
+    importVod?: boolean;
+}
+
+export interface BulkFileM3uUrlSource {
+    type: 'm3u-url';
+    title?: string;
+    url: string;
+    userAgent?: string;
+    importLive?: boolean;
+    importVod?: boolean;
+}
+
+export type BulkFileSource =
+    | BulkFileXtreamSource
+    | BulkFileStalkerSource
+    | BulkFileM3uUrlSource;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function asOptionalString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function asOptionalScopeFlag(value: unknown): boolean | undefined {
+    return typeof value === 'boolean' ? value : undefined;
+}
+
+/**
+ * Converts parsed JSON into bulk rows, or null when it is not a bulk file.
+ * Unknown items are skipped (not fatal): the preview shows what imported.
+ */
+export function bulkEntriesFromJson(value: unknown): BulkImportEntry[] | null {
+    const items = Array.isArray(value)
+        ? value
+        : isRecord(value) && Array.isArray(value['sources'])
+          ? (value['sources'] as unknown[])
+          : null;
+    if (!items) {
+        return null;
+    }
+    const entries: BulkImportEntry[] = [];
+    for (const item of items) {
+        if (!isRecord(item)) {
+            continue;
+        }
+        const title =
+            asOptionalString(item['title']) ?? `Source ${entries.length + 1}`;
+        const scope = {
+            importLive: asOptionalScopeFlag(item['importLive']) ?? true,
+            importVod: asOptionalScopeFlag(item['importVod']) ?? true,
+        };
+        if (item['type'] === 'xtream') {
+            const candidate: ProviderImportCandidate = {
+                kind: 'xtream',
+                confidence: 'high',
+                serverUrl: asOptionalString(item['serverUrl']),
+                username: asOptionalString(item['username']),
+                password: asOptionalString(item['password']),
+                suggestedTitle: title,
+            };
+            entries.push({
+                id: createRandomId(),
+                kind: 'xtream',
+                title,
+                ...scope,
+                valid: isImportableCandidate(candidate),
+                candidate,
+            });
+        } else if (item['type'] === 'stalker') {
+            const candidate: ProviderImportCandidate = {
+                kind: 'stalker',
+                confidence: 'high',
+                portalUrl: asOptionalString(item['portalUrl']),
+                macAddress: asOptionalString(item['macAddress']),
+                serialNumber: asOptionalString(item['serialNumber']),
+                deviceId1: asOptionalString(item['deviceId1']),
+                deviceId2: asOptionalString(item['deviceId2']),
+                signature1: asOptionalString(item['signature1']),
+                signature2: asOptionalString(item['signature2']),
+                username: asOptionalString(item['username']),
+                password: asOptionalString(item['password']),
+                suggestedTitle: title,
+            };
+            entries.push({
+                id: createRandomId(),
+                kind: 'stalker',
+                title,
+                ...scope,
+                valid: isImportableCandidate(candidate),
+                candidate,
+            });
+        } else if (
+            item['type'] === 'm3u-url' ||
+            item['type'] === 'm3u'
+        ) {
+            const candidate: ProviderImportCandidate = {
+                kind: 'm3u-url',
+                confidence: 'high',
+                url: asOptionalString(item['url']),
+                suggestedTitle: title,
+            };
+            entries.push({
+                id: createRandomId(),
+                kind: 'm3u-url',
+                title,
+                ...scope,
+                valid: isImportableCandidate(candidate),
+                candidate,
+            });
+        }
+    }
+    return entries;
+}
+
+/**
+ * Builds a persistable playlist for a portal row. M3U rows return null —
+ * the caller fetches/parses those through the regular M3U pipeline with
+ * the row's scope instead.
+ */
+export function bulkEntryToPlaylist(
+    entry: BulkImportEntry
+): Playlist | null {
+    const { importLive, importVod } = normalizeImportScope(entry);
+    const scope = storedImportScopeFlags({ importLive, importVod });
+    switch (entry.kind) {
+        case 'xtream': {
+            const { candidate } = entry;
+            if (
+                !candidate.serverUrl ||
+                !candidate.username ||
+                !candidate.password
+            ) {
+                return null;
+            }
+            return {
+                _id: createRandomId(),
+                title: entry.title,
+                serverUrl: candidate.serverUrl,
+                username: candidate.username,
+                password: candidate.password,
+                importDate: new Date().toISOString(),
+                ...scope,
+            } as Playlist;
+        }
+        case 'stalker': {
+            const { candidate } = entry;
+            if (!candidate.portalUrl || !candidate.macAddress) {
+                return null;
+            }
+            return {
+                _id: createRandomId(),
+                title: entry.title,
+                portalUrl: candidate.portalUrl,
+                macAddress: candidate.macAddress,
+                ...(candidate.serialNumber
+                    ? { stalkerSerialNumber: candidate.serialNumber }
+                    : {}),
+                ...(candidate.deviceId1
+                    ? { stalkerDeviceId1: candidate.deviceId1 }
+                    : {}),
+                ...(candidate.deviceId2
+                    ? { stalkerDeviceId2: candidate.deviceId2 }
+                    : {}),
+                ...(candidate.signature1
+                    ? { stalkerSignature1: candidate.signature1 }
+                    : {}),
+                ...(candidate.signature2
+                    ? { stalkerSignature2: candidate.signature2 }
+                    : {}),
+                ...(candidate.username
+                    ? { username: candidate.username }
+                    : {}),
+                ...(candidate.password
+                    ? { password: candidate.password }
+                    : {}),
+                importDate: new Date().toISOString(),
+                ...scope,
+            } as Playlist;
+        }
+        default:
+            return null;
+    }
+}

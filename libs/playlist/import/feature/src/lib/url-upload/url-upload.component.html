@@ -24,4 +24,8 @@
             {{ 'HOME.URL_UPLOAD.CORS_NOTE' | translate }}
         </p>
     }
+    <app-import-scope
+        [(importLive)]="importLive"
+        [(importVod)]="importVod"
+    />
 </form>

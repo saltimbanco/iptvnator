@@ -27,6 +27,9 @@ export interface PlaylistRefreshPayload {
     url?: string;
     userAgent?: string;
     trustedInsecureTlsHosts?: string[];
+    /** Partial import scope the refreshed playlist must keep. */
+    importLive?: boolean;
+    importVod?: boolean;
 }
 
 export const PLAYLIST_REFRESH_CANCELLED_RESULT_TYPE =

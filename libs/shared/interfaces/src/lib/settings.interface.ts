@@ -187,6 +187,13 @@ export interface Settings {
      * show, so recognition never runs.
      */
     m3uVodDetails?: boolean;
+    /**
+     * Turn VOD off everywhere: portal catalogs never import or fetch movies
+     * or series (Xtream and Stalker), and the Movies/Series sections
+     * disappear from the portal rail. Off by default; only an explicit
+     * `true` disables it. Per-source Live/VOD scopes still apply on top.
+     */
+    disableVod?: boolean;
     epgUrl: string[];
     streamFormat: StreamFormat;
     openStreamOnDoubleClick: boolean;

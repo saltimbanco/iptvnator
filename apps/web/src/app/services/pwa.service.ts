@@ -36,6 +36,7 @@ import {
     createLogger,
 } from '@iptvnator/portal/shared/util/logger';
 import { getRuntimeBackendUrl } from './runtime-config';
+import { applyImportScopeToPlaylist } from '@iptvnator/shared/m3u-utils';
 
 /**
  * How long to wait for the backend to forget a host before giving up.
@@ -221,6 +222,10 @@ export class PwaService extends DataService {
         }
 
         const playlistId = payload.id;
+        const scope = {
+            importLive: payload.importLive,
+            importVod: payload.importVod,
+        };
 
         this.getPlaylistFromUrl(payload.url, payload.userAgent)
             .pipe(
@@ -241,7 +246,7 @@ export class PwaService extends DataService {
             .subscribe((playlist: Playlist) => {
                 this.store.dispatch(
                     PlaylistActions.updatePlaylist({
-                        playlist,
+                        playlist: applyImportScopeToPlaylist(playlist, scope),
                         playlistId,
                         refreshEpg: true,
                     })
@@ -306,13 +311,19 @@ export class PwaService extends DataService {
                 })
             )
             .subscribe((response: Playlist) => {
-                const playlist = title
-                    ? {
-                          ...response,
-                          filename: title,
-                          title,
-                      }
-                    : response;
+                const playlist = applyImportScopeToPlaylist(
+                    title
+                        ? {
+                              ...response,
+                              filename: title,
+                              title,
+                          }
+                        : response,
+                    {
+                        importLive: payload?.importLive,
+                        importVod: payload?.importVod,
+                    }
+                );
 
                 this.store.dispatch(
                     PlaylistActions.handleAddingPlaylistByUrl({

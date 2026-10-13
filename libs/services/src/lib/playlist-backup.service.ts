@@ -34,6 +34,7 @@ import {
     normalizeParentalLockGroupTitles,
     normalizeParentalLockStalkerCategories,
     normalizeParentalLockXtreamCategories,
+    storedImportScopeFlags,
     ParentalLockPlaylistLocks,
     StalkerBackupLockedCategory,
     XtreamBackupHiddenCategory,
@@ -267,6 +268,7 @@ export class PlaylistBackupService {
             title: playlist.title,
             autoRefresh: Boolean(playlist.autoRefresh),
             position: playlist.position,
+            ...storedImportScopeFlags(playlist),
             source: {
                 kind: this.resolveM3uSourceKind(playlist),
                 rawM3u,
@@ -302,6 +304,7 @@ export class PlaylistBackupService {
             title: playlist.title,
             autoRefresh: Boolean(playlist.autoRefresh),
             position: playlist.position,
+            ...storedImportScopeFlags(playlist),
             connection: {
                 serverUrl: playlist.serverUrl ?? '',
                 username: playlist.username ?? '',
@@ -431,6 +434,7 @@ export class PlaylistBackupService {
             title: playlist.title,
             autoRefresh: Boolean(playlist.autoRefresh),
             position: playlist.position,
+            ...storedImportScopeFlags(playlist),
             connection: {
                 portalUrl: playlist.portalUrl ?? playlist.url ?? '',
                 macAddress: playlist.macAddress ?? '',
@@ -792,7 +796,12 @@ export class PlaylistBackupService {
             await this.playlistsService.handlePlaylistParsing(
                 'TEXT',
                 entry.source.rawM3u,
-                entry.title
+                entry.title,
+                undefined,
+                {
+                    importLive: entry.importLive,
+                    importVod: entry.importVod,
+                }
             );
         const now = new Date().toISOString();
 
@@ -851,6 +860,7 @@ export class PlaylistBackupService {
             password: entry.connection.password,
             favorites: [],
             recentlyViewed: [],
+            ...storedImportScopeFlags(entry),
         };
     }
 
@@ -891,6 +901,7 @@ export class PlaylistBackupService {
             stalkerSignature2: entry.connection.stalkerSignature2,
             stalkerToken: undefined,
             stalkerAccountInfo: undefined,
+            ...storedImportScopeFlags(entry),
         };
     }
 

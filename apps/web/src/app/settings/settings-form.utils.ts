@@ -70,6 +70,7 @@ export function createSettingsForm(
         fullscreenChannelPanel: true,
         vodAutoFailover: false,
         m3uVodDetails: true,
+        disableVod: false,
         ...(supportsEpg
             ? { epgUrl: new FormArray<FormControl<string | null>>([]) }
             : {}),
@@ -183,6 +184,7 @@ export function createSettingsFromFormValue(
         fullscreenChannelPanel: value.fullscreenChannelPanel ?? true,
         vodAutoFailover: value.vodAutoFailover ?? false,
         m3uVodDetails: value.m3uVodDetails ?? true,
+        disableVod: value.disableVod ?? false,
         streamFormat: value.streamFormat ?? StreamFormat.AutoStreamFormat,
         openStreamOnDoubleClick: value.openStreamOnDoubleClick ?? false,
         language: value.language ?? Language.ENGLISH,

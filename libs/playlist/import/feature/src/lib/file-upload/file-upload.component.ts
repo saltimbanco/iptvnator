@@ -9,13 +9,20 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { PlaylistFileImportService } from '@iptvnator/playlist/shared/util';
+import { PlaylistImportScope } from '@iptvnator/shared/interfaces';
+import { ImportScopeComponent } from '../import-scope/import-scope.component';
 import { DragDropFileUploadDirective } from './drag-drop-file-upload.directive';
 
 const MB = 1024 * 1024;
 const KB = 1024;
 
 @Component({
-    imports: [DragDropFileUploadDirective, MatIconModule, TranslatePipe],
+    imports: [
+        DragDropFileUploadDirective,
+        ImportScopeComponent,
+        MatIconModule,
+        TranslatePipe,
+    ],
     selector: 'app-file-upload',
     templateUrl: './file-upload.component.html',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,6 +38,9 @@ export class FileUploadComponent {
     readonly selectedFile = signal<File | null>(null);
     readonly isDragging = signal(false);
     readonly isImporting = signal(false);
+    /** Section scope: live channels vs VOD (movies + series). */
+    readonly importLive = signal(true);
+    readonly importVod = signal(true);
 
     async openPicker(input: HTMLInputElement): Promise<void> {
         if (this.importService.canImportFromNativeDialog()) {
@@ -71,6 +81,15 @@ export class FileUploadComponent {
 
     clearSelection(): void {
         this.selectedFile.set(null);
+        this.importLive.set(true);
+        this.importVod.set(true);
+    }
+
+    private currentScope(): PlaylistImportScope {
+        return {
+            importLive: this.importLive(),
+            importVod: this.importVod(),
+        };
     }
 
     async confirm(): Promise<void> {
@@ -78,7 +97,10 @@ export class FileUploadComponent {
         if (!file || this.isImporting()) return;
 
         this.isImporting.set(true);
-        const result = await this.importService.importFile(file);
+        const result = await this.importService.importFile(
+            file,
+            this.currentScope()
+        );
         this.isImporting.set(false);
 
         if (result.ok === true) {
@@ -109,7 +131,9 @@ export class FileUploadComponent {
         if (this.isImporting()) return;
 
         this.isImporting.set(true);
-        const result = await this.importService.importFromNativeDialog();
+        const result = await this.importService.importFromNativeDialog(
+            this.currentScope()
+        );
         this.isImporting.set(false);
 
         if (result.ok === true) {

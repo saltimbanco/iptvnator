@@ -6,7 +6,8 @@ export type PortalPlaylistType =
     | 'text'
     | 'file'
     | 'stalker'
-    | 'auto';
+    | 'auto'
+    | 'bulk';
 
 export interface PortalShellActions {
     openAddPlaylistDialog(type?: PortalPlaylistType): void;

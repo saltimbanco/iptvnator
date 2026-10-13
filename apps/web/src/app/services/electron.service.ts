@@ -38,6 +38,7 @@ import {
     measureRendererPerformancePhase,
     RENDERER_PERFORMANCE_PHASE,
 } from '@iptvnator/shared/logging';
+import { applyImportScopeToPlaylist } from '@iptvnator/shared/m3u-utils';
 import { AppConfig } from '../../environments/environment';
 import { buildAutoUpdatePlaylistsFeedback } from './auto-update-playlists-feedback';
 import {
@@ -380,7 +381,10 @@ export class ElectronService extends DataService {
                         this.store.dispatch(
                             PlaylistActions.handleAddingPlaylistByUrl({
                                 isTemporary: !!payload?.isTemporary,
-                                playlist: result,
+                                playlist: applyImportScopeToPlaylist(result, {
+                                    importLive: payload?.importLive,
+                                    importVod: payload?.importVod,
+                                }),
                             })
                         )
                 );
@@ -434,6 +438,8 @@ export class ElectronService extends DataService {
         filePath?: string;
         userAgent?: string;
         title: string;
+        importLive?: boolean;
+        importVod?: boolean;
     }) {
         try {
             let playlistObject: Playlist;
@@ -461,10 +467,16 @@ export class ElectronService extends DataService {
 
             this.store.dispatch(
                 PlaylistActions.updatePlaylist({
-                    playlist: {
-                        ...playlistObject,
-                        _id: data.id,
-                    },
+                    playlist: applyImportScopeToPlaylist(
+                        {
+                            ...playlistObject,
+                            _id: data.id,
+                        },
+                        {
+                            importLive: data.importLive,
+                            importVod: data.importVod,
+                        }
+                    ),
                     playlistId: data.id,
                     refreshEpg: true,
                 })

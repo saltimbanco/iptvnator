@@ -44,6 +44,7 @@ import {
     PLAYLIST_UPDATE,
     PlaylistMeta,
     PlaylistRefreshEvent,
+    storedImportScopeFlags,
 } from '@iptvnator/shared/interfaces';
 import {
     measureRendererPerformancePhase,
@@ -335,6 +336,7 @@ export class RecentPlaylistsComponent {
                 title: item.title,
                 url: item.url,
                 ...(item.userAgent ? { userAgent: item.userAgent } : {}),
+                ...storedImportScopeFlags(item),
             });
         }
     }

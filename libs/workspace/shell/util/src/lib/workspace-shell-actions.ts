@@ -10,7 +10,8 @@ export type WorkspacePlaylistType =
     | 'text'
     | 'file'
     | 'stalker'
-    | 'auto';
+    | 'auto'
+    | 'bulk';
 export type PlaylistCategory = 'm3u' | 'xtream' | 'stalker';
 export type M3uSubType = 'url' | 'file' | 'text';
 
