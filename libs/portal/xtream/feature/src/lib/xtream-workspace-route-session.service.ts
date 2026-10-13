@@ -50,6 +50,14 @@ function toXtreamPlaylistData(
         username: playlist.username,
         password: playlist.password,
         type: 'xtream',
+        // The scope flags must ride along: before the stored row is read,
+        // this object is the store's currentPlaylist, and the content
+        // feature decides from it whether VOD/series may be fetched. It is
+        // also what gets persisted when the row is not in the database yet
+        // (the bulk import navigates before its upsert lands), so dropping
+        // the flags here silently re-enabled a declined VOD import.
+        ...(playlist.importLive === false ? { importLive: false } : {}),
+        ...(playlist.importVod === false ? { importVod: false } : {}),
         ...(userAgent ? { userAgent } : {}),
         ...(referrer ? { referrer } : {}),
         ...(origin ? { origin } : {}),
