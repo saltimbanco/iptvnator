@@ -18,7 +18,12 @@ import {
     XtreamApiService,
     XtreamCredentials,
 } from '../services/xtream-api.service';
-import { ParentalLockService, PlaylistsService } from '@iptvnator/services';
+import {
+    ParentalLockService,
+    PlaylistsService,
+    USER_DATA_STORAGE,
+    XTREAM_USER_DATA_KEYS,
+} from '@iptvnator/services';
 import { firstValueFrom } from 'rxjs';
 import {
     DbCategoryType,
@@ -38,15 +43,16 @@ import {
     typedCollectionRef,
     itemCollectionKey,
     findCollectionItems,
+    normalizeStoredBackdrop,
 } from './pwa-collection-identity';
 import { PwaCollectionStorage } from './pwa-collection-storage';
 
 /**
- * LocalStorage keys for PWA persistence
+ * Storage keys for PWA persistence
  */
 const STORAGE_KEYS = {
     PLAYLISTS: 'xtream-playlists',
-    PLAYBACK_POSITIONS: 'xtream-playback-positions',
+    PLAYBACK_POSITIONS: XTREAM_USER_DATA_KEYS.playbackPositions,
 };
 
 interface XtreamCachedContentItem {
@@ -79,7 +85,7 @@ type StoredXtreamPlaylistData = Omit<XtreamPlaylistData, 'password'> & {
 /**
  * PWA implementation of the Xtream data source.
  * Uses API-only strategy: always fetch from API, no database caching.
- * Favorites and recently viewed are stored in localStorage.
+ * Favorites, recently viewed and positions are stored in USER_DATA_STORAGE.
  */
 @Injectable({ providedIn: 'root' })
 export class PwaXtreamDataSource implements IXtreamDataSource {
@@ -88,8 +94,10 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     private readonly parentalLock = inject(ParentalLockService);
     private readonly logger = createLogger('PwaXtreamDataSource');
     private readonly contentTypes = ['live', 'movie', 'series'] as const;
+    private readonly userDataStorage = inject(USER_DATA_STORAGE);
     private readonly collectionStorage = new PwaCollectionStorage(
-        (playlistId, ids) => this.getCollectionItemsById(playlistId, ids)
+        (playlistId, ids) => this.getCollectionItemsById(playlistId, ids),
+        this.userDataStorage
     );
 
     // In-memory cache for the current session
@@ -98,7 +106,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     private playlistPasswords = new Map<string, string>();
 
     // =========================================================================
-    // Playlist Operations (localStorage)
+    // Playlist Operations (user data storage)
     // =========================================================================
 
     async getPlaylist(playlistId: string): Promise<XtreamPlaylistData | null> {
@@ -181,7 +189,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
 
     private getPlaylistsFromStorage(): XtreamPlaylistData[] {
         try {
-            const data = localStorage.getItem(STORAGE_KEYS.PLAYLISTS);
+            const data = this.userDataStorage.getItem(STORAGE_KEYS.PLAYLISTS);
             const playlists = data
                 ? (JSON.parse(data) as StoredXtreamPlaylistData[])
                 : [];
@@ -198,7 +206,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
         const persistedPlaylists = playlists.map((playlist) =>
             this.toStoredPlaylist(playlist)
         );
-        localStorage.setItem(
+        this.userDataStorage.setItem(
             STORAGE_KEYS.PLAYLISTS,
             JSON.stringify(persistedPlaylists)
         );
@@ -683,7 +691,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     }
 
     // =========================================================================
-    // Favorites Operations (localStorage)
+    // Favorites Operations (user data storage)
     // =========================================================================
 
     async getFavorites(playlistId: string): Promise<XtreamContentItem[]> {
@@ -777,7 +785,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     }
 
     // =========================================================================
-    // Playback Position Operations (localStorage)
+    // Playback Position Operations (user data storage)
     // =========================================================================
 
     async savePlaybackPosition(
@@ -938,7 +946,9 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
         PlaybackPositionData[]
     > {
         try {
-            const data = localStorage.getItem(STORAGE_KEYS.PLAYBACK_POSITIONS);
+            const data = this.userDataStorage.getItem(
+                STORAGE_KEYS.PLAYBACK_POSITIONS
+            );
             return data ? JSON.parse(data) : {};
         } catch {
             return {};
@@ -948,7 +958,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     private savePlaybackPositionsToStorage(
         positions: Record<string, PlaybackPositionData[]>
     ): void {
-        localStorage.setItem(
+        this.userDataStorage.setItem(
             STORAGE_KEYS.PLAYBACK_POSITIONS,
             JSON.stringify(positions)
         );
@@ -961,7 +971,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     }
 
     // =========================================================================
-    // Recently Viewed Operations (localStorage)
+    // Recently Viewed Operations (user data storage)
     // =========================================================================
 
     async getRecentItems(playlistId: string): Promise<XtreamContentItem[]> {
@@ -1348,6 +1358,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
                 return {
                     ...identity,
                     viewedAt: item.viewedAt,
+                    ...normalizeStoredBackdrop(item),
                 };
             })
             .filter(
@@ -1395,16 +1406,22 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
                 type: item.contentType,
             });
             if (id !== null)
-                recentItems[playlistId].push({ id, viewedAt: item.viewedAt });
+                recentItems[playlistId].push({
+                    id,
+                    viewedAt: item.viewedAt,
+                    ...normalizeStoredBackdrop(item),
+                });
         }
         this.collectionStorage.saveRecentItemsToStorage(recentItems);
 
-        // Restore playback positions
+        // Restore playback positions under this playlist: an archive's carry
+        // the id they were exported with, and the player matches on it.
         this.clearPlaybackPositionsForPlaylist(playlistId);
         const playbackPositions = this.getPlaybackPositionsFromStorage();
         playbackPositions[playlistId] = restoreState.playbackPositions.map(
             (position) => ({
                 ...position,
+                playlistId,
                 updatedAt: position.updatedAt ?? new Date().toISOString(),
             })
         );
