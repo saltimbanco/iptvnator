@@ -33,6 +33,7 @@ import {
     storedImportScopeFlags,
 } from '@iptvnator/shared/interfaces';
 import { ImportScopeComponent } from '../import-scope/import-scope.component';
+import { provideFormFieldDefaults } from '@iptvnator/ui/components/form-field-defaults';
 
 function xtreamServerUrlValidator(
     control: AbstractControl
@@ -63,6 +64,7 @@ function xtreamServerUrlValidator(
         TranslatePipe,
     ],
     selector: 'app-xtream-code-import',
+    providers: [provideFormFieldDefaults()],
     templateUrl: './xtream-code-import.component.html',
     changeDetection: ChangeDetectionStrategy.OnPush,
     styles: [

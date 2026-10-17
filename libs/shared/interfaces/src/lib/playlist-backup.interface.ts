@@ -1,3 +1,4 @@
+import type { XtreamFavoriteSnapshot } from './xtream-favorite.interface';
 import { PlaybackPositionData } from './playback-position.interface';
 import { M3uRecentlyViewedItem } from './playlist-recently-viewed.interface';
 import { StalkerPortalItem } from './stalker-portal-item.interface';
@@ -63,6 +64,7 @@ export interface XtreamBackupFavoriteItem {
     xtreamId: number;
     addedAt?: string;
     position?: number | null;
+    snapshot?: XtreamFavoriteSnapshot;
 }
 
 export interface XtreamBackupRecentlyViewedItem {
@@ -75,6 +77,8 @@ export interface XtreamBackupRecentlyViewedItem {
      * reads it.
      */
     backdropUrl?: string;
+    /** Browser view metadata, independent of a retained favorite with the same provider key. */
+    collectionItem?: XtreamBackupCollectionItem;
 }
 
 /**

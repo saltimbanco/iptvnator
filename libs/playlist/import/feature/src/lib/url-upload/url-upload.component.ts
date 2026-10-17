@@ -17,9 +17,11 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RuntimeCapabilitiesService } from '@iptvnator/services';
 import { ImportScopeComponent } from '../import-scope/import-scope.component';
+import { provideFormFieldDefaults } from '@iptvnator/ui/components/form-field-defaults';
 
 @Component({
     selector: 'app-url-upload',
+    providers: [provideFormFieldDefaults()],
     templateUrl: './url-upload.component.html',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [

@@ -65,7 +65,13 @@ export class PlaylistRefreshActionService {
     readonly refreshPreparation = this.refreshPreparationState.asReadonly();
 
     canRefresh(playlist: PlaylistMeta | null): boolean {
-        if (!playlist || this.activity.isBusy(playlist._id)) {
+        // The same guards as refresh(): one refresh runs at a time, so an
+        // offer made meanwhile would be a silent no-op.
+        if (
+            !playlist ||
+            this.isRefreshing() ||
+            this.activity.isBusy(playlist._id)
+        ) {
             return false;
         }
 
@@ -95,15 +101,33 @@ export class PlaylistRefreshActionService {
         ) {
             void this.refreshM3u(playlist);
         } else if (playlist.url) {
-            this.dataService.sendIpcEvent(PLAYLIST_UPDATE, {
-                id: playlist._id,
-                title: playlist.title,
-                url: playlist.url,
-                ...(playlist.userAgent
-                    ? { userAgent: playlist.userAgent }
-                    : {}),
-                ...storedImportScopeFlags(playlist),
+            void this.refreshViaBackend(playlist, playlist.url);
+        }
+    }
+
+    /**
+     * The browser build refreshes through the backend, which reports its own
+     * success or failure; the source stays busy until it has answered.
+     */
+    private async refreshViaBackend(
+        item: PlaylistMeta,
+        url: string
+    ): Promise<void> {
+        this.m3uRefreshId.set(item._id);
+        this.isRefreshing.set(true);
+        const release = this.activity.begin([item._id]);
+        try {
+            await this.dataService.sendIpcEvent(PLAYLIST_UPDATE, {
+                id: item._id,
+                title: item.title,
+                url,
+                ...(item.userAgent ? { userAgent: item.userAgent } : {}),
+                ...storedImportScopeFlags(item),
             });
+        } finally {
+            this.m3uRefreshId.set(null);
+            this.isRefreshing.set(false);
+            release();
         }
     }
 
@@ -150,6 +174,8 @@ export class PlaylistRefreshActionService {
 
         this.m3uRefreshId.set(item._id);
         this.isRefreshing.set(true);
+        // Seen by the Sources page and the removal guard as well.
+        const release = this.activity.begin([item._id]);
         if (isActiveM3uRoute) {
             this.store.dispatch(
                 ChannelActions.setChannelsLoading({ loading: true })
@@ -228,6 +254,7 @@ export class PlaylistRefreshActionService {
             }
             this.m3uRefreshId.set(null);
             this.isRefreshing.set(false);
+            release();
         }
     }
 

@@ -52,6 +52,7 @@ import {
     toStalkerImportFeedback,
     toStalkerPlaylistIdentityFields,
 } from './stalker-import-identity';
+import { provideFormFieldDefaults } from '@iptvnator/ui/components/form-field-defaults';
 
 /**
  * A MAC and the device IDs that belong to exactly it. Kept together because
@@ -78,6 +79,7 @@ interface StalkerSettledIdentity {
         TranslatePipe,
     ],
     selector: 'app-stalker-portal-import',
+    providers: [provideFormFieldDefaults()],
     templateUrl: './stalker-portal-import.component.html',
     changeDetection: ChangeDetectionStrategy.OnPush,
     styles: [

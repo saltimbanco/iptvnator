@@ -27,6 +27,7 @@ import {
     isDbAbortError,
     resetHostConnectivityGuard,
     SettingsStore,
+    SourceActivityService,
     XtreamPendingRestoreService,
     XtreamImportStatus,
 } from '@iptvnator/services';
@@ -249,6 +250,7 @@ export function withContent() {
             const dataService = inject(DataService);
             const databaseService = inject(DatabaseService);
             const pendingRestoreService = inject(XtreamPendingRestoreService);
+            const sourceActivity = inject(SourceActivityService);
             const xtreamApiService = inject(XtreamApiService);
             const importTypes: ContentType[] = ['live', 'vod', 'series'];
             let activeInitializationPromise: Promise<void> | null = null;
@@ -1042,6 +1044,16 @@ export function withContent() {
                             initialRestoreSnapshot !== null,
                     });
 
+                    // Legacy favorites become durable before any network request,
+                    // even if the provider stays offline through this import.
+                    if (initialRestoreSnapshot) {
+                        await dataSource.restoreFavoriteSnapshots?.(
+                            ctx.playlistId,
+                            initialRestoreSnapshot.state
+                        );
+                        throwIfImportCancelled(importSessionId);
+                    }
+
                     // Electron content persistence maps remote category IDs
                     // to internal DB category rows, so categories must exist
                     // before content import starts.
@@ -1195,9 +1207,15 @@ export function withContent() {
                     return activeInitializationPromise;
                 }
 
+                // Deletion and refreshes wait for the import's writes.
+                const playlistId = getCredentialsFromStore()?.playlistId;
+                const release = playlistId
+                    ? sourceActivity.begin([playlistId])
+                    : undefined;
                 const initializationPromise = executeContentInitialization(
                     ignoreBlockedState
                 ).finally(() => {
+                    release?.();
                     if (activeInitializationPromise === initializationPromise) {
                         activeInitializationPromise = null;
                     }
