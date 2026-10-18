@@ -1,26 +1,10 @@
 <div class="bulk">
-    <mat-form-field class="w-full">
-        <mat-label>{{
-            'HOME.ADD_PLAYLIST.BULK_TEXT_LABEL' | translate
-        }}</mat-label>
-        <textarea
-            matInput
-            rows="5"
-            [formControl]="textControl"
-            [placeholder]="
-                'HOME.ADD_PLAYLIST.BULK_TEXT_PLACEHOLDER' | translate
-            "
-        ></textarea>
-        <mat-hint>{{
-            'HOME.ADD_PLAYLIST.BULK_TEXT_HINT' | translate
-        }}</mat-hint>
-    </mat-form-field>
-
     <div class="bulk__file">
         <button
             mat-stroked-button
             type="button"
             (click)="fileField.click()"
+            data-test-id="bulk-file-button"
         >
             <mat-icon>upload_file</mat-icon>
             {{ 'HOME.ADD_PLAYLIST.BULK_FILE_BUTTON' | translate }}
@@ -29,13 +13,21 @@
             type="file"
             #fileField
             hidden
-            accept=".txt,.json,.m3u,.m3u8,application/json,text/plain"
+            accept=".txt,.json,application/json,text/plain"
             (change)="onFilePicked(fileField)"
         />
+        <span class="bulk__hint">
+            {{ 'HOME.ADD_PLAYLIST.METHOD_BULK_SUB' | translate }}
+        </span>
     </div>
 
     @if (fileError(); as error) {
         <p class="bulk__error" role="alert">{{ error }}</p>
+    } @else if (loadedFileName(); as filename) {
+        <p class="bulk__loaded" data-test-id="bulk-loaded-file">
+            <mat-icon>description</mat-icon>
+            {{ filename }}
+        </p>
     }
 
     @if (hasEntries()) {
@@ -111,8 +103,8 @@
                 </div>
             }
         </div>
-    } @else if (textControl.value.trim()) {
-        <p class="bulk__empty">
+    } @else if (loadedFileName()) {
+        <p class="bulk__empty" data-test-id="bulk-no-sources">
             {{ 'HOME.ADD_PLAYLIST.BULK_NO_SOURCES' | translate }}
         </p>
     }

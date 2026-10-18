@@ -29,6 +29,22 @@ export function isDirectBulkPlaylistEntry(entry: BulkImportEntry): boolean {
     return entry.kind === 'xtream' || entry.kind === 'stalker';
 }
 
+/**
+ * Row defaults: live imports, VOD does not. Bulk imports usually carry
+ * many provider handouts whose on-demand catalogs plug the queue with
+ * thousands of movies and series per source, so VOD stays a per-row
+ * opt-in; a structured file can still request it with `importVod: true`.
+ */
+export function createBulkImportScopeDefaults(): {
+    importLive: boolean;
+    importVod: boolean;
+} {
+    return {
+        importLive: true,
+        importVod: false,
+    };
+}
+
 export function candidatesToBulkEntries(
     candidates: readonly ProviderImportCandidate[]
 ): BulkImportEntry[] {
@@ -38,8 +54,7 @@ export function candidatesToBulkEntries(
         title:
             candidate.suggestedTitle?.trim() ||
             `Source ${index + 1}`,
-        importLive: true,
-        importVod: true,
+        ...createBulkImportScopeDefaults(),
         valid: isImportableCandidate(candidate),
         candidate,
     }));
@@ -68,7 +83,8 @@ export function isImportableCandidate(
  * Structured bulk file shape: an explicit source list that needs no
  * detection. Accepts `{ "sources": [...] }` or a bare array. Every item
  * needs a `type` plus the connection fields of that type; `title`,
- * `importLive` and `importVod` are optional.
+ * `importLive` and `importVod` are optional, and unspecified sections take
+ * the row defaults (live on, VOD off).
  */
 export interface BulkFileXtreamSource {
     type: 'xtream';
@@ -144,7 +160,7 @@ export function bulkEntriesFromJson(value: unknown): BulkImportEntry[] | null {
             asOptionalString(item['title']) ?? `Source ${entries.length + 1}`;
         const scope = {
             importLive: asOptionalScopeFlag(item['importLive']) ?? true,
-            importVod: asOptionalScopeFlag(item['importVod']) ?? true,
+            importVod: asOptionalScopeFlag(item['importVod']) ?? false,
         };
         if (item['type'] === 'xtream') {
             const candidate: ProviderImportCandidate = {

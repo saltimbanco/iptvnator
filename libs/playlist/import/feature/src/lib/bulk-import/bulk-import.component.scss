@@ -9,7 +9,24 @@
 }
 
 .bulk__file {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     margin: 4px 0 12px;
+}
+
+.bulk__hint {
+    font-size: 12px;
+    color: var(--app-muted-color);
+}
+
+.bulk__loaded {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: var(--app-heading-color);
 }
 
 .bulk__error {

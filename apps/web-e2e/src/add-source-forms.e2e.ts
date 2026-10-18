@@ -116,29 +116,55 @@ test('@sources @pwa gives the Stalker form the shared labels and a masked passwo
     ).toBeVisible();
 });
 
+test('@sources @pwa offers bulk import in the initial setup wizard', async ({
+    page,
+}) => {
+    await page.goto('/workspace/sources');
+    await expect(page.locator('.welcome-sources')).toBeVisible();
+    const card = page
+        .locator('.source-card')
+        .filter({ hasText: /Bulk import/i });
+    await expect(card).toBeVisible();
+    await card.getByRole('button').click();
+
+    const dialog = page.locator('mat-dialog-container');
+    await expect(dialog).toBeVisible();
+    // The picked card opens straight into the bulk form.
+    await expect(
+        dialog.getByRole('button', { name: /Load from file/i })
+    ).toBeVisible();
+});
+
 test('@sources @pwa bulk-imports two M3U URLs with per-row VOD scope', async ({
     page,
 }) => {
     const dialog = await openMethod(page, /Bulk import/i);
 
-    await setInputValue(
-        dialog.getByRole('textbox', { name: 'Sources to import' }),
-        JSON.stringify({
-            sources: [
-                {
-                    type: 'm3u-url',
-                    title: 'Bulk Live Only',
-                    url: `${XTREAM_MOCK_SERVER}/bulk-one.m3u`,
-                    importVod: false,
-                },
-                {
-                    type: 'm3u-url',
-                    title: 'Bulk Full',
-                    url: `${XTREAM_MOCK_SERVER}/bulk-two.m3u`,
-                },
-            ],
-        })
-    );
+    // Bulk import reads everything from one file; no free-text field.
+    await expect(
+        dialog.getByRole('textbox', { name: 'Sources to import' })
+    ).toHaveCount(0);
+    await dialog.locator('input[type=file]').setInputFiles({
+            name: 'sources.json',
+            mimeType: 'application/json',
+            buffer: Buffer.from(
+                JSON.stringify({
+                    sources: [
+                        {
+                            type: 'm3u-url',
+                            title: 'Bulk Live Only',
+                            url: `${XTREAM_MOCK_SERVER}/bulk-one.m3u`,
+                            importVod: false,
+                        },
+                        {
+                            type: 'm3u-url',
+                            title: 'Bulk Full',
+                            url: `${XTREAM_MOCK_SERVER}/bulk-two.m3u`,
+                        },
+                    ],
+                })
+            ),
+        });
 
     const rows = dialog.getByRole('listitem');
     await expect(rows).toHaveCount(2);

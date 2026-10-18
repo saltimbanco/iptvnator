@@ -6,19 +6,21 @@ import {
     signal,
     ChangeDetectionStrategy,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
+import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { PlaylistActions } from '@iptvnator/m3u-state';
-import { DataService } from '@iptvnator/services';
+import {
+    DataService,
+    PlaylistsService,
+    PORTAL_CONTENT_SEEDERS,
+    type PortalContentSeeder,
+} from '@iptvnator/services';
 import {
     BulkImportEntry,
     bulkEntriesFromJson,
@@ -27,9 +29,10 @@ import {
     detectProviderImportCandidates,
     isDirectBulkPlaylistEntry,
     PLAYLIST_PARSE_BY_URL,
-    ProviderImportKind,
     SOURCE_TYPE_ICONS,
     storedImportScopeFlags,
+    type Playlist,
+    type ProviderImportKind,
 } from '@iptvnator/shared/interfaces';
 
 const KIND_ICONS: Record<ProviderImportKind, string> = {
@@ -47,14 +50,15 @@ const KIND_LABEL_KEYS: Record<ProviderImportKind, string> = {
 };
 
 /**
- * Bulk source import: paste many provider handouts (or load them from a
- * `.txt`/`.json` file) and import every recognized source at once. Free
- * text runs through the same deterministic detection as the auto import;
- * JSON accepts an explicit `{ "sources": [...] }` (or bare array) list.
- * Each row carries its own title plus Live/VOD scope toggles, and rows can
- * be dropped before importing. Portal rows (Xtream/Stalker) persist in one
- * `addManyPlaylists`; M3U rows go through the regular URL/text pipelines
- * with the row's scope attached.
+ * Bulk source import: everything the user wants is inside one file
+ * (`.txt` of provider handouts, or `.json` with the explicit
+ * `{ "sources": [...] }` shape — no free-text field). File content runs
+ * through the same deterministic detection as the auto import. Each row
+ * carries its own title plus Live/VOD scope toggles (VOD starts off), and
+ * rows can be dropped before importing. Portal rows (Xtream/Stalker) are
+ * persisted in one awaited `addManyPlaylists` and seeded in the background
+ * so their catalogs exist before first open; M3U rows go through the
+ * regular URL/text pipelines with the row's scope attached.
  */
 @Component({
     selector: 'app-bulk-import',
@@ -64,10 +68,7 @@ const KIND_LABEL_KEYS: Record<ProviderImportKind, string> = {
     imports: [
         MatButtonModule,
         MatCheckboxModule,
-        MatFormFieldModule,
         MatIcon,
-        MatInputModule,
-        ReactiveFormsModule,
         TranslatePipe,
     ],
 })
@@ -77,13 +78,17 @@ export class BulkImportComponent {
     private readonly store = inject(Store);
     private readonly router = inject(Router);
     private readonly dataService = inject(DataService);
+    private readonly playlistsService = inject(PlaylistsService);
+    private readonly seeders = inject(PORTAL_CONTENT_SEEDERS, {
+        optional: true,
+    }) ?? [];
     private readonly snackBar = inject(MatSnackBar);
     private readonly translate = inject(TranslateService);
 
-    readonly textControl = new FormControl('', { nonNullable: true });
     readonly entries = signal<BulkImportEntry[]>([]);
     /** Translated message; null when there is nothing to report. */
     readonly fileError = signal<string | null>(null);
+    readonly loadedFileName = signal<string | null>(null);
     readonly isImporting = signal(false);
 
     readonly importableEntries = computed(() =>
@@ -91,16 +96,10 @@ export class BulkImportComponent {
     );
     readonly hasEntries = computed(() => this.entries().length > 0);
 
-    constructor() {
-        this.textControl.valueChanges
-            .pipe(takeUntilDestroyed())
-            .subscribe((value) => this.parseSourceText(value));
-    }
-
     clearForm(): void {
-        this.textControl.setValue('');
         this.entries.set([]);
         this.fileError.set(null);
+        this.loadedFileName.set(null);
     }
 
     async onFilePicked(input: HTMLInputElement): Promise<void> {
@@ -109,15 +108,23 @@ export class BulkImportComponent {
         if (!file) {
             return;
         }
+        this.fileError.set(null);
+        let contents: string;
         try {
-            this.textControl.setValue(await file.text());
+            contents = await file.text();
         } catch {
             this.fileError.set(
                 this.translate.instant('HOME.FILE_UPLOAD.OPEN_FAILED', {
                     filename: file.name,
                 })
             );
+            return;
         }
+
+        if (!this.parseSourceFile(contents)) {
+            return;
+        }
+        this.loadedFileName.set(file.name);
     }
 
     setEntryTitle(id: string, title: string): void {
@@ -182,14 +189,20 @@ export class BulkImportComponent {
         }
         this.isImporting.set(true);
         try {
+            // Portal rows persist in one awaited write, then the NgRx state
+            // syncs without persisting again (`persist: false`).
             const portalPlaylists = rows
                 .filter(isDirectBulkPlaylistEntry)
                 .map(bulkEntryToPlaylist)
                 .filter((playlist) => playlist !== null);
             if (portalPlaylists.length > 0) {
+                await firstValueFrom(
+                    this.playlistsService.addManyPlaylists(portalPlaylists)
+                );
                 this.store.dispatch(
                     PlaylistActions.addManyPlaylists({
                         playlists: portalPlaylists,
+                        persist: false,
                     })
                 );
             }
@@ -221,6 +234,10 @@ export class BulkImportComponent {
                     );
                 }
             }
+            // Portal catalogs fill in the background right after the rows
+            // land, so a distant source is populated without ever being
+            // opened. Failures surface there, not here.
+            void this.seedPortals(portalPlaylists);
             // Portal rows persist silently (no per-row navigation), so open
             // the first one to start its catalog import like a single add.
             // M3U rows navigate on completion by themselves.
@@ -246,13 +263,27 @@ export class BulkImportComponent {
         }
     }
 
-    private parseSourceText(text: string): void {
+    /**
+     * Parses a picked file into preview rows. True when the content was a
+     * parsable bulk list (empty valid-rows included); false when it should
+     * be reported as unreadable.
+     */
+    private patchEntry(id: string, patch: Partial<BulkImportEntry>): void {
+        this.entries.update((rows) =>
+            rows.map((row) => (row.id === id ? { ...row, ...patch } : row))
+        );
+    }
+
+    private parseSourceFile(contents: string): boolean {
         this.fileError.set(null);
-        if (!text.trim()) {
-            this.entries.set([]);
-            return;
+        this.loadedFileName.set(null);
+        const trimmed = contents.trim();
+        if (!trimmed) {
+            this.fileError.set(
+                this.translate.instant('HOME.ADD_PLAYLIST.BULK_NO_SOURCES')
+            );
+            return false;
         }
-        const trimmed = text.trim();
         if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
             try {
                 const parsed = bulkEntriesFromJson(JSON.parse(trimmed));
@@ -267,17 +298,37 @@ export class BulkImportComponent {
                         'HOME.ADD_PLAYLIST.BULK_INVALID_JSON'
                     )
                 );
+                return false;
             }
-            return;
+            return true;
         }
         this.entries.set(
-            candidatesToBulkEntries(detectProviderImportCandidates(text))
+            candidatesToBulkEntries(
+                detectProviderImportCandidates(trimmed)
+            )
         );
+        return true;
     }
 
-    private patchEntry(id: string, patch: Partial<BulkImportEntry>): void {
-        this.entries.update((rows) =>
-            rows.map((row) => (row.id === id ? { ...row, ...patch } : row))
-        );
+    /**
+     * Seeds each freshly persisted portal source so its channels and VOD
+     * lists exist without waiting for a workspace open. Sources run
+     * sequentially so one batch never hammers the DB worker with parallel
+     * downloads, and single failures do not stop the rest.
+     */
+    private async seedPortals(playlists: Playlist[]): Promise<void> {
+        if (playlists.length === 0 || this.seeders.length === 0) {
+            return;
+        }
+        for (const playlist of playlists) {
+            for (const seeder of this.seeders) {
+                try {
+                    await seeder.seed(playlist);
+                } catch {
+                    // Keep seeding the remaining sources; the seeder has
+                    // already recorded its own failure.
+                }
+            }
+        }
     }
 }

@@ -7,7 +7,7 @@ import {
 } from './bulk-playlist.util';
 
 describe('bulk playlist entries', () => {
-    it('maps candidates to editable rows defaulting to a full scope', () => {
+    it('maps candidates to editable rows that default to live only', () => {
         const [xtream, stalker] = candidatesToBulkEntries([
             {
                 kind: 'xtream',
@@ -27,6 +27,9 @@ describe('bulk playlist entries', () => {
 
         expect(xtream.title).toBe('panel.example');
         expect(xtream.valid).toBe(true);
+        // VOD is a per-row opt-in: bulk sources start live-only.
+        expect(xtream.importLive).toBe(true);
+        expect(xtream.importVod).toBe(false);
         expect(stalker.title).toBe('Source 2');
         expect(isDirectBulkPlaylistEntry(xtream)).toBe(true);
         expect(xtream.id).not.toBe(stalker.id);
@@ -112,7 +115,28 @@ describe('bulk playlist entries', () => {
             importVod: false,
             valid: true,
         });
+        // An unspecified VOD flag stays off, like detected rows.
+        expect(entries?.[1]).toMatchObject({ importVod: false });
         expect(entries?.[1].title).toBe('Source 2');
+    });
+
+    it('honors an explicit VOD opt-in in a structured file', () => {
+        const entries = bulkEntriesFromJson({
+            sources: [
+                {
+                    type: 'm3u-url',
+                    title: 'Everything',
+                    url: 'http://x.example/list.m3u',
+                    importVod: true,
+                },
+            ],
+        });
+
+        expect(entries?.[0]).toMatchObject({
+            importLive: true,
+            importVod: true,
+            valid: true,
+        });
     });
 
     it('rejects JSON that is not a source list', () => {

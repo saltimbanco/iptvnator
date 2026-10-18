@@ -470,6 +470,7 @@ export class PlaylistEffects {
         () => {
             return this.actions$.pipe(
                 ofType(PlaylistActions.addManyPlaylists),
+                filter((action) => action.persist !== false),
                 switchMap((action) =>
                     this.playlistsService.addManyPlaylists(action.playlists)
                 )
