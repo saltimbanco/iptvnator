@@ -392,18 +392,10 @@ jobs:
             matrix:
                 include:
                     # macOS builds - separate runners to avoid native module conflicts
-                    - os: macos
-                      runner: macos-15-intel
-                      arch: x64
-                      embedded_mpv_platform: darwin
-                      embedded_mpv_arch: x64
-                      embedded_mpv_build_runtime: true
-                    - os: macos
-                      runner: macos-latest
-                      arch: arm64
-                      embedded_mpv_platform: darwin
-                      embedded_mpv_arch: arm64
-                      embedded_mpv_build_runtime: true
+                    # Fork: no Apple signing/notarization credentials (CSC_NAME etc.) are
+                    # configured here, so macOS jobs abort at signing validation and block
+                    # the Create Draft Release job on tag runs. Windows x64 (with the
+                    # pinned embedded MPV runtime) and Linux remain the published targets.
                     - os: windows
                       runner: windows-2022
                       arch: x64
