@@ -2,6 +2,7 @@ import {
     bulkEntriesFromJson,
     bulkEntryToPlaylist,
     candidatesToBulkEntries,
+    dedupeBulkCandidates,
     isDirectBulkPlaylistEntry,
     isImportableCandidate,
 } from './bulk-playlist.util';
@@ -142,5 +143,56 @@ describe('bulk playlist entries', () => {
     it('rejects JSON that is not a source list', () => {
         expect(bulkEntriesFromJson({ playlists: [] })).toBeNull();
         expect(bulkEntriesFromJson('just text')).toBeNull();
+    });
+
+    it('drops the m3u-url fallback when an xtream candidate claims the same account', () => {
+        const deduped = dedupeBulkCandidates([
+            {
+                kind: 'xtream',
+                confidence: 'high',
+                serverUrl: 'http://panel.example',
+                username: 'user',
+                password: 'pass',
+                suggestedTitle: 'panel.example',
+            },
+            {
+                kind: 'm3u-url',
+                confidence: 'low',
+                url: 'http://panel.example/get.php?username=user&password=pass&type=m3u_plus',
+            },
+        ]);
+
+        expect(deduped).toHaveLength(1);
+        expect(deduped[0].kind).toBe('xtream');
+    });
+
+    it('keeps m3u-url links with credentials no xtream candidate uses', () => {
+        const deduped = dedupeBulkCandidates([
+            {
+                kind: 'xtream',
+                confidence: 'high',
+                serverUrl: 'http://panel.example',
+                username: 'user',
+                password: 'pass',
+                suggestedTitle: 'panel.example',
+            },
+            {
+                kind: 'm3u-url',
+                confidence: 'low',
+                url: 'http://other.example/get.php?username=someoneelse&password=pass&type=m3u_plus',
+            },
+            {
+                kind: 'm3u-url',
+                confidence: 'low',
+                url: 'http://other.example/get.php?username=user&password=DifferentPass&type=m3u_plus',
+            },
+        ]);
+
+        expect(deduped).toHaveLength(3);
+        expect(deduped.map((candidate) => candidate.kind)).toEqual([
+            'xtream',
+            'm3u-url',
+            'm3u-url',
+        ]);
     });
 });

@@ -26,6 +26,7 @@ import {
     bulkEntriesFromJson,
     bulkEntryToPlaylist,
     candidatesToBulkEntries,
+    dedupeBulkCandidates,
     detectProviderImportCandidates,
     isDirectBulkPlaylistEntry,
     PLAYLIST_PARSE_BY_URL,
@@ -304,7 +305,9 @@ export class BulkImportComponent {
         }
         this.entries.set(
             candidatesToBulkEntries(
-                detectProviderImportCandidates(trimmed)
+                dedupeBulkCandidates(
+                    detectProviderImportCandidates(trimmed)
+                )
             )
         );
         return true;

@@ -72,9 +72,10 @@ export interface ProviderImportCandidate {
 const GET_PHP_PATH_PATTERN = /\/get\.php$/i;
 const EXTM3U_HEADER_PATTERN = /^\s*#EXTM3U/i;
 // DOM-safety guard against pathological pastes, not a business limit: sized
-// above the scanners' combined caps (64 MACs + 16 URLs), so every candidate
-// a real multi-account handout produces survives the final slice.
-const MAX_CANDIDATES = 96;
+// above the scanners' combined caps (64 MACs + 64 URLs — a get.php URL can
+// yield both an xtream and an m3u-url candidate), so every candidate a real
+// multi-account handout produces survives the final slice.
+const MAX_CANDIDATES = 160;
 
 /**
  * Scans a pasted provider message and returns ranked import candidates.

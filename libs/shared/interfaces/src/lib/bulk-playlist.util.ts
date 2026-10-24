@@ -3,6 +3,7 @@ import {
     ProviderImportCandidate,
     ProviderImportKind,
 } from './provider-import-detection.util';
+import { extractXtreamCredentialsFromUrl } from './xtream-portal.utils';
 import { Playlist } from './playlist.interface';
 import {
     normalizeImportScope,
@@ -77,6 +78,43 @@ export function isImportableCandidate(
         case 'm3u-text':
             return Boolean(candidate.text?.trim());
     }
+}
+
+/**
+ * One detected link must become ONE bulk row. Detection offers a `get.php`
+ * link both as an Xtream portal (ranked high) and as a plain M3U fallback
+ * (ranked low) — the single-add flow lets the user pick one, but a bulk file
+ * has no picker, so keeping both would import the same account twice: the
+ * Xtream portal AND a full m3u_plus download per source. The parallel
+ * fetch/parse of those duplicate downloads saturates the renderer mid-import
+ * and freezes the app halfway through a file of provider links.
+ *
+ * The M3U fallback is only a real second source when its URL carries
+ * DIFFERENT credentials than an already-detected Xtream portal (a reseller
+ * handing out both the portal API and a plain download link for another
+ * account). Same credentials → the fallback is the same source, drop it.
+ */
+export function dedupeBulkCandidates(
+    candidates: readonly ProviderImportCandidate[]
+): ProviderImportCandidate[] {
+    const xtreamKeys = new Set(
+        candidates
+            .filter((candidate) => candidate.kind === 'xtream')
+            .map((candidate) =>
+                [candidate.username, candidate.password].join('\u0000')
+            )
+    );
+    return candidates.filter((candidate) => {
+        if (candidate.kind !== 'm3u-url' || !candidate.url) {
+            return true;
+        }
+        const credentials = extractXtreamCredentialsFromUrl(candidate.url);
+        if (!credentials?.username || !credentials?.password) {
+            return true;
+        }
+        const key = [credentials.username, credentials.password].join('\u0000');
+        return !xtreamKeys.has(key);
+    });
 }
 
 /**

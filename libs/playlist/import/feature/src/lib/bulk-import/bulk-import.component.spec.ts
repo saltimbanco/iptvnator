@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { TranslateModule } from '@ngx-translate/core';
@@ -79,6 +79,40 @@ describe('BulkImportComponent', () => {
         expect(component.importableEntries()).toHaveLength(2);
         expect(component.loadedFileName()).toBe('sources.txt');
         expect(component.fileError()).toBeNull();
+    });
+
+    it('maps each get.php portal link to one xtream row without an m3u duplicate', async () => {
+        await pickFile(
+            'portals.txt',
+            [
+                'http://panel.example/get.php?username=user&password=pass&type=m3u_plus',
+                'http://other.example/get.php?username=u2&password=p2&type=m3u_plus',
+            ].join('\n')
+        );
+
+        expect(component.entries()).toHaveLength(2);
+        expect(
+            component.entries().map((entry) => entry.kind)
+        ).toEqual(['xtream', 'xtream']);
+        expect(component.importableEntries()).toHaveLength(2);
+    });
+
+    it('does not dispatch PLAYLIST_PARSE_BY_URL for xtream-claimed links', async () => {
+        await pickFile(
+            'portals.txt',
+            'http://panel.example/get.php?username=user&password=pass&type=m3u_plus'
+        );
+
+        // Portal-only imports navigate to the first source afterwards.
+        const router = TestBed.inject(Router);
+        jest.spyOn(router, 'navigate').mockResolvedValue(true);
+
+        await component.importAll();
+
+        expect(dataService.sendIpcEvent).not.toHaveBeenCalledWith(
+            PLAYLIST_PARSE_BY_URL,
+            expect.anything()
+        );
     });
 
     it('parses a structured JSON source list', async () => {

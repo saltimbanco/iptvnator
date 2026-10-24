@@ -83,10 +83,11 @@ const WRAPPING_CHARS = /^["'`«<([]+|["'`»>)\]]+$/g;
 
 // Both caps are DOM-safety guards against pathological pastes (a log file
 // full of MAC-shaped hex would otherwise render thousands of cards), sized
-// far beyond any real handout — reseller and scanner dumps top out around a
-// couple dozen accounts. The assembler's candidate cap leaves headroom for
-// both scanners together, so neither truncates real input before assembly.
-const MAX_URLS = 16;
+// well beyond real input: bulk portal lists routinely carry dozens of
+// accounts, so the URL cap must not truncate a genuine list file. The
+// assembler's candidate cap leaves headroom for both scanners together, so
+// neither truncates real input before assembly.
+const MAX_URLS = 64;
 const MAX_MACS = 64;
 
 interface FieldMatcher {

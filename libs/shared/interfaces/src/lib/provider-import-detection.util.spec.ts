@@ -1071,11 +1071,11 @@ describe('detectProviderImportCandidates', () => {
         });
 
         it('does not read credentials out of URLs beyond the extraction cap', () => {
-            // URL #17 is past the 16-URL cap and never becomes a candidate;
+            // URL #65 is past the 64-URL cap and never becomes a candidate;
             // its query credentials must not leak into the label matchers and
             // attach to the early credential-less panel.
             const filler = Array.from(
-                { length: 15 },
+                { length: 63 },
                 (_, index) => `https://lists.example.com/list-${index}.m3u`
             );
             const candidates = detectProviderImportCandidates(
@@ -1104,7 +1104,7 @@ describe('detectProviderImportCandidates', () => {
                 { length: 20 },
                 (_, index) => `https://lists.example.com/list-${index}.m3u`
             ).join('\n');
-            expect(detectProviderImportCandidates(twenty)).toHaveLength(16);
+            expect(detectProviderImportCandidates(twenty)).toHaveLength(20);
         });
     });
 });
