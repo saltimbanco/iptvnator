@@ -465,6 +465,7 @@ export function withContent() {
                         serverUrl: playlist.serverUrl,
                         username: playlist.username,
                         password: playlist.password,
+                        userAgent: playlist.userAgent?.trim() || undefined,
                     },
                 };
             };
