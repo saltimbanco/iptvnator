@@ -1948,7 +1948,13 @@ Checks are demand-driven, never a startup readiness barrier: four at a time,
 two per origin, shared between surfaces. Known results remain visible during
 refresh (60-second evidence TTL, 15-second uncertain-result TTL). Background
 requests have a five-second aggregate deadline; explicit checks have fifteen
-seconds, including a handoff from a running background check. M3U streams are
+seconds, including a handoff from a running background check. A background
+check that runs out of its five seconds is not reported: it continues in the
+same slot as an explicit check (new request ID and deadline, as Retry would),
+and an explicit check handed off to it takes that result. Startup asks every
+account at once, and providers that share a backend then answer slower than
+five seconds, so reporting the first timeout listed working sources as not
+responding until the user pressed Retry. M3U streams are
 destroyed on completion, limit, error or cancellation,
 including when a provider ignores Range. Every intermediate redirect stream is
 closed before the next hop is validated or requested. Header/TLS and validated redirect
