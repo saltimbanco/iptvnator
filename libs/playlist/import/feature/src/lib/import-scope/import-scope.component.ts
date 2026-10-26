@@ -1,10 +1,13 @@
 import {
     Component,
     ChangeDetectionStrategy,
+    computed,
+    inject,
     model,
 } from '@angular/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslatePipe } from '@ngx-translate/core';
+import { SettingsStore } from '@iptvnator/services';
 
 /**
  * Live-channels vs VOD (movies + series) import toggles shared by every
@@ -12,6 +15,10 @@ import { TranslatePipe } from '@ngx-translate/core';
  * checked box disables instead of clearing — a vetoed uncheck would leave
  * the natively toggled checkbox visually off while the state stays on
  * (Angular skips same-value binding writes).
+ *
+ * While the global Disable VOD setting is on the boxes show what will be
+ * imported (live only) and stay locked; the models keep the source's own
+ * choice, so turning the setting off brings its VOD back.
  */
 @Component({
     imports: [MatCheckboxModule, TranslatePipe],
@@ -22,19 +29,24 @@ import { TranslatePipe } from '@ngx-translate/core';
                 {{ 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_LABEL' | translate }}
             </p>
             <mat-checkbox
-                [checked]="importLive()"
-                [disabled]="!importVod()"
+                [checked]="importLive() || vodDisabled()"
+                [disabled]="!importVod() || vodDisabled()"
                 (change)="importLive.set($event.checked)"
             >
                 {{ 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_LIVE' | translate }}
             </mat-checkbox>
             <mat-checkbox
-                [checked]="importVod()"
-                [disabled]="!importLive()"
+                [checked]="importVod() && !vodDisabled()"
+                [disabled]="!importLive() || vodDisabled()"
                 (change)="importVod.set($event.checked)"
             >
                 {{ 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_VOD' | translate }}
             </mat-checkbox>
+            @if (vodDisabled()) {
+                <p class="import-scope__hint">
+                    {{ 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_VOD_DISABLED' | translate }}
+                </p>
+            }
         </div>
     `,
     styles: [
@@ -46,7 +58,8 @@ import { TranslatePipe } from '@ngx-translate/core';
                 margin: 4px 0 12px;
             }
 
-            .import-scope__label {
+            .import-scope__label,
+            .import-scope__hint {
                 margin: 0;
                 color: var(--mat-sys-on-surface-variant);
                 font-size: 12px;
@@ -58,4 +71,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 export class ImportScopeComponent {
     readonly importLive = model(true);
     readonly importVod = model(true);
+    private readonly settingsStore = inject(SettingsStore);
+    readonly vodDisabled = computed(
+        () => this.settingsStore.disableVod?.() === true
+    );
 }

@@ -19,6 +19,7 @@ import {
     isGatewayOutage,
     isServerAccessChallenge,
     ServerStorageStatusService,
+    SettingsStore,
 } from '@iptvnator/services';
 import {
     CONNECTIVITY_GUARD_RESET,
@@ -91,6 +92,7 @@ export class PwaService extends DataService {
     private readonly swUpdate = inject(SwUpdate);
     private readonly translateService = inject(TranslateService);
     private readonly serverStatus = inject(ServerStorageStatusService);
+    private readonly settingsStore = inject(SettingsStore);
     private readonly logger = createLogger('PwaService');
     private readonly providerTargetIds = new Map<string, Promise<string>>();
     private readonly silentXtreamActions = new Set<string>([
@@ -256,7 +258,8 @@ export class PwaService extends DataService {
                         PlaylistActions.updatePlaylist({
                             playlist: applyImportScopeToPlaylist(
                                 playlist,
-                                scope
+                                scope,
+                                this.settingsStore.disableVod?.() === true
                             ),
                             playlistId,
                             refreshEpg: true,
@@ -351,7 +354,8 @@ export class PwaService extends DataService {
                     {
                         importLive: payload?.importLive,
                         importVod: payload?.importVod,
-                    }
+                    },
+                    this.settingsStore.disableVod?.() === true
                 );
 
                 this.store.dispatch(

@@ -474,6 +474,16 @@ independently. The scope lives on the row as `Playlist.importLive?` /
 their full catalog. Only opt-outs are persisted (`storedImportScopeFlags`),
 and `normalizeImportScope` refuses a scope that disables everything.
 
+The global **Disable VOD** setting (`Settings.disableVod`, default off) wins
+over every scope: while it is on, every source is live-only, a VOD-only one
+included. It is applied where work happens and is never written to a row, so
+turning it off restores each source's own scope (M3U items return with the
+next refresh). The import forms and bulk rows show VOD unchecked and locked
+with a hint, but keep their own values. `DB_GET_PLAYLIST` projects the stored
+opt-outs from the payload onto the row: the Xtream store replaces its
+`currentPlaylist` with that read when a source opens, and without them a
+live-only source imported its whole movie and series catalog.
+
 - **M3U** — `applyImportScopeToPlaylist()` (`libs/shared/m3u-utils`) drops
   the excluded section's items (via the `isLikelyM3uVod` heuristic) and stamps
   the opt-out. It runs at every point a fresh item list is built: renderer
@@ -482,7 +492,11 @@ and `normalizeImportScope` refuses a scope that disables everything.
   Electron refresh worker (`PlaylistRefreshPayload` carries the scope), the
   manual file/URL refresh paths, and startup auto-update
   (`preserveAutoUpdatedPlaylistFields`). Refreshes therefore keep a partial
-  scope instead of resurrecting the skipped section.
+  scope instead of resurrecting the skipped section. Its `disableVod`
+  argument (the global setting) filters without stamping; the renderer passes
+  it at parsing, URL/file imports and restores, and applies it to refresh
+  worker and auto-update results (`PlaylistRefreshService`,
+  `ElectronService`), so the main process needs no copy of the setting.
 - **Xtream** — the content store (`with-content.feature.ts`) only fetches,
   caches and reloads the enabled sections; disabled ones stay empty with a
   `ready` load state. `importVod: false` skips both movies and series.

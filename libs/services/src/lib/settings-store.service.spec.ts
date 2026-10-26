@@ -187,6 +187,16 @@ describe('SettingsStore dashboard rail settings', () => {
         );
     });
 
+    it('persists Disable VOD so it survives a restart', async () => {
+        const store = injector.get(SettingsStore);
+        expect(store.getSettings().disableVod).toBe(false);
+        await store.updateSettings({ disableVod: true });
+        expect(storage.set).toHaveBeenLastCalledWith(
+            STORE_KEY.Settings,
+            expect.objectContaining({ disableVod: true })
+        );
+    });
+
     it('shares the pending initial settings load across startup waiters', async () => {
         const pendingSettings = new Subject<Partial<Settings> | null>();
         storage.get.mockReturnValue(pendingSettings.asObservable());

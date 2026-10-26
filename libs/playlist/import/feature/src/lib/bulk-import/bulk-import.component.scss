@@ -35,7 +35,8 @@
     color: var(--mat-sys-error);
 }
 
-.bulk__empty {
+.bulk__empty,
+.bulk__notice {
     margin: 0 0 8px;
     font-size: 13px;
     color: var(--app-muted-color);

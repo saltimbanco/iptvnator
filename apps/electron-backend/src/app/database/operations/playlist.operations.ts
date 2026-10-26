@@ -9,6 +9,8 @@ import {
     type AppPlaylistGetPerformancePhase,
     type AppPlaylistUpsertPerformancePhase,
     type PerformancePhaseMetadata,
+    type PlaylistImportScope,
+    storedImportScopeFlags,
 } from '@iptvnator/shared/interfaces';
 import type { AppDatabase } from '../database.types';
 import {
@@ -354,7 +356,9 @@ export async function getAppPlaylistFavoriteChannels(
  * The raw row plus the fields the Xtream store needs from the JSON payload:
  * `serverTimezone` has no column, and the store seeds `currentPlaylist`
  * from this read before (or without) the account-info check that learns
- * it (issue #1562).
+ * it (issue #1562). The import scope (`importLive`/`importVod` opt-outs)
+ * has no column either; without it the store took a live-only source for
+ * a full one and imported its whole movie and series catalog on open.
  */
 export async function getPlaylist(db: AppDatabase, playlistId: string) {
     const result = await db
@@ -368,7 +372,12 @@ export async function getPlaylist(db: AppDatabase, playlistId: string) {
     }
 
     const serverTimezone = readPayloadServerTimezone(row.payload);
-    return serverTimezone ? { ...row, serverTimezone } : row;
+    const scope = storedImportScopeFlags(
+        parseJsonValue<PlaylistImportScope | null>(row.payload, null)
+    );
+    return serverTimezone || Object.keys(scope).length
+        ? { ...row, ...scope, ...(serverTimezone ? { serverTimezone } : {}) }
+        : row;
 }
 
 export async function updatePlaylist(

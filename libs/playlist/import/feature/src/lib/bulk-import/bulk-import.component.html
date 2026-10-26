@@ -31,6 +31,11 @@
     }
 
     @if (hasEntries()) {
+        @if (vodDisabled()) {
+            <p class="bulk__notice" data-test-id="bulk-vod-disabled">
+                {{ 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_VOD_DISABLED' | translate }}
+            </p>
+        }
         <div class="bulk__list" role="list">
             @for (entry of entries(); track entry.id) {
                 <div
@@ -72,8 +77,10 @@
                     </div>
                     <div class="bulk__scope">
                         <mat-checkbox
-                            [checked]="entry.importLive"
-                            [disabled]="!entry.valid || !entry.importVod"
+                            [checked]="entry.importLive || vodDisabled()"
+                            [disabled]="
+                                !entry.valid || !entry.importVod || vodDisabled()
+                            "
                             (change)="setEntryLive(entry.id, $event.checked)"
                             >{{
                                 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_LIVE'
@@ -81,8 +88,10 @@
                             }}</mat-checkbox
                         >
                         <mat-checkbox
-                            [checked]="entry.importVod"
-                            [disabled]="!entry.valid || !entry.importLive"
+                            [checked]="entry.importVod && !vodDisabled()"
+                            [disabled]="
+                                !entry.valid || !entry.importLive || vodDisabled()
+                            "
                             (change)="setEntryVod(entry.id, $event.checked)"
                             >{{
                                 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_VOD'

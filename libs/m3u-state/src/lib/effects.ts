@@ -382,7 +382,8 @@ export class PlaylistEffects {
                         {
                             importLive: action.importLive,
                             importVod: action.importVod,
-                        }
+                        },
+                        this.settingsStore.disableVod?.() === true
                     )
                 )
             ),

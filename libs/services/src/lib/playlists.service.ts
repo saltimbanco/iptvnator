@@ -1247,7 +1247,8 @@ export class PlaylistsService {
         playlist: string,
         title: string,
         path?: string,
-        scope?: { importLive?: boolean; importVod?: boolean }
+        scope?: { importLive?: boolean; importVod?: boolean },
+        disableVod = false
     ) {
         try {
             // Dynamic import keeps the parser out of the eager bundle;
@@ -1261,14 +1262,15 @@ export class PlaylistsService {
                     ...parsedPlaylist,
                     items: filterM3uItemsByImportScope(
                         parsedPlaylist.items,
-                        scope
+                        scope,
+                        disableVod
                     ),
                 },
                 path,
                 uploadType
             );
             // Remember a partial scope on the row so refreshes keep it.
-            return applyImportScopeToPlaylist(created, scope);
+            return applyImportScopeToPlaylist(created, scope, disableVod);
         } catch (error) {
             void this.snackBar.open(
                 this.translateService.instant('HOME.PARSING_ERROR'),

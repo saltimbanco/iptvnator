@@ -822,7 +822,8 @@ export class PlaylistBackupService {
                 {
                     importLive: entry.importLive,
                     importVod: entry.importVod,
-                }
+                },
+                this.settingsStore.disableVod?.() === true
             );
         const now = new Date().toISOString();
 

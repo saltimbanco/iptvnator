@@ -19,6 +19,7 @@ import {
     DataService,
     PlaylistsService,
     PORTAL_CONTENT_SEEDERS,
+    SettingsStore,
     type PortalContentSeeder,
 } from '@iptvnator/services';
 import {
@@ -85,6 +86,7 @@ export class BulkImportComponent {
     }) ?? [];
     private readonly snackBar = inject(MatSnackBar);
     private readonly translate = inject(TranslateService);
+    private readonly settingsStore = inject(SettingsStore);
 
     readonly entries = signal<BulkImportEntry[]>([]);
     /** Translated message; null when there is nothing to report. */
@@ -96,6 +98,13 @@ export class BulkImportComponent {
         this.entries().filter((entry) => entry.valid)
     );
     readonly hasEntries = computed(() => this.entries().length > 0);
+    /**
+     * The global Disable VOD setting: rows show and import live only, and
+     * keep their own VOD choice for when the setting is turned off.
+     */
+    readonly vodDisabled = computed(
+        () => this.settingsStore.disableVod?.() === true
+    );
 
     clearForm(): void {
         this.entries.set([]);

@@ -29,6 +29,15 @@ describe('filterM3uItemsByImportScope', () => {
             filterM3uItemsByImportScope(items, { importLive: false })
         ).toEqual([movie]);
     });
+
+    it('keeps only live entries while VOD is disabled globally, even for a VOD-only scope', () => {
+        expect(filterM3uItemsByImportScope(items, undefined, true)).toEqual([
+            live,
+        ]);
+        expect(
+            filterM3uItemsByImportScope(items, { importLive: false }, true)
+        ).toEqual([live]);
+    });
 });
 
 describe('applyImportScopeToPlaylist', () => {
@@ -54,6 +63,19 @@ describe('applyImportScopeToPlaylist', () => {
         expect(next.playlist.items).toEqual([live]);
         expect(next.count).toBe(1);
         expect(next.importVod).toBe(false);
+        expect(next.importLive).toBeUndefined();
+    });
+
+    it('drops VOD while disabled globally without recording an opt-out', () => {
+        const next = applyImportScopeToPlaylist(
+            playlist([live, movie]),
+            undefined,
+            true
+        );
+
+        expect(next.playlist.items).toEqual([live]);
+        expect(next.count).toBe(1);
+        expect(next.importVod).toBeUndefined();
         expect(next.importLive).toBeUndefined();
     });
 

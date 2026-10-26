@@ -317,22 +317,17 @@ export function withStalkerContent() {
                 };
 
                 /**
-                 * The section scope gate: the playlist's stored scope, plus
-                 * the global "disable VOD" setting, which wins over every
-                 * scope for the on-demand sections.
+                 * The section scope gate: the playlist's stored scope, unless
+                 * the global "disable VOD" setting is on, which leaves every
+                 * source live-only (a VOD-only source included).
                  */
                 const isSectionImportable = (
                     contentType: StalkerContentType,
                     playlist: PlaylistMeta | null | undefined
-                ): boolean => {
-                    const vodDisabledGlobally =
-                        settingsStore.disableVod?.() === true &&
-                        (contentType === 'vod' || contentType === 'series');
-                    return (
-                        !vodDisabledGlobally &&
-                        isStalkerSectionInImportScope(contentType, playlist)
-                    );
-                };
+                ): boolean =>
+                    settingsStore.disableVod?.() === true
+                        ? contentType === 'itv' || contentType === 'radio'
+                        : isStalkerSectionInImportScope(contentType, playlist);
 
                 let lastLivePageKey = '';
                 // Withheld (parental-locked) row ids seen while accumulating

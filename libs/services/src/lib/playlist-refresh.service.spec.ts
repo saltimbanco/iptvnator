@@ -10,6 +10,7 @@ import type {
 } from '@iptvnator/shared/interfaces';
 
 import { PlaylistRefreshService } from './playlist-refresh.service';
+import { SettingsStore } from './settings-store.service';
 
 describe('PlaylistRefreshService', () => {
     const originalElectron = window.electron;
@@ -46,7 +47,12 @@ describe('PlaylistRefreshService', () => {
         await expect(
             runInInjectionContext(
                 createEnvironmentInjector(
-                    [],
+                    [
+                        {
+                            provide: SettingsStore,
+                            useValue: { disableVod: () => false },
+                        },
+                    ],
                     Injector.NULL as unknown as EnvironmentInjector
                 ),
                 () => new PlaylistRefreshService()

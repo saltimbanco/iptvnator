@@ -81,16 +81,23 @@ describe('XtreamContentSeedService', () => {
         expect(databaseService.setXtreamImportStatus).toHaveBeenCalledTimes(3);
     });
 
-    it('honors the global Disable VOD setting over the row scope', async () => {
-        settingsStore.disableVod.mockReturnValue(true);
+    it.each([{}, { importLive: false }])(
+        'honors the global Disable VOD setting over the row scope %p',
+        async (scope) => {
+            settingsStore.disableVod.mockReturnValue(true);
 
-        await seedService.seed(xtreamPlaylist());
+            await seedService.seed(xtreamPlaylist(scope));
 
-        const content = dataSource.getContent.mock.calls.map(
-            ([, , type]: [string, unknown, StreamType]) => type
-        );
-        expect(content).toEqual(['live']);
-    });
+            const categories = dataSource.getCategories.mock.calls.map(
+                ([, , type]: [string, unknown, CategoryType]) => type
+            );
+            const content = dataSource.getContent.mock.calls.map(
+                ([, , type]: [string, unknown, StreamType]) => type
+            );
+            expect(categories).toEqual(['live']);
+            expect(content).toEqual(['live']);
+        }
+    );
 
     it('leaves rows without usable credentials unseeded', async () => {
         await seedService.seed(xtreamPlaylist({ password: '' }));

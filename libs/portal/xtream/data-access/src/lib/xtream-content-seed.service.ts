@@ -41,12 +41,12 @@ export class XtreamContentSeedService implements PortalContentSeeder {
             return;
         }
 
-        const importLive = shouldImportLive(playlist);
         // The global Disable VOD setting wins over the row's scope, exactly
-        // like the workspace catalogs.
+        // like the workspace catalogs: even a VOD-only row seeds live only.
         const importVod =
             shouldImportVod(playlist) &&
             this.settingsStore.disableVod?.() !== true;
+        const importLive = shouldImportLive(playlist) || !importVod;
 
         try {
             const categoryTypes: CategoryType[] = importLive

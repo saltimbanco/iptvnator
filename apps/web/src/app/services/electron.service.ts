@@ -252,10 +252,20 @@ export class ElectronService extends DataService {
                     data,
                     this.settingsStore.getTrustOptions()
                 );
+                // Main already kept each row's scope; drop VOD items while
+                // it is disabled globally.
+                const playlists =
+                    this.settingsStore.disableVod?.() === true
+                        ? result.playlists.map((playlist) =>
+                              applyImportScopeToPlaylist(
+                                  playlist,
+                                  playlist,
+                                  true
+                              )
+                          )
+                        : result.playlists;
                 this.store.dispatch(
-                    PlaylistActions.updateManyPlaylists({
-                        playlists: result.playlists,
-                    })
+                    PlaylistActions.updateManyPlaylists({ playlists })
                 );
                 this.reportAutoUpdatePlaylistsResult(result);
                 return result as T;
@@ -382,10 +392,14 @@ export class ElectronService extends DataService {
                         this.store.dispatch(
                             PlaylistActions.handleAddingPlaylistByUrl({
                                 isTemporary: !!payload?.isTemporary,
-                                playlist: applyImportScopeToPlaylist(result, {
-                                    importLive: payload?.importLive,
-                                    importVod: payload?.importVod,
-                                }),
+                                playlist: applyImportScopeToPlaylist(
+                                    result,
+                                    {
+                                        importLive: payload?.importLive,
+                                        importVod: payload?.importVod,
+                                    },
+                                    this.settingsStore.disableVod?.() === true
+                                ),
                             })
                         )
                 );
@@ -476,7 +490,8 @@ export class ElectronService extends DataService {
                         {
                             importLive: data.importLive,
                             importVod: data.importVod,
-                        }
+                        },
+                        this.settingsStore.disableVod?.() === true
                     ),
                     playlistId: data.id,
                     refreshEpg: true,

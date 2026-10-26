@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { PlaylistActions } from '@iptvnator/m3u-state';
+import { SettingsStore } from '@iptvnator/services';
 import {
     Playlist,
     PlaylistImportScope,
@@ -31,6 +32,7 @@ type NativePlaylistFileImportWindow = Window & {
 @Injectable({ providedIn: 'root' })
 export class PlaylistFileImportService {
     private readonly store = inject(Store);
+    private readonly settingsStore = inject(SettingsStore);
 
     canImportFromNativeDialog(): boolean {
         return Boolean(this.getNativeFileDialog());
@@ -58,7 +60,11 @@ export class PlaylistFileImportService {
             if (!parsed) {
                 return { ok: false, reason: 'cancelled' };
             }
-            const playlist = applyImportScopeToPlaylist(parsed, scope);
+            const playlist = applyImportScopeToPlaylist(
+                parsed,
+                scope,
+                this.settingsStore.disableVod?.() === true
+            );
 
             this.store.dispatch(PlaylistActions.addPlaylist({ playlist }));
 
@@ -101,7 +107,11 @@ export class PlaylistFileImportService {
             if (!parsed) {
                 return { ok: false, reason: 'read-error' };
             }
-            const playlist = applyImportScopeToPlaylist(parsed, scope);
+            const playlist = applyImportScopeToPlaylist(
+                parsed,
+                scope,
+                this.settingsStore.disableVod?.() === true
+            );
 
             this.store.dispatch(PlaylistActions.addPlaylist({ playlist }));
 
