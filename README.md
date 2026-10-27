@@ -68,7 +68,7 @@ The application is a cross-platform, open-source project built with Electron and
 - Cross-platform desktop (Electron) and installable PWA
 - Desktop auto-updater and mobile remote control _(desktop)_
 - Docker self-hosting for the PWA + web backend
-- 20 languages ([translation files](apps/web/src/assets/i18n/)), light & dark themes, and keyboard shortcuts
+- 21 language options, including Portuguese for Portugal and Brazil ([translation files](apps/web/src/assets/i18n/)), light & dark themes, and keyboard shortcuts
 
 ## Keyboard shortcuts
 
@@ -141,10 +141,20 @@ every browser that opens it shares one library. The first browser that opens
 an updated instance offers to move the playlists it already has.
 
 The self-hosted image runs the browser PWA rather than the Electron desktop app:
-EPG/XMLTV panels, Embedded MPV, managed MPV/VLC launching, the download manager,
+M3U XMLTV, Embedded MPV, managed MPV/VLC launching, the download manager,
 and Electron remote-control features are not available there. If browser
 playback fails, copy the stream URL and open it manually in an external player
 such as MPV, VLC, or IINA.
+
+### Experimental webOS TV app
+
+The separate TV client supports remote and pointer navigation, M3U/Xtream/Stalker
+sources, native playback, local favorites/resume, phone setup and optional shared
+server sources. Xtream/Stalker provide the programme guide; M3U XMLTV and archive
+playback are not included. A matching IPTVnator backend is required. Viewing data
+stays on the TV, and native stream compatibility depends on the device/provider.
+See [TV setup and IPK build instructions](docs/development/tv-development.md)
+and the [TV architecture and limitations](docs/architecture/tv-application.md).
 
 ## Download
 

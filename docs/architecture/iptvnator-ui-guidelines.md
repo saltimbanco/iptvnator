@@ -22,6 +22,17 @@ Use it when changing existing views or introducing new list-based UI in the work
 5. Scroll ownership must be explicit.
    Headers stay visible. Lists scroll. Do not let nested panes compete for scroll.
 
+6. Normal text, including metadata and selected labels, keeps at least 4.5:1
+   contrast. Use `--app-muted-color` for secondary text and
+   `--app-selection-text-color` on tinted selections; the selection accent
+   remains the fill/progress role. Empty and source-drop states inherit the
+   application font stack, including its multilingual fallback.
+
+7. Workspace navigation stays compact and icon-only, with localized tooltips
+   and accessible names. Selection uses surface tint and a full outline,
+   without vertical accent strips or side-border imitations, including in
+   EPG rows.
+
 ## Angular Material's Role
 
 Decision of 2026-10-12. The repository has no ADR folder; decisions live in
@@ -227,10 +238,11 @@ in the overlay chunk. Everything else is lazy by these rules:
   "focus was inside" in a microtask after such a `focusout`, which the close
   destroys the panel before. Both have specs that detach the view first.
 
-The app theme is the `.dark-theme` class that `SettingsService` puts on
-`<body>`; a "System" choice resolves the OS preference there and nowhere
-else. Component styles never use a `prefers-color-scheme` query, which
-follows the OS: with the app set to dark on a light OS it paints light colours
+The app theme is the exclusive `.dark-theme` or `.light-theme` class that
+`SettingsService` puts on `<body>`; a "System" choice resolves the OS
+preference there and nowhere else. Component styles never use a
+`prefers-color-scheme` query, which follows the OS: with the app set to dark
+on a light OS it paints light colours
 into the dark theme. Read `--app-*` tokens, which switch with the class, or
 use `:host-context(.dark-theme)` for a rule that only one theme needs. The
 class is on `<body>`, not the root, so `:root:not(.dark-theme)` always
@@ -247,6 +259,13 @@ patterns to copy.
 Do not hardcode unrelated accent colors for selected state when these tokens already exist.
 
 ## Player And EPG Theme Boundaries
+
+The inline player's app-chrome header uses ghost Copy and secondary Close
+roles; its Sources popover trigger requests `variant="secondary"` from the
+shared chip. Recovery actions on app surfaces use kit roles: secondary for
+ordinary actions, accent for a standalone empty-state primary.
+Diagnostic utility actions keep an opaque, readable foreground on the fixed
+dark video scrim, independent of the app theme.
 
 The native-view Embedded MPV dock is app chrome: its solid widget background,
 text, separators, sliders and interaction states resolve app tokens together.
@@ -1057,7 +1076,9 @@ If the label is too long for the rail, shorten the label key instead of shrinkin
 The action row never wraps on a desktop window: the primary, the Trailer
 button, then the 44px icon buttons and the "…" menu. Season and series
 actions (mark watched, download season, reset progress) live in that menu
-and drive the season container's presenters.
+and drive the season container's presenters. Collection details also keep
+“View in portal” in that menu, in a navigation group before the provider
+actions, regardless of how many hero buttons are visible.
 
 Every section below the hero (Episodes, Cast & crew, Similar) uses
 `app-detail-section-header`: an 18px/600 title, a muted 12.5px tabular
@@ -1143,6 +1164,10 @@ per-theme tokens in `apps/web/src/_settings-theme.scss`.
   it explains inside `.setting-item__sub` and only while that choice is made.
 - Destructive actions keep the confirm dialog from the Dialogs section; the
   row itself uses `.app-destructive-button` on a stroked button.
+- Ordinary settings actions use `mat-flat-button` with the shared secondary
+  role from the lazy settings stylesheet; `.settings-primary-button` marks the accent
+  action (install/download, browser import, or the empty EPG prompt). Text and
+  icon actions use the kit ghost roles. Save keeps its dedicated CTA pair.
 - The save bar floats over the content column while the form is dirty with
   the change count, Discard and Save (Cmd/Ctrl+S); the sidebar marks pages
   with staged edits. A saved change that waits for a restart shows a sticky
@@ -1171,6 +1196,10 @@ per-theme tokens in `apps/web/src/_settings-theme.scss`.
   strut, as the programme dialog does.
 - **Order.** Dismiss first, primary last. With end alignment the primary sits
   on the inline end: the right in LTR, the left in RTL.
+- Body actions opt into the shell's `mat-flat-button.app-dialog__secondary`
+  role (add `app-dialog__secondary--sm` for dense bulk tools), or
+  `mat-button.app-dialog__ghost` for a text action. The footer remains the
+  decision row. A separate EPG save explicitly says “Save EPG sources”.
 - **Shell.** A dialog's markup is `app-dialog-shell`
   (`@iptvnator/ui/components`): the heading (its `mat-dialog-title`, so
   the container is named by it), an optional subtitle and 40px icon tile
@@ -1327,6 +1356,14 @@ toggles, the list/grid switch, the playlist switcher's type filter);
 32px tall like a small button. Unchosen labels use the body colour; the
 muted colour reads about 2.9:1 on the track. The settings theme switcher is
 still a pill switcher of its own.
+
+Custom button-based radio choices use `appRadioGroup` and
+`[appRadioOption]="selected"` from the narrow
+`@iptvnator/ui/components/radio-group` entry point. The behaviour
+keeps one tab stop on the current enabled choice, selects with wrapping arrow
+keys (horizontal order follows RTL), and supports Home/End. External changes,
+including settings Discard, update that tab stop. Keep labels on the group
+and let the directives own radio roles, checked state and tab indices.
 
 The add-source forms (M3U URL, Xtream, Stalker) and the edit dialog share one
 vocabulary, so a field reads the same wherever it appears:

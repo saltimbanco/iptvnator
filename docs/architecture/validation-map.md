@@ -32,6 +32,7 @@ using its result as evidence. Docker validation can use
 | EPG data access                    | `pnpm nx test epg-data-access`      |
 | Workspace shell utilities          | `pnpm nx test workspace-shell-util` |
 | Shared SQLite schema/connection    | `pnpm nx test database`             |
+| TV runtime, providers and local storage | `pnpm nx test tv` and `pnpm nx e2e tv-e2e` |
 | Packaging metadata                 | `pnpm nx test packaging`            |
 
 `typecheck:spec` (`tools/typecheck/spec-typecheck.mjs`) runs `tsc --noEmit`
@@ -275,7 +276,9 @@ pnpm run i18n:baseline:update   # deliberate: rewrite the English-identical base
 ```
 
 The i18n check is non-mutating. It compares every locale file in
-`apps/web/src/assets/i18n/` against `en.json` and fails on missing or extra keys.
+`apps/web/src/assets/i18n/` against `en.json` and fails on missing or extra keys,
+empty/non-string values, changed interpolation placeholders (including their
+multiplicity), or changed inline HTML. The baseline never exempts these errors.
 It also fails on a locale value that is identical to English unless
 `tools/i18n/identical-en-baseline.json` records that exact English text for the
 same locale and key. The baseline holds values that are legitimately the same
@@ -398,7 +401,7 @@ not app unit/E2E. Tooling validation still requires its own focused tests.
 
 `pnpm run agents:validate` checks root instruction budgets/imports and guidance
 navigation links/anchors. `pnpm run skills:validate` checks skill frontmatter,
-length, paths and release mirrors. Both tooling suites run through
+length, paths, required release skills and Claude symlinks. Both tooling suites run through
 `pnpm nx test repository-skills`; syntax checks use
 `pnpm nx lint repository-skills`. The CI guidance check runs regardless of the
 Nx affected set. Semantic preservation of moved contracts is a review task;

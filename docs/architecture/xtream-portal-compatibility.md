@@ -173,9 +173,9 @@ favoriting the current item may replace the old snapshot (including legacy key
 aliases); that replacement must persist before the new reference is saved, so
 storage failure cannot silently resurrect the old title. Ordinary optional
 snapshot-cache writes retain their existing quota behavior. The explicit browser
-favorite and Recent writers, playback-position operations and pending-state
-serialization load on demand.
-After loading, each operation reads fresh storage and completes its mutations
+favorite and Recent writers, cold-detail favorite preparation, catalog normalization,
+playback-position operations and pending-state serialization load on demand.
+After loading, each mutation reads fresh storage and completes its writes
 synchronously so concurrent additions are not lost; Recent snapshots and viewing
 dates still share one atomic write.
 Browser collection actions carry the rendered row's saved TMDB/year identity,
@@ -218,6 +218,9 @@ Favorite status and save guards choose raw catalog duplicates against the saved 
 explicitly displayed identity as well. This selection hint cannot create catalog
 evidence when no actual row exists, and an unrelated duplicate cannot veto a
 matching heart action.
+Saving a new cold detail favorite may hydrate and enrich its matching catalog
+rows, but does not rewrite independent Recent entries. Optional history
+enrichment cannot block the explicit favorite write when browser storage is full.
 Playback captures the displayed title, artwork and normalized detail identity before
 waiting for confirmation. That metadata travels with the captured playlist even if
 navigation or catalog changes happen before the save. Shared live playback from
@@ -464,6 +467,32 @@ targets. Those targets are validated when registered and revalidated before the
 `/xtream` proxy request, including protocol, URL credentials, DNS resolution,
 and private-network checks.
 
+## Provider EPG
+
+Xtream EPG comes from the portal itself. `get_short_epg` feeds the
+channel-row previews (`EpgQueueService`: three items, two requests in flight)
+and the collection previews (`StreamResolverService`). `get_simple_data_table`,
+falling back to the legacy `get_simple_date_table`, feeds the live EPG panel
+(`withEpg().loadEpg()`) and the collection detail panel. All of them use the
+ordinary `XTREAM_REQUEST` transport, so they are gated on
+`RuntimeCapabilitiesService.supportsProviderEpg`. It is true in the browser
+PWA, where `PwaService` forwards to the backend `/xtream` proxy, and in
+Electron when the `xtreamRequest` and `stalkerRequest` preload methods exist.
+Both runtimes send the EPG actions as silent background requests (no error
+snackbar) through the same per-host connectivity guard as the catalog. Only
+connection-level failures count, so a panel that answers EPG requests slowly
+or with an error status cannot fast-fail playback.
+
+The local XMLTV parts keep the XMLTV capabilities and stay off in the PWA:
+the `epg_channel_id` fallback and `preferUploadedEpgOverXtream`
+(`XtreamXmltvFallbackService`), and manual EPG mapping (`supportsEpgMapping`).
+The PWA hides the catch-up actions of the EPG panel (watch, copy, download):
+`RuntimeCapabilitiesService.supportsProviderCatchUp` is false there until a
+manual check against a real provider shows that the browser players play the
+REST MPEG-TS timeshift URL the PWA falls back to (see Catch-Up Playback URLs).
+It gates `archivePlaybackAvailable` (Live TV) and `timelineArchiveAvailable`
+(Favorites/Recent); the desktop app keeps all three actions.
+
 ## User-Agent
 
 Xtream account, catalog, detail, EPG, and source-health API requests carry the
@@ -570,11 +599,19 @@ throwing during playback.
 
 VOD playback uses the standard
 `/movie/{username}/{password}/{streamId}.{containerExtension}` URL after
-resolving the stream id and container extension as one source. Fields from
+resolving the stream id and container extension as one source. A provider's
+explicit absolute HTTP(S) `direct_source` is also a complete source when paired
+with a positive stream id; its address is used verbatim for playback and
+download, including when the extension is null, missing or blank. Other URL
+schemes and relative addresses are ignored. Fields from
 `movie_data` take priority, with the top-level catalog fields used as a
 fallback when extended metadata is absent or incomplete. A source requires a
-positive integer id and a non-empty container extension; otherwise URL
-construction returns an empty string.
+positive integer id and either a non-empty container extension or a valid direct
+address; otherwise URL construction returns an empty string. No container is
+guessed. Each candidate must belong to the requested provider stream id, and a
+catalog candidate with conflicting known TMDB/year identity cannot supply
+playback fields or presentation. This does not change durable favorite identity
+or make an unavailable saved favorite available.
 
 The Electron catalog cache does not persist the container extension. If the
 merged detail response and cached row still cannot resolve a source, the detail
@@ -595,7 +632,9 @@ lookup completes, then a successful result upgrades that same fallback
 reactively with playback actions. Detail, recovered, and cached
 playback fields remain separate candidates: the first complete pair wins, so
 two incomplete rows can never synthesize a source. A failed lookup leaves the
-already-rendered item safely unplayable. Detail requests are generation- and
+already-rendered item safely unplayable. A second identical `get_vod_info`
+request is not issued automatically after a fresh incomplete response; reopening
+the detail retries through the normal loader. Detail requests are generation- and
 playlist-guarded, and detail teardown invalidates the active generation, so a
 late response cannot replace a newer selection or repopulate a closed detail.
 In-memory VOD category and stream arrays record the playlist that populated
@@ -603,12 +642,25 @@ them. Cross-portal Favorites/Recent details ignore arrays owned by another
 playlist, so colliding Xtream ids cannot suppress recovery or contribute a
 foreign playback extension, title, poster, category, or recommendation.
 
+Null or absent detail payloads normalize to empty metadata before source recovery.
+Catalog identity checks use provider-stated years; a release date filled by TMDB
+cannot veto an otherwise matching playback source.
 Metadata availability and VOD playability are independent. An empty or sparse
 `get_vod_info` response keeps the curated fallback detail page, but that page
-offers the same Play/Resume, Favorite, and Download actions when the source
-resolves. An unresolved source exposes no actions. Playback and download
+offers the same Play/Resume and Download actions when the source resolves.
+Favorite and Watched are independent of stream availability and retain their
+typed playlist/provider identity and existing persistence/playback guards. An
+unresolved source keeps Play disabled with a translated explanation covering
+playback and download; it cannot launch a player or enqueue an empty address.
+A downloaded local copy remains playable. Playback and download
 descriptors also fall back to the catalog title and poster after `info` and
 `movie_data`.
+
+A new PWA favorite from a cold detail hydrates only its typed catalog when
+needed. When the initial detail backfill ran before catalog hydration, the
+explicit save applies that metadata to the compatible current row. Retained
+Favorite/Recent snapshots keep the existing identity, conflict and quota
+protection; adding a favorite cannot rewrite an older saved movie implicitly.
 
 Provider stand-ins in `get_vod_info` / `get_series_info` (`N/A`, `-`, an
 unrated `0` score) are emptied before the response becomes the store
@@ -746,6 +798,12 @@ and the facade maps page 0 to the skeleton and later pages to the tail
 spinner. These catalog/search surfaces use incremental loading instead of
 page buttons.
 
+A failed initial search is distinct from a successful empty result. The search
+store exposes an error state to the shared search layout; Retry retains the
+query, content-type filters and hidden-category choice. New searches clear the
+error, and obsolete failures cannot replace newer results. Global search uses
+the same recovery surface without resetting the user's query or filters.
+
 ## Forced external launches from detail pages
 
 The "…" menu's MPV/VLC launch follows the shared rules in
@@ -784,3 +842,12 @@ duplicate guard, queued choice), `serial-details-playback.service.spec.ts`
 `serial-details-menu.service.spec.ts` (launch-failure message, the rows held
 while a launch is pending) and, for the external-player and reset rows,
 `libs/ui/components/src/lib/detail-ui/series-hero.state.spec.ts`.
+
+## Framework-free TV catalog recency
+
+The provider client entrypoint exports `xtreamCatalogTimestamp` for the TV
+adapter. It uses the shared recently-added epoch validator, accepts ISO provider
+dates, and falls back to `last_modified` for series without a usable `added`
+value. It does not infer addition time from release dates or IDs. TV applies
+this timestamp before client pagination; see [TV application](tv-application.md).
+The Angular selection store's sort behavior is unchanged.
