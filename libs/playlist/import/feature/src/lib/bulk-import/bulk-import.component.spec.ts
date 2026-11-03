@@ -1,42 +1,39 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
-import { of } from 'rxjs';
+import { signal } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
-import { PlaylistActions } from '@iptvnator/m3u-state';
-import {
-    DataService,
-    PlaylistsService,
-    PORTAL_CONTENT_SEEDERS,
-} from '@iptvnator/services';
-import { PLAYLIST_PARSE_BY_URL } from '@iptvnator/shared/interfaces';
+import { SettingsStore } from '@iptvnator/services';
 import { BulkImportComponent } from './bulk-import.component';
+import {
+    BulkImportRunnerService,
+    type BulkImportRowStatus,
+} from './bulk-import-runner.service';
 
 describe('BulkImportComponent', () => {
     let component: BulkImportComponent;
     let fixture: ComponentFixture<BulkImportComponent>;
-    let store: { dispatch: jest.Mock };
-    let dataService: { sendIpcEvent: jest.Mock };
-    let playlistsService: { addManyPlaylists: jest.Mock };
-    let seeders: { seed: jest.Mock }[];
+    let runner: {
+        run: jest.Mock;
+        running: ReturnType<typeof signal<boolean>>;
+        statuses: ReturnType<
+            typeof signal<Record<string, BulkImportRowStatus>>
+        >;
+    };
 
     beforeEach(waitForAsync(() => {
-        store = { dispatch: jest.fn() };
-        dataService = { sendIpcEvent: jest.fn() };
-        playlistsService = {
-            addManyPlaylists: jest.fn().mockReturnValue(of(undefined)),
+        runner = {
+            run: jest
+                .fn()
+                .mockResolvedValue({ imported: 1, slow: 0, failed: 0 }),
+            running: signal(false),
+            statuses: signal({}),
         };
-        seeders = [{ seed: jest.fn().mockResolvedValue(undefined) }];
         TestBed.configureTestingModule({
             imports: [BulkImportComponent, TranslateModule.forRoot()],
             providers: [
                 provideNoopAnimations(),
-                provideRouter([]),
-                { provide: Store, useValue: store },
-                { provide: DataService, useValue: dataService },
-                { provide: PlaylistsService, useValue: playlistsService },
-                { provide: PORTAL_CONTENT_SEEDERS, useValue: seeders },
+                { provide: BulkImportRunnerService, useValue: runner },
+                { provide: SettingsStore, useValue: { disableVod: () => false } },
             ],
         }).compileComponents();
     }));
@@ -95,24 +92,6 @@ describe('BulkImportComponent', () => {
             component.entries().map((entry) => entry.kind)
         ).toEqual(['xtream', 'xtream']);
         expect(component.importableEntries()).toHaveLength(2);
-    });
-
-    it('does not dispatch PLAYLIST_PARSE_BY_URL for xtream-claimed links', async () => {
-        await pickFile(
-            'portals.txt',
-            'http://panel.example/get.php?username=user&password=pass&type=m3u_plus'
-        );
-
-        // Portal-only imports navigate to the first source afterwards.
-        const router = TestBed.inject(Router);
-        jest.spyOn(router, 'navigate').mockResolvedValue(true);
-
-        await component.importAll();
-
-        expect(dataService.sendIpcEvent).not.toHaveBeenCalledWith(
-            PLAYLIST_PARSE_BY_URL,
-            expect.anything()
-        );
     });
 
     it('parses a structured JSON source list', async () => {
@@ -187,135 +166,6 @@ describe('BulkImportComponent', () => {
         expect(updated.importLive).toBe(true);
     });
 
-    it('imports portal rows in one awaited batch and M3U rows through their pipelines', async () => {
-        await pickFile(
-            'sources.json',
-            JSON.stringify({
-                sources: [
-                    {
-                        type: 'xtream',
-                        title: 'Gold',
-                        serverUrl: 'http://panel.example',
-                        username: 'user',
-                        password: 'pass',
-                        importLive: false,
-                        importVod: true,
-                    },
-                    {
-                        type: 'm3u-url',
-                        title: 'List',
-                        url: 'http://lists.example.com/a.m3u',
-                        importVod: false,
-                    },
-                ],
-            })
-        );
-        const emitted: void[] = [];
-        component.imported.subscribe(() => emitted.push(undefined));
-
-        await component.importAll();
-
-        expect(playlistsService.addManyPlaylists).toHaveBeenCalledWith([
-            expect.objectContaining({
-                title: 'Gold',
-                serverUrl: 'http://panel.example',
-                importLive: false,
-            }),
-        ]);
-        expect(store.dispatch).toHaveBeenCalledWith(
-            PlaylistActions.addManyPlaylists({
-                playlists: [
-                    expect.objectContaining({
-                        title: 'Gold',
-                        serverUrl: 'http://panel.example',
-                        importLive: false,
-                    }),
-                ],
-                persist: false,
-            })
-        );
-        expect(dataService.sendIpcEvent).toHaveBeenCalledWith(
-            PLAYLIST_PARSE_BY_URL,
-            {
-                url: 'http://lists.example.com/a.m3u',
-                title: 'List',
-                importVod: false,
-            }
-        );
-        expect(emitted).toHaveLength(1);
-    });
-
-    it('seeds the persisted portal sources with their catalogs', async () => {
-        await pickFile(
-            'sources.json',
-            JSON.stringify({
-                sources: [
-                    {
-                        type: 'xtream',
-                        title: 'Gold',
-                        serverUrl: 'http://panel.example',
-                        username: 'user',
-                        password: 'pass',
-                    },
-                    {
-                        type: 'm3u-url',
-                        title: 'List',
-                        url: 'http://lists.example.com/a.m3u',
-                    },
-                ],
-            })
-        );
-
-        await component.importAll();
-        // Seeding runs in the background; flush it before asserting.
-        await new Promise((resolve) => setTimeout(resolve));
-
-        expect(seeders[0].seed).toHaveBeenCalledTimes(1);
-        expect(seeders[0].seed).toHaveBeenCalledWith(
-            expect.objectContaining({ title: 'Gold' })
-        );
-    });
-
-    it('continues seeding when one source fails', async () => {
-        seeders[0].seed
-            .mockRejectedValueOnce(new Error('down'))
-            .mockResolvedValueOnce(undefined);
-        await pickFile(
-            'sources.json',
-            JSON.stringify({
-                sources: [
-                    {
-                        type: 'xtream',
-                        title: 'First',
-                        serverUrl: 'http://panel.example',
-                        username: 'user',
-                        password: 'pass',
-                    },
-                    {
-                        type: 'xtream',
-                        title: 'Second',
-                        serverUrl: 'http://panel2.example',
-                        username: 'user',
-                        password: 'pass',
-                    },
-                    // An M3U row keeps the flow off the try-navigate branch
-                    // (no workspace routes exist in this test module).
-                    {
-                        type: 'm3u-url',
-                        title: 'List',
-                        url: 'http://lists.example.com/a.m3u',
-                    },
-                ],
-            })
-        );
-
-        await component.importAll();
-        // Seeding runs in the background; flush it before asserting.
-        await new Promise((resolve) => setTimeout(resolve));
-
-        expect(seeders[0].seed).toHaveBeenCalledTimes(2);
-    });
-
     it('keeps row scope stable after parsing', async () => {
         await pickFile(
             'sources.json',
@@ -347,12 +197,64 @@ describe('BulkImportComponent', () => {
         expect(boxes[1].checked).toBe(false);
     });
 
+    it('hands the importable rows to the runner and closes when it finishes', async () => {
+        await pickFile(
+            'sources.json',
+            JSON.stringify({
+                sources: [
+                    {
+                        type: 'xtream',
+                        title: 'Gold',
+                        serverUrl: 'http://panel.example',
+                        username: 'user',
+                        password: 'pass',
+                    },
+                    { type: 'xtream', title: 'Incomplete' },
+                ],
+            })
+        );
+        const emitted: void[] = [];
+        component.imported.subscribe(() => emitted.push(undefined));
+
+        await component.importAll();
+
+        expect(runner.run).toHaveBeenCalledWith([
+            expect.objectContaining({ title: 'Gold', valid: true }),
+        ]);
+        expect(emitted).toHaveLength(1);
+    });
+
+    it('stays open when the runner refused to replace the sources', async () => {
+        runner.run.mockResolvedValue(null);
+        await pickFile('sources.txt', 'http://lists.example.com/a.m3u');
+        const emitted: void[] = [];
+        component.imported.subscribe(() => emitted.push(undefined));
+
+        await component.importAll();
+
+        expect(emitted).toHaveLength(0);
+    });
+
+    it('shows each row\'s import progress', async () => {
+        await pickFile('sources.txt', 'http://lists.example.com/a.m3u');
+        const [row] = component.entries();
+        runner.statuses.set({ [row.id]: 'slow' });
+        fixture.detectChanges();
+
+        const status = fixture.nativeElement.querySelector(
+            '[data-test-id="bulk-row-status"]'
+        );
+        expect(status.dataset.status).toBe('slow');
+        expect(status.textContent.trim()).toBe(
+            'HOME.ADD_PLAYLIST.BULK_STATUS_SLOW'
+        );
+    });
+
     it('does nothing without importable rows', async () => {
         await pickFile('sources.txt', 'hello world');
 
         await component.importAll();
 
-        expect(store.dispatch).not.toHaveBeenCalled();
-        expect(dataService.sendIpcEvent).not.toHaveBeenCalled();
+        expect(runner.run).not.toHaveBeenCalled();
     });
 });

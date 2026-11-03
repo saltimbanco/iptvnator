@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "Geen bronnen herkend in dit bestand.",
             "BULK_REMOVE": "Bron verwijderen",
             "BULK_IMPORT_BUTTON": "{{count}} bronnen importeren",
-            "BULK_IMPORT_STARTED": "{{count}} bronnen importeren…",
+            "BULK_REPLACE_NOTICE": "Importeren vervangt al je huidige bronnen. Elke bron krijgt één minuut om te laden; tragere of mislukte bronnen worden overgeslagen.",
+            "BULK_REPLACE_FAILED": "Je huidige bronnen konden niet worden verwijderd, dus er is niets geïmporteerd.",
+            "BULK_SOURCE_TOO_SLOW": "Bron te traag, “{{title}}” wordt overgeslagen",
+            "BULK_SOURCE_FAILED": "Importeren mislukt, “{{title}}” wordt overgeslagen",
+            "BULK_IMPORT_FINISHED": "Bulkimport voltooid: {{imported}} geïmporteerd, {{slow}} te traag, {{failed}} mislukt.",
+            "BULK_STATUS_PENDING": "Wachten",
+            "BULK_STATUS_IMPORTING": "Importeren…",
+            "BULK_STATUS_IMPORTED": "Geïmporteerd",
+            "BULK_STATUS_SLOW": "Te traag, overgeslagen",
+            "BULK_STATUS_FAILED": "Mislukt, overgeslagen",
             "BULK_INVALID_JSON": "Deze JSON is geen bulkimportlijst. Verwacht: { \"sources\": [...] } of een [...]-array."
         },
         "FILE_UPLOAD": {

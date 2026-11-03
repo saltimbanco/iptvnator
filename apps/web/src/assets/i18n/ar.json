@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "لم يتم التعرف على أي مصادر في هذا الملف بعد.",
             "BULK_REMOVE": "إزالة المصدر",
             "BULK_IMPORT_BUTTON": "استيراد {{count}} مصادر",
-            "BULK_IMPORT_STARTED": "جارٍ استيراد {{count}} مصادر…",
+            "BULK_REPLACE_NOTICE": "يستبدل الاستيراد جميع مصادرك الحالية. يحصل كل مصدر على دقيقة واحدة للتحميل؛ ويتم تخطي المصادر الأبطأ أو الفاشلة.",
+            "BULK_REPLACE_FAILED": "تعذّرت إزالة مصادرك الحالية، لذلك لم يتم استيراد أي شيء.",
+            "BULK_SOURCE_TOO_SLOW": "المصدر بطيء جدًا، جارٍ تخطي «{{title}}»",
+            "BULK_SOURCE_FAILED": "فشل الاستيراد، جارٍ تخطي «{{title}}»",
+            "BULK_IMPORT_FINISHED": "اكتمل الاستيراد المجمّع: تم استيراد {{imported}}، و{{slow}} بطيئة جدًا، و{{failed}} فاشلة.",
+            "BULK_STATUS_PENDING": "في الانتظار",
+            "BULK_STATUS_IMPORTING": "جارٍ الاستيراد…",
+            "BULK_STATUS_IMPORTED": "تم الاستيراد",
+            "BULK_STATUS_SLOW": "بطيء جدًا، تم التخطي",
+            "BULK_STATUS_FAILED": "فشل، تم التخطي",
             "BULK_INVALID_JSON": "ملف JSON هذا ليس قائمة استيراد جماعي. المتوقع { \"sources\": [...] } أو مصفوفة [...]."
         },
         "FILE_UPLOAD": {

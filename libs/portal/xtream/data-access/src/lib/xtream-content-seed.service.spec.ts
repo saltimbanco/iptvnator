@@ -32,7 +32,7 @@ describe('XtreamContentSeedService', () => {
     beforeEach(() => {
         dataSource = {
             getCategories: jest.fn().mockResolvedValue([]),
-            getContent: jest.fn().mockResolvedValue([]),
+            getContent: jest.fn().mockResolvedValue([{ xtream_id: 1 }]),
         };
         databaseService = {
             setXtreamImportStatus: jest.fn().mockResolvedValue(true),
@@ -106,18 +106,24 @@ describe('XtreamContentSeedService', () => {
         expect(dataSource.getContent).not.toHaveBeenCalled();
     });
 
-    it('stays silent on seed failures so the batch is not interrupted', async () => {
+    it('rejects when the portal cannot be read so the import skips it', async () => {
         dataSource.getCategories.mockRejectedValueOnce(
             new Error('portal down')
         );
 
-        await expect(
-            seedService.seed(xtreamPlaylist())
-        ).resolves.toBeUndefined();
-
-        // The failure surfaced on the first category fetch; nothing further
-        // ran and nothing crashed the caller.
+        await expect(seedService.seed(xtreamPlaylist())).rejects.toThrow(
+            'portal down'
+        );
         expect(dataSource.getContent).not.toHaveBeenCalled();
+        expect(databaseService.setXtreamImportStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects a portal that answers without live channels', async () => {
+        dataSource.getContent.mockResolvedValueOnce([]);
+
+        await expect(
+            seedService.seed(xtreamPlaylist({ importVod: false }))
+        ).rejects.toThrow('no live channels');
         expect(databaseService.setXtreamImportStatus).not.toHaveBeenCalled();
     });
 });

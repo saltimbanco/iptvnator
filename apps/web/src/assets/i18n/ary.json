@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "ما تجرّب حتى مصدر في هاد الملف.",
             "BULK_REMOVE": "حيد المصدر",
             "BULK_IMPORT_BUTTON": "استورد {{count}} د المصادر",
-            "BULK_IMPORT_STARTED": "جاري استيراد {{count}} د المصادر…",
+            "BULK_REPLACE_NOTICE": "الاستيراد كيبدّل جميع المصادر ديالك دابا. كل مصدر عندو دقيقة وحدة باش يتحمّل؛ والمصادر اللي بطيئة ولا فاشلة كيتخطاو.",
+            "BULK_REPLACE_FAILED": "ما قدرناش نحيدو المصادر ديالك، داكشي علاش ما تستورد والو.",
+            "BULK_SOURCE_TOO_SLOW": "المصدر بطيء بزاف، كنتخطاو «{{title}}»",
+            "BULK_SOURCE_FAILED": "الاستيراد فشل، كنتخطاو «{{title}}»",
+            "BULK_IMPORT_FINISHED": "الاستيراد الجماعي سالا: {{imported}} تستوردو، {{slow}} بطيئين بزاف، {{failed}} فشلو.",
+            "BULK_STATUS_PENDING": "كيتسنّى",
+            "BULK_STATUS_IMPORTING": "كيتستورد…",
+            "BULK_STATUS_IMPORTED": "تستورد",
+            "BULK_STATUS_SLOW": "بطيء بزاف، تخطّيناه",
+            "BULK_STATUS_FAILED": "فشل، تخطّيناه",
             "BULK_INVALID_JSON": "هاد JSON ماشي لائحة د الاستيراد الجماعي. خاص { \"sources\": [...] } ولا مصفوفة [...]."
         },
         "FILE_UPLOAD": {

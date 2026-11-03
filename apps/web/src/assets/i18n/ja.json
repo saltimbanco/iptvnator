@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "このファイルではソースが見つかりませんでした。",
             "BULK_REMOVE": "ソースを削除",
             "BULK_IMPORT_BUTTON": "{{count}}件のソースをインポート",
-            "BULK_IMPORT_STARTED": "{{count}}件のソースをインポート中…",
+            "BULK_REPLACE_NOTICE": "インポートすると現在のソースはすべて置き換えられます。各ソースの読み込み時間は1分です。それより遅いソースや失敗したソースはスキップされます。",
+            "BULK_REPLACE_FAILED": "現在のソースを削除できなかったため、何もインポートされませんでした。",
+            "BULK_SOURCE_TOO_SLOW": "ソースが遅すぎるため「{{title}}」をスキップします",
+            "BULK_SOURCE_FAILED": "インポートに失敗したため「{{title}}」をスキップします",
+            "BULK_IMPORT_FINISHED": "一括インポートが完了しました：インポート {{imported}}件、遅すぎ {{slow}}件、失敗 {{failed}}件。",
+            "BULK_STATUS_PENDING": "待機中",
+            "BULK_STATUS_IMPORTING": "インポート中…",
+            "BULK_STATUS_IMPORTED": "インポート済み",
+            "BULK_STATUS_SLOW": "遅すぎるためスキップ",
+            "BULK_STATUS_FAILED": "失敗のためスキップ",
             "BULK_INVALID_JSON": "このJSONは一括インポート用のソースリストではありません。{ \"sources\": [...] }または[...]配列が必要です。"
         },
         "FILE_UPLOAD": {

@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "Nenhuma fonte reconhecida neste arquivo.",
             "BULK_REMOVE": "Remover fonte",
             "BULK_IMPORT_BUTTON": "Importar {{count}} fontes",
-            "BULK_IMPORT_STARTED": "Importando {{count}} fontes…",
+            "BULK_REPLACE_NOTICE": "A importação substitui todas as suas fontes atuais. Cada fonte tem um minuto para carregar; as mais lentas ou com falha são ignoradas.",
+            "BULK_REPLACE_FAILED": "Não foi possível remover suas fontes atuais, então nada foi importado.",
+            "BULK_SOURCE_TOO_SLOW": "Fonte muito lenta, ignorando “{{title}}”",
+            "BULK_SOURCE_FAILED": "Falha na importação, ignorando “{{title}}”",
+            "BULK_IMPORT_FINISHED": "Importação em lote concluída: {{imported}} importadas, {{slow}} muito lentas, {{failed}} com falha.",
+            "BULK_STATUS_PENDING": "Aguardando",
+            "BULK_STATUS_IMPORTING": "Importando…",
+            "BULK_STATUS_IMPORTED": "Importada",
+            "BULK_STATUS_SLOW": "Muito lenta, ignorada",
+            "BULK_STATUS_FAILED": "Falhou, ignorada",
             "BULK_INVALID_JSON": "Esse JSON não é uma lista de importação em massa. Esperado { \"sources\": [...] } ou um array [...]."
         },
         "FILE_UPLOAD": {

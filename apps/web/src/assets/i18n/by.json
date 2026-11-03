@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "У гэтым файле не выяўлена ніводнай крыніцы.",
             "BULK_REMOVE": "Выдаліць крыніцу",
             "BULK_IMPORT_BUTTON": "Імпартаваць {{count}} крыніц",
-            "BULK_IMPORT_STARTED": "Імпарт {{count}} крыніц…",
+            "BULK_REPLACE_NOTICE": "Імпарт замяняе ўсе вашы бягучыя крыніцы. На загрузку кожнай крыніцы даецца адна хвіліна; больш павольныя або няспраўныя крыніцы прапускаюцца.",
+            "BULK_REPLACE_FAILED": "Не ўдалося выдаліць бягучыя крыніцы, таму нічога не імпартавана.",
+            "BULK_SOURCE_TOO_SLOW": "Крыніца занадта павольная, пропуск «{{title}}»",
+            "BULK_SOURCE_FAILED": "Памылка імпарту, пропуск «{{title}}»",
+            "BULK_IMPORT_FINISHED": "Масавы імпарт завершаны: імпартавана {{imported}}, занадта павольных {{slow}}, з памылкай {{failed}}.",
+            "BULK_STATUS_PENDING": "Чаканне",
+            "BULK_STATUS_IMPORTING": "Імпарт…",
+            "BULK_STATUS_IMPORTED": "Імпартавана",
+            "BULK_STATUS_SLOW": "Занадта павольная, прапушчана",
+            "BULK_STATUS_FAILED": "Памылка, прапушчана",
             "BULK_INVALID_JSON": "Гэты JSON — не спіс масавага імпарту. Чакаецца { \"sources\": [...] } або масіў [...]."
         },
         "FILE_UPLOAD": {

@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "此文件中没有识别到任何来源。",
             "BULK_REMOVE": "删除来源",
             "BULK_IMPORT_BUTTON": "导入{{count}}个来源",
-            "BULK_IMPORT_STARTED": "正在导入{{count}}个来源…",
+            "BULK_REPLACE_NOTICE": "导入会替换你当前的所有来源。每个来源有一分钟的加载时间；更慢或失败的来源将被跳过。",
+            "BULK_REPLACE_FAILED": "无法移除当前来源，因此没有导入任何内容。",
+            "BULK_SOURCE_TOO_SLOW": "来源太慢，跳过“{{title}}”",
+            "BULK_SOURCE_FAILED": "导入失败，跳过“{{title}}”",
+            "BULK_IMPORT_FINISHED": "批量导入完成：已导入 {{imported}} 个，太慢 {{slow}} 个，失败 {{failed}} 个。",
+            "BULK_STATUS_PENDING": "等待中",
+            "BULK_STATUS_IMPORTING": "导入中…",
+            "BULK_STATUS_IMPORTED": "已导入",
+            "BULK_STATUS_SLOW": "太慢，已跳过",
+            "BULK_STATUS_FAILED": "失败，已跳过",
             "BULK_INVALID_JSON": "该JSON不是批量导入来源列表。应为{ \"sources\": [...] }或[...]数组。"
         },
         "FILE_UPLOAD": {

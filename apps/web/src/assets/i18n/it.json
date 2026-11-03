@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "Nessuna sorgente riconosciuta in questo file.",
             "BULK_REMOVE": "Rimuovi sorgente",
             "BULK_IMPORT_BUTTON": "Importa {{count}} sorgenti",
-            "BULK_IMPORT_STARTED": "Importazione di {{count}} sorgenti…",
+            "BULK_REPLACE_NOTICE": "L’importazione sostituisce tutte le tue sorgenti attuali. Ogni sorgente ha un minuto per caricarsi; quelle più lente o che falliscono vengono saltate.",
+            "BULK_REPLACE_FAILED": "Impossibile rimuovere le sorgenti attuali, quindi non è stato importato nulla.",
+            "BULK_SOURCE_TOO_SLOW": "Sorgente troppo lenta, salto «{{title}}»",
+            "BULK_SOURCE_FAILED": "Importazione non riuscita, salto «{{title}}»",
+            "BULK_IMPORT_FINISHED": "Importazione multipla completata: {{imported}} importate, {{slow}} troppo lente, {{failed}} non riuscite.",
+            "BULK_STATUS_PENDING": "In attesa",
+            "BULK_STATUS_IMPORTING": "Importazione…",
+            "BULK_STATUS_IMPORTED": "Importata",
+            "BULK_STATUS_SLOW": "Troppo lenta, saltata",
+            "BULK_STATUS_FAILED": "Non riuscita, saltata",
             "BULK_INVALID_JSON": "Questo JSON non è un elenco per l’importazione multipla. Previsto { \"sources\": [...] } o un array [...]."
         },
         "FILE_UPLOAD": {

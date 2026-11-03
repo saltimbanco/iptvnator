@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "W tym pliku nie rozpoznano żadnych źródeł.",
             "BULK_REMOVE": "Usuń źródło",
             "BULK_IMPORT_BUTTON": "Importuj {{count}} źródeł",
-            "BULK_IMPORT_STARTED": "Importowanie {{count}} źródeł…",
+            "BULK_REPLACE_NOTICE": "Import zastępuje wszystkie Twoje obecne źródła. Każde źródło ma minutę na załadowanie; wolniejsze lub błędne źródła są pomijane.",
+            "BULK_REPLACE_FAILED": "Nie udało się usunąć obecnych źródeł, więc nic nie zostało zaimportowane.",
+            "BULK_SOURCE_TOO_SLOW": "Źródło zbyt wolne, pomijam „{{title}}”",
+            "BULK_SOURCE_FAILED": "Import nie powiódł się, pomijam „{{title}}”",
+            "BULK_IMPORT_FINISHED": "Import zbiorczy zakończony: zaimportowano {{imported}}, zbyt wolne {{slow}}, nieudane {{failed}}.",
+            "BULK_STATUS_PENDING": "Oczekuje",
+            "BULK_STATUS_IMPORTING": "Importowanie…",
+            "BULK_STATUS_IMPORTED": "Zaimportowano",
+            "BULK_STATUS_SLOW": "Zbyt wolne, pominięto",
+            "BULK_STATUS_FAILED": "Błąd, pominięto",
             "BULK_INVALID_JSON": "Ten JSON nie jest listą importu zbiorczego. Oczekiwano { \"sources\": [...] } lub tablicy [...]."
         },
         "FILE_UPLOAD": {

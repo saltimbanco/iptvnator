@@ -603,8 +603,19 @@ live-only source imported its whole movie and series catalog.
   `{type: 'xtream' | 'stalker' | 'm3u-url', ...connection, title?,
   importLive?, importVod?}` items (`bulkEntriesFromJson`,
   `libs/shared/interfaces`). Each row carries its own title plus Live/VOD
-  toggles. Portal rows persist in one `addManyPlaylists`; M3U rows go through
-  the regular URL/text pipelines with the row's scope attached.
+  toggles. Importing is a replace: `BulkImportRunnerService`
+  (`libs/playlist/import/feature`) first removes every existing source (the
+  same deletion as Settings → Remove all), then imports the rows one at a
+  time. A portal row is persisted and seeded through
+  `PORTAL_CONTENT_SEEDERS` (the Xtream seeder rejects an unreadable portal or
+  one without live channels); an M3U row is fetched with
+  `DataService.fetchPlaylistDefinition` (or parsed, for pasted text) and
+  persisted without the per-row navigation of a single add. Each row gets
+  `BULK_IMPORT_SOURCE_TIMEOUT_MS` (one minute): a slower row is skipped with
+  a "Source too slow" popup, a failing one with an error popup, and a skipped
+  row's stored source is deleted again, so only working sources remain. The
+  dialog shows per-row progress; the run is root-provided and continues when
+  the dialog is closed.
 - **Backup/restore** — `PlaylistBackupBaseEntry` carries the same opt-outs
   (absent = no opinion, the merged playlist keeps its scope), and M3U restores
   re-parse through the scope filter.

@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "Ebben a fájlban nem található forrás.",
             "BULK_REMOVE": "Forrás eltávolítása",
             "BULK_IMPORT_BUTTON": "{{count}} forrás importálása",
-            "BULK_IMPORT_STARTED": "{{count}} forrás importálása…",
+            "BULK_REPLACE_NOTICE": "Az importálás lecseréli az összes jelenlegi forrásodat. Minden forrásnak egy perce van a betöltésre; a lassabb vagy hibás források kimaradnak.",
+            "BULK_REPLACE_FAILED": "A jelenlegi források nem távolíthatók el, ezért semmi sem lett importálva.",
+            "BULK_SOURCE_TOO_SLOW": "A forrás túl lassú, „{{title}}” kihagyva",
+            "BULK_SOURCE_FAILED": "Sikertelen importálás, „{{title}}” kihagyva",
+            "BULK_IMPORT_FINISHED": "A tömeges importálás befejeződött: {{imported}} importálva, {{slow}} túl lassú, {{failed}} sikertelen.",
+            "BULK_STATUS_PENDING": "Várakozik",
+            "BULK_STATUS_IMPORTING": "Importálás…",
+            "BULK_STATUS_IMPORTED": "Importálva",
+            "BULK_STATUS_SLOW": "Túl lassú, kihagyva",
+            "BULK_STATUS_FAILED": "Sikertelen, kihagyva",
             "BULK_INVALID_JSON": "Ez a JSON nem tömeges importálási lista. Elvárt formátum: { \"sources\": [...] } vagy [...] tömb."
         },
         "FILE_UPLOAD": {

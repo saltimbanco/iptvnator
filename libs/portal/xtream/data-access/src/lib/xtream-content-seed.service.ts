@@ -1,5 +1,4 @@
 import { inject, Injectable } from '@angular/core';
-import { createLogger } from '@iptvnator/portal/shared/util/logger';
 import { DatabaseService, SettingsStore } from '@iptvnator/services';
 import { shouldImportLive, shouldImportVod } from '@iptvnator/shared/interfaces';
 import { XTREAM_DATA_SOURCE } from './data-sources/xtream-data-source.interface';
@@ -16,14 +15,14 @@ import type { Playlist } from '@iptvnator/shared/interfaces';
  * plus live channels, and — only when the row's import scope wants them —
  * movies and series. The workspace hydrates from those stores on first
  * open, so a bulk-imported source is usable without waiting for a live
- * portal download there.
+ * portal download there. Rejects when the portal cannot be read or has no
+ * live channels, so the bulk import can skip the source.
  */
 @Injectable({ providedIn: 'root' })
 export class XtreamContentSeedService implements PortalContentSeeder {
     private readonly dataSource = inject(XTREAM_DATA_SOURCE);
     private readonly databaseService = inject(DatabaseService);
     private readonly settingsStore = inject(SettingsStore);
-    private readonly logger = createLogger('XtreamContentSeed');
 
     async seed(playlist: Playlist): Promise<void> {
         const playlistId = playlist._id;
@@ -48,45 +47,37 @@ export class XtreamContentSeedService implements PortalContentSeeder {
             this.settingsStore.disableVod?.() !== true;
         const importLive = shouldImportLive(playlist) || !importVod;
 
-        try {
-            const categoryTypes: CategoryType[] = importLive
-                ? importVod
-                    ? ['live', 'vod', 'series']
-                    : ['live']
-                : ['vod', 'series'];
-            for (const type of categoryTypes) {
-                await this.dataSource.getCategories(
-                    playlistId,
-                    credentials,
-                    type
-                );
-            }
+        const categoryTypes: CategoryType[] = importLive
+            ? importVod
+                ? ['live', 'vod', 'series']
+                : ['live']
+            : ['vod', 'series'];
+        for (const type of categoryTypes) {
+            await this.dataSource.getCategories(playlistId, credentials, type);
+        }
 
-            const streamTypes: StreamType[] = importLive
-                ? importVod
-                    ? ['live', 'movie', 'series']
-                    : ['live']
-                : ['movie', 'series'];
-            for (const type of streamTypes) {
-                await this.dataSource.getContent(
-                    playlistId,
-                    credentials,
-                    type
-                );
-                // Mark the section done so the workspace's first open reads
-                // the cache instead of re-fetching it from the portal.
-                await this.databaseService.setXtreamImportStatus(
-                    playlistId,
-                    type,
-                    'completed'
-                );
+        const streamTypes: StreamType[] = importLive
+            ? importVod
+                ? ['live', 'movie', 'series']
+                : ['live']
+            : ['movie', 'series'];
+        for (const type of streamTypes) {
+            const content = await this.dataSource.getContent(
+                playlistId,
+                credentials,
+                type
+            );
+            // A portal that answers with no channels is not a usable live
+            // source; the bulk import skips it like a failed one.
+            if (type === 'live' && content.length === 0) {
+                throw new Error('The source returned no live channels');
             }
-        } catch (error) {
-            // Seeding is best effort: the source stays importable, and the
-            // workspace imports on first open where errors surface properly.
-            this.logger.warn(
-                'Background content seed failed for an Xtream source:',
-                error
+            // Mark the section done so the workspace's first open reads
+            // the cache instead of re-fetching it from the portal.
+            await this.databaseService.setXtreamImportStatus(
+                playlistId,
+                type,
+                'completed'
             );
         }
     }

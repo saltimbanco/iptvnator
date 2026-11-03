@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "Bu dosyada hiçbir kaynak tanınmadı.",
             "BULK_REMOVE": "Kaynağı kaldır",
             "BULK_IMPORT_BUTTON": "{{count}} kaynak içe aktar",
-            "BULK_IMPORT_STARTED": "{{count}} kaynak içe aktarılıyor…",
+            "BULK_REPLACE_NOTICE": "İçe aktarma mevcut tüm kaynaklarınızı değiştirir. Her kaynağın yüklenmek için bir dakikası vardır; daha yavaş veya başarısız kaynaklar atlanır.",
+            "BULK_REPLACE_FAILED": "Mevcut kaynaklarınız kaldırılamadı, bu yüzden hiçbir şey içe aktarılmadı.",
+            "BULK_SOURCE_TOO_SLOW": "Kaynak çok yavaş, “{{title}}” atlanıyor",
+            "BULK_SOURCE_FAILED": "İçe aktarma başarısız, “{{title}}” atlanıyor",
+            "BULK_IMPORT_FINISHED": "Toplu içe aktarma tamamlandı: {{imported}} içe aktarıldı, {{slow}} çok yavaş, {{failed}} başarısız.",
+            "BULK_STATUS_PENDING": "Bekliyor",
+            "BULK_STATUS_IMPORTING": "İçe aktarılıyor…",
+            "BULK_STATUS_IMPORTED": "İçe aktarıldı",
+            "BULK_STATUS_SLOW": "Çok yavaş, atlandı",
+            "BULK_STATUS_FAILED": "Başarısız, atlandı",
             "BULK_INVALID_JSON": "Bu JSON bir toplu içe aktarma listesi değil. Beklenen: { \"sources\": [...] } veya [...] dizisi."
         },
         "FILE_UPLOAD": {

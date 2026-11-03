@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "此檔案中沒有辨識到任何來源。",
             "BULK_REMOVE": "移除來源",
             "BULK_IMPORT_BUTTON": "匯入{{count}}個來源",
-            "BULK_IMPORT_STARTED": "正在匯入{{count}}個來源…",
+            "BULK_REPLACE_NOTICE": "匯入會取代你目前的所有來源。每個來源有一分鐘的載入時間；較慢或失敗的來源將被略過。",
+            "BULK_REPLACE_FAILED": "無法移除目前的來源，因此沒有匯入任何內容。",
+            "BULK_SOURCE_TOO_SLOW": "來源太慢，略過「{{title}}」",
+            "BULK_SOURCE_FAILED": "匯入失敗，略過「{{title}}」",
+            "BULK_IMPORT_FINISHED": "批次匯入完成：已匯入 {{imported}} 個，太慢 {{slow}} 個，失敗 {{failed}} 個。",
+            "BULK_STATUS_PENDING": "等待中",
+            "BULK_STATUS_IMPORTING": "匯入中…",
+            "BULK_STATUS_IMPORTED": "已匯入",
+            "BULK_STATUS_SLOW": "太慢，已略過",
+            "BULK_STATUS_FAILED": "失敗，已略過",
             "BULK_INVALID_JSON": "此JSON不是批次匯入來源清單。應為{ \"sources\": [...] }或[...]陣列。"
         },
         "FILE_UPLOAD": {

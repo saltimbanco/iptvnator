@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "In dieser Datei wurden keine Quellen erkannt.",
             "BULK_REMOVE": "Quelle entfernen",
             "BULK_IMPORT_BUTTON": "{{count}} Quellen importieren",
-            "BULK_IMPORT_STARTED": "{{count}} Quellen werden importiert…",
+            "BULK_REPLACE_NOTICE": "Der Import ersetzt alle deine aktuellen Quellen. Jede Quelle hat eine Minute zum Laden; langsamere oder fehlerhafte Quellen werden übersprungen.",
+            "BULK_REPLACE_FAILED": "Deine aktuellen Quellen konnten nicht entfernt werden, daher wurde nichts importiert.",
+            "BULK_SOURCE_TOO_SLOW": "Quelle zu langsam, „{{title}}“ wird übersprungen",
+            "BULK_SOURCE_FAILED": "Import fehlgeschlagen, „{{title}}“ wird übersprungen",
+            "BULK_IMPORT_FINISHED": "Massenimport abgeschlossen: {{imported}} importiert, {{slow}} zu langsam, {{failed}} fehlgeschlagen.",
+            "BULK_STATUS_PENDING": "Wartet",
+            "BULK_STATUS_IMPORTING": "Wird importiert…",
+            "BULK_STATUS_IMPORTED": "Importiert",
+            "BULK_STATUS_SLOW": "Zu langsam, übersprungen",
+            "BULK_STATUS_FAILED": "Fehlgeschlagen, übersprungen",
             "BULK_INVALID_JSON": "Dieses JSON ist keine Sammelimport-Liste. Erwartet wird { \"sources\": [...] } oder ein [...]-Array."
         },
         "FILE_UPLOAD": {

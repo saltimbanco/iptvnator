@@ -3,6 +3,7 @@
         <button
             mat-stroked-button
             type="button"
+            [disabled]="isImporting()"
             (click)="fileField.click()"
             data-test-id="bulk-file-button"
         >
@@ -31,6 +32,9 @@
     }
 
     @if (hasEntries()) {
+        <p class="bulk__notice" data-test-id="bulk-replace-notice">
+            {{ 'HOME.ADD_PLAYLIST.BULK_REPLACE_NOTICE' | translate }}
+        </p>
         @if (vodDisabled()) {
             <p class="bulk__notice" data-test-id="bulk-vod-disabled">
                 {{ 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_VOD_DISABLED' | translate }}
@@ -99,9 +103,19 @@
                             }}</mat-checkbox
                         >
                     </div>
+                    @if (rowStatus(entry.id); as status) {
+                        <span
+                            class="bulk__status"
+                            [attr.data-status]="status"
+                            data-test-id="bulk-row-status"
+                        >
+                            {{ statusLabelKey(status) | translate }}
+                        </span>
+                    }
                     <button
                         mat-icon-button
                         type="button"
+                        [disabled]="isImporting()"
                         (click)="removeEntry(entry.id)"
                         [attr.aria-label]="
                             'HOME.ADD_PLAYLIST.BULK_REMOVE' | translate

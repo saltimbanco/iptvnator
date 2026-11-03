@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "У цьому файлі не знайдено джерел.",
             "BULK_REMOVE": "Видалити джерело",
             "BULK_IMPORT_BUTTON": "Імпортувати джерела: {{count}}",
-            "BULK_IMPORT_STARTED": "Імпорт джерел: {{count}}…",
+            "BULK_REPLACE_NOTICE": "Імпорт замінює всі ваші поточні джерела. На завантаження кожного джерела дається одна хвилина; повільніші або несправні джерела пропускаються.",
+            "BULK_REPLACE_FAILED": "Не вдалося видалити поточні джерела, тому нічого не імпортовано.",
+            "BULK_SOURCE_TOO_SLOW": "Джерело надто повільне, пропуск «{{title}}»",
+            "BULK_SOURCE_FAILED": "Помилка імпорту, пропуск «{{title}}»",
+            "BULK_IMPORT_FINISHED": "Масовий імпорт завершено: імпортовано {{imported}}, надто повільних {{slow}}, з помилкою {{failed}}.",
+            "BULK_STATUS_PENDING": "Очікування",
+            "BULK_STATUS_IMPORTING": "Імпорт…",
+            "BULK_STATUS_IMPORTED": "Імпортовано",
+            "BULK_STATUS_SLOW": "Надто повільне, пропущено",
+            "BULK_STATUS_FAILED": "Помилка, пропущено",
             "BULK_INVALID_JSON": "Цей JSON не є списком джерел для масового імпорту. Очікується { \"sources\": [...] } або масив [...]."
         },
         "FILE_UPLOAD": {

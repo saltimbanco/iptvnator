@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "이 파일에서 소스를 인식하지 못했습니다.",
             "BULK_REMOVE": "소스 제거",
             "BULK_IMPORT_BUTTON": "소스 {{count}}개 가져오기",
-            "BULK_IMPORT_STARTED": "소스 {{count}}개를 가져오는 중…",
+            "BULK_REPLACE_NOTICE": "가져오기를 하면 현재 소스가 모두 대체됩니다. 각 소스는 1분 안에 로드되어야 하며, 더 느리거나 실패한 소스는 건너뜁니다.",
+            "BULK_REPLACE_FAILED": "현재 소스를 제거할 수 없어 아무것도 가져오지 않았습니다.",
+            "BULK_SOURCE_TOO_SLOW": "소스가 너무 느려 “{{title}}”을(를) 건너뜁니다",
+            "BULK_SOURCE_FAILED": "가져오기에 실패하여 “{{title}}”을(를) 건너뜁니다",
+            "BULK_IMPORT_FINISHED": "일괄 가져오기 완료: {{imported}}개 가져옴, {{slow}}개 너무 느림, {{failed}}개 실패.",
+            "BULK_STATUS_PENDING": "대기 중",
+            "BULK_STATUS_IMPORTING": "가져오는 중…",
+            "BULK_STATUS_IMPORTED": "가져옴",
+            "BULK_STATUS_SLOW": "너무 느려 건너뜀",
+            "BULK_STATUS_FAILED": "실패하여 건너뜀",
             "BULK_INVALID_JSON": "이 JSON은 일괄 가져오기 목록이 아닙니다. { \"sources\": [...] } 또는 [...] 배열이어야 합니다."
         },
         "FILE_UPLOAD": {

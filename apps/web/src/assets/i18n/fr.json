@@ -211,7 +211,16 @@
             "BULK_NO_SOURCES": "Aucune source reconnue dans ce fichier.",
             "BULK_REMOVE": "Supprimer la source",
             "BULK_IMPORT_BUTTON": "Importer {{count}} sources",
-            "BULK_IMPORT_STARTED": "Import de {{count}} sources…",
+            "BULK_REPLACE_NOTICE": "L’importation remplace toutes vos sources actuelles. Chaque source dispose d’une minute pour se charger ; les sources plus lentes ou en échec sont ignorées.",
+            "BULK_REPLACE_FAILED": "Impossible de supprimer vos sources actuelles : rien n’a été importé.",
+            "BULK_SOURCE_TOO_SLOW": "Source trop lente, « {{title}} » ignorée",
+            "BULK_SOURCE_FAILED": "Échec de l’importation, « {{title}} » ignorée",
+            "BULK_IMPORT_FINISHED": "Importation groupée terminée : {{imported}} importées, {{slow}} trop lentes, {{failed}} en échec.",
+            "BULK_STATUS_PENDING": "En attente",
+            "BULK_STATUS_IMPORTING": "Importation…",
+            "BULK_STATUS_IMPORTED": "Importée",
+            "BULK_STATUS_SLOW": "Trop lente, ignorée",
+            "BULK_STATUS_FAILED": "Échec, ignorée",
             "BULK_INVALID_JSON": "Ce JSON n’est pas une liste d’import groupé. Format attendu : { \"sources\": [...] } ou un tableau [...]."
         },
         "FILE_UPLOAD": {
