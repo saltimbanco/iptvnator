@@ -194,6 +194,8 @@ export interface Settings {
      * `true` disables it. Per-source Live/VOD scopes still apply on top.
      */
     disableVod?: boolean;
+    /** Global programme guide opt-out; missing means enabled. */
+    epgEnabled?: boolean;
     epgUrl: string[];
     streamFormat: StreamFormat;
     openStreamOnDoubleClick: boolean;
@@ -315,6 +317,8 @@ export interface Settings {
      * Disabled by default because enrichment sends content titles to TMDB.
      */
     tmdb?: TmdbSettings;
+    /** ISO country for age classifications; auto follows the UI language. */
+    ageRatingCountry?: string;
     /**
      * Parental lock: locked categories disappear from the whole app until
      * the PIN is entered. Off by default; may only be on while a PIN exists

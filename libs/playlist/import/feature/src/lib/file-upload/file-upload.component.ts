@@ -3,6 +3,7 @@ import {
     EventEmitter,
     Output,
     inject,
+    input,
     signal,
     ChangeDetectionStrategy,
 } from '@angular/core';
@@ -35,6 +36,7 @@ export class FileUploadComponent {
     @Output() fileRejected = new EventEmitter<string>();
     @Output() closeDialog = new EventEmitter<void>();
 
+    readonly autoImportEpg = input(true);
     readonly selectedFile = signal<File | null>(null);
     readonly isDragging = signal(false);
     readonly isImporting = signal(false);
@@ -97,10 +99,10 @@ export class FileUploadComponent {
         if (!file || this.isImporting()) return;
 
         this.isImporting.set(true);
-        const result = await this.importService.importFile(
-            file,
-            this.currentScope()
-        );
+        const result = await this.importService.importFile(file, {
+            scope: this.currentScope(),
+            autoImportEpg: this.autoImportEpg(),
+        });
         this.isImporting.set(false);
 
         if (result.ok === true) {
@@ -131,9 +133,10 @@ export class FileUploadComponent {
         if (this.isImporting()) return;
 
         this.isImporting.set(true);
-        const result = await this.importService.importFromNativeDialog(
-            this.currentScope()
-        );
+        const result = await this.importService.importFromNativeDialog({
+            scope: this.currentScope(),
+            autoImportEpg: this.autoImportEpg(),
+        });
         this.isImporting.set(false);
 
         if (result.ok === true) {

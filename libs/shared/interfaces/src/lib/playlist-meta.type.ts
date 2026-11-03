@@ -20,6 +20,7 @@ export type PlaylistMeta = Pick<
     | 'updateState'
     | 'position'
     | 'autoRefresh'
+    | 'autoImportEpg'
     | 'favorites'
     | 'serverUrl'
     | 'username'
@@ -31,12 +32,15 @@ export type PlaylistMeta = Pick<
     | 'portalUrl'
     | 'recentlyViewed'
     | 'serverTimezone'
+    | 'xtreamContentTypes'
     | 'isFullStalkerPortal'
     | 'stalkerSerialNumber'
     | 'stalkerDeviceId1'
     | 'stalkerDeviceId2'
     | 'stalkerSignature1'
     | 'stalkerSignature2'
+    | 'sourceSyncBase'
+    | 'sourceSyncRevision'
 >;
 
 export interface StalkerPlaylistSessionMetadata {

@@ -1,3 +1,4 @@
+import { startAppMenuActions } from './services/app-menu-actions';
 import {
     Component,
     effect,
@@ -49,6 +50,7 @@ import { PlaylistOpenRequestService } from './services/playlist-open-request.ser
 import { AppUpdateNotificationPanelComponent } from './app-update-notification-panel.component';
 import { AppStartupStatusComponent } from './app-startup-status.component';
 import { syncDocumentLanguage } from './services/document-language';
+import { SourceSyncStatusComponent } from './source-sync-status.component';
 
 const debugAppComponent = createDevLogger('AppComponent');
 
@@ -62,6 +64,7 @@ const debugAppComponent = createDevLogger('AppComponent');
         EpgProgressPanelComponent,
         RouterOutlet,
         WindowControlsComponent,
+        SourceSyncStatusComponent,
     ],
 })
 export class AppComponent implements OnInit {
@@ -95,6 +98,7 @@ export class AppComponent implements OnInit {
     private readonly DEFAULT_LANG = Language.ENGLISH;
 
     constructor() {
+        startAppMenuActions();
         syncDocumentLanguage();
 
         // Body-level class (like 'dark-theme') so layout adjustments also

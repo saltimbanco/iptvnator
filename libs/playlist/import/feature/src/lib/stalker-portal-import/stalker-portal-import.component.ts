@@ -1,6 +1,7 @@
 import {
     afterRenderEffect,
     Component,
+    DestroyRef,
     ElementRef,
     inject,
     output,
@@ -113,6 +114,8 @@ export class StalkerPortalImportComponent {
     });
 
     private readonly portalDiscovery = inject(StalkerPortalDiscoveryService);
+    private readonly destroyRef = inject(DestroyRef);
+    private importController: AbortController | null = null;
     private readonly store = inject(Store);
     private readonly snackBar = inject(MatSnackBar);
     readonly translate = inject(TranslateService);
@@ -142,6 +145,7 @@ export class StalkerPortalImportComponent {
     private deriveGeneration = 0;
 
     constructor() {
+        this.destroyRef.onDestroy(() => this.cancelPendingImport());
         // Like the Xtream connection test: a message describes the values it
         // was produced for, so any edit makes it stale.
         this.form.valueChanges
@@ -371,12 +375,18 @@ export class StalkerPortalImportComponent {
         });
     }
 
+    cancelPendingImport(): void {
+        this.importController?.abort();
+    }
+
     async addPlaylist() {
         if (!this.form.valid || this.isLoading()) {
             return;
         }
 
         this.isLoading.set(true);
+        const controller = new AbortController();
+        this.importController = controller;
         this.feedback.set(null);
         // The identity is frozen for the duration: an edit made now cannot
         // reach the portal (discovery has the snapshot) and cannot be undone
@@ -392,6 +402,7 @@ export class StalkerPortalImportComponent {
             // from `getRawValue()` below would let an edit that landed during
             // the digest pair a new MAC with the old MAC's IDs.
             const identity = await this.settleMacAddressIdentity();
+            if (controller.signal.aborted) return;
             const macAddress = identity.macAddress;
 
             // Authoritative for the rest of the import, and deliberately so:
@@ -423,12 +434,14 @@ export class StalkerPortalImportComponent {
                 macAddress,
                 stalkerIdentity,
                 {
+                    signal: controller.signal,
                     credentials: {
                         username: formValue.username ?? '',
                         password: formValue.password ?? '',
                     },
                 }
             );
+            if (controller.signal.aborted || this.destroyRef.destroyed) return;
 
             let portalUrl: string;
             let isFullStalkerPortal: boolean;

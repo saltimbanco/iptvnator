@@ -34,6 +34,7 @@ export const SETTINGS_CONTROL_SECTIONS: Readonly<Record<string, string>> = {
     vlcPlayerPath: 'playback',
     vlcPlayerArguments: 'playback',
     vlcReuseInstance: 'playback',
+    epgEnabled: 'epg',
     epgUrl: 'epg',
     epgViewMode: 'epg',
     epgOffsetMinutes: 'epg',
@@ -43,6 +44,7 @@ export const SETTINGS_CONTROL_SECTIONS: Readonly<Record<string, string>> = {
     remoteControl: 'remote-control',
     remoteControlPort: 'remote-control',
     tmdb: 'tmdb',
+    ageRatingCountry: 'tmdb',
     m3uVodDetails: 'tmdb',
     updateChannel: 'about',
 };

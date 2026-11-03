@@ -25,6 +25,8 @@ import {
 import { XtreamUrlService } from '../services/xtream-url.service';
 import { XtreamXmltvFallbackService } from '../services/xtream-xmltv-fallback.service';
 import { XtreamStore } from './xtream.store';
+import * as tmdbHelpers from './xtream-tmdb-enrichment';
+import * as detailsHelpers from './xtream-details-request';
 
 const PLAYLIST: XtreamPlaylistData = {
     id: 'playlist-b',
@@ -121,6 +123,95 @@ function configureStore(
 
 describe('XtreamStore VOD details recovery', () => {
     afterEach(() => TestBed.resetTestingModule());
+
+    it.each(['cancel', 'reset', 'playlist', 'newer'] as const)(
+        'drops the provider result when %s takes ownership while detail helpers load',
+        async (change) => {
+            const info = createDeferred<{ info: [] }>();
+            const resolveDetails = jest.spyOn(
+                detailsHelpers,
+                'resolveXtreamVodDetailsSelection'
+            );
+            const api = {
+                getVodInfo: jest.fn((_credentials: unknown, id: string) =>
+                    id === '42'
+                        ? info.promise
+                        : Promise.resolve({
+                              info: [],
+                              stream_id: 99,
+                              container_extension: 'mp4',
+                          })
+                ),
+                getVodStream: jest.fn().mockResolvedValue(null),
+            };
+            const store = configureStore(api);
+            try {
+                store.fetchVodDetailsWithMetadata({
+                    categoryId: 7,
+                    vodId: '42',
+                });
+                info.resolve({ info: [] });
+                // Run the provider-response callback, leaving its dynamic import
+                // continuation pending before applying the ownership change.
+                await Promise.resolve();
+                expect(resolveDetails).not.toHaveBeenCalled();
+                if (change === 'cancel') store.cancelDetailsRequest();
+                else if (change === 'reset') store.resetStore();
+                else if (change === 'playlist') {
+                    store.setCurrentPlaylist({
+                        ...PLAYLIST,
+                        id: 'synthetic-next-source',
+                    });
+                    store.setIsLoadingDetails(false);
+                } else
+                    store.fetchVodDetailsWithMetadata({
+                        categoryId: 9,
+                        vodId: '99',
+                    });
+                await waitForCondition(() => !store.isLoadingDetails());
+                await new Promise((resolve) => setTimeout(resolve, 0));
+                expect(api.getVodStream).not.toHaveBeenCalled();
+                expect(store.detailsError()).toBeNull();
+                if (change === 'newer') {
+                    expect(store.selectedItem()?.stream_id).toBe(99);
+                    expect(resolveDetails).toHaveBeenCalledTimes(1);
+                } else {
+                    expect(store.selectedItem()).toBeNull();
+                    expect(resolveDetails).not.toHaveBeenCalled();
+                }
+            } finally {
+                resolveDetails.mockRestore();
+            }
+        }
+    );
+
+    it('keeps provider details usable when optional TMDB enrichment rejects', async () => {
+        const warn = jest
+            .spyOn(console, 'warn')
+            .mockImplementation(() => undefined);
+        const failure = Promise.reject(
+            new Error('optional helper unavailable')
+        );
+        void failure.catch(() => undefined);
+        const enrich = jest
+            .spyOn(tmdbHelpers, 'enrichVodSelectionWithTmdb')
+            .mockReturnValueOnce(failure);
+        const store = configureStore({
+            getVodInfo: jest.fn().mockResolvedValue({ info: [] }),
+            getVodStream: jest.fn().mockResolvedValue(null),
+        });
+        store.fetchVodDetailsWithMetadata({ categoryId: 7, vodId: '42' });
+        await waitForCondition(() => !store.isLoadingDetails());
+        expect(store.selectedItem()?.stream_id).toBe(42);
+        expect(store.detailsError()).toBeNull();
+        expect(warn).toHaveBeenCalledWith(
+            '[XtreamStore]',
+            'TMDB unavailable',
+            expect.anything()
+        );
+        enrich.mockRestore();
+        warn.mockRestore();
+    });
 
     it('publishes sparse details before upgrading them from the catalog', async () => {
         const catalogItem = createDeferred<XtreamVodStream | null>();

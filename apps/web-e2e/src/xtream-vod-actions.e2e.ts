@@ -16,7 +16,7 @@ for (const mode of ['catalog', 'missing', 'direct'] as const) {
         request,
     }) => {
         test.setTimeout(90_000);
-        await request.post(`${MOCK_SERVER}/reset`);
+        await request.post(`${MOCK_SERVER}/reset?username=minimal&password=minimal`);
         const catalogResponse = await request.get(
             `${MOCK_SERVER}/player_api.php?username=minimal&password=minimal&action=get_vod_streams`
         );
@@ -31,6 +31,17 @@ for (const mode of ['catalog', 'missing', 'direct'] as const) {
             route.fulfill({
                 contentType: 'application/javascript',
                 body: 'window.__IPTVNATOR_CONFIG__ = { BACKEND_URL: "http://localhost:3000" };',
+            })
+        );
+        // This fixture provides a standalone proxy, not a shared source server.
+        await page.route('http://localhost:3000/v1/instance', (route) =>
+            route.fulfill({
+                json: {
+                    service: 'iptvnator',
+                    apiVersion: 1,
+                    storage: 'none',
+                    capabilities: [],
+                },
             })
         );
         await page.goto('/');

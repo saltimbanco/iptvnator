@@ -125,6 +125,15 @@ with `diagnostics: false`); `isolatedModules`-incompatible syntax such as a
 type re-export without `export type` still fails at load time, and spec type
 errors are caught by `typecheck:spec` (see Unit And Type Checks).
 
+The activity SQLite and real Chromium contracts return their actual runtime
+counters through `@iptvnator/shared/testing/runtime-coverage`. Esbuild instruments
+selected original TypeScript files before bundling; paths and locations remain
+source-based. SQLite writes counters on subprocess exit. Browser tests capture
+all pages before reload/close and merge their counters before writing the report.
+The parent merges those reports into Jest without replacing objects cached by
+existing instrumentation. Missing reports fail the test; assertion failures still
+propagate. The helper never creates synthetic hits or changes coverage thresholds.
+
 Some `electron-backend` and `database` specs run SQLite code in the Electron
 binary under `ELECTRON_RUN_AS_NODE`, resolving it with `require('electron')`.
 pnpm does not run Electron's postinstall (`electron` is deliberately absent from
@@ -201,6 +210,40 @@ The merged report is written to `coverage/merged/` as HTML, LCOV, Cobertura,
 and JSON summary output. CI uploads the merged Tier A report to Codecov with the
 `unit` flag and keeps the HTML report as a GitHub artifact.
 
+Each Tier A Jest run also writes `coverage/<projectRoot>/junit.xml` through
+`jest-junit`, with file paths as test class names for Codecov Test Analytics.
+The report lives inside the test target's coverage output so Nx cache restores
+include it, and concurrent projects cannot overwrite one another's results.
+CI uploads available JUnit reports with `codecov-action@v7` and
+`report_type: test_results`, including after test failures, and keeps them in
+the `unit-coverage` artifact. Cancelled runs and runs without reports skip the
+test-results upload. Upload errors are non-blocking for this analytics step;
+test failures and the existing coverage upload remain blocking. Analytics
+covers executed Tier A tests only: projects skipped after the first failure
+and out-of-scope suites do not contribute results.
+
+Passing the local coverage health checks does not guarantee that Codecov's
+`patch` check passes: it separately evaluates changed code, including partially
+covered branches, against the target reported for the current PR head. Inspect
+the affected files in the coverage report and add scenario coverage for missing
+paths before pushing; the overall project percentage alone is insufficient.
+
+Codecov uploads require the repository upload token in the GitHub Actions
+repository secret `CODECOV_TOKEN`. The workflow passes that secret to the
+uploader and fails on upload errors; it only uploads after the complete Tier A
+coverage suite and health checks succeed. The artifact upload still runs on
+failure to preserve diagnostic reports. Fork pull requests use Codecov's
+tokenless fork uploads without access to the repository secret. Dependabot
+pull requests also lack Actions secrets, so their uploads use a
+`dependabot:`-prefixed Codecov branch for tokenless authentication.
+
+Keep Codecov's default branch set to `master`. The README's Shields badge also
+selects `master` explicitly in its URL path (`/iptvnator/master`); a
+`?branch=master` query parameter does not select a branch for that badge.
+If coverage appears stale, compare the Codecov commit with the GitHub run and
+check the upload log for authentication errors. Fix the secret rather than
+changing source exclusions or coverage ratchets to correct a reporting problem.
+
 ## E2E
 
 | Area                  | Command                                         |
@@ -208,6 +251,10 @@ and JSON summary output. CI uploads the merged Tier A report to Codecov with the
 | Web app browser flows | `pnpm nx run web-e2e:e2e -- --project=chromium` |
 | Electron flows        | `pnpm nx run electron-backend-e2e:e2e`          |
 | VOD multi-source      | `pnpm nx run electron-backend-e2e:e2e-ci--src/vod-multi-source.e2e.ts` |
+
+The Web E2E CI job runs Chromium with `--workers=2`; retry and timeout
+settings remain defined by the Playwright configuration. This override applies
+only to the Web E2E workflow step.
 
 Use atomized E2E targets when available, for example
 `pnpm nx run web-e2e:e2e-ci--src/xtream.e2e.ts`.
@@ -258,6 +305,18 @@ directory and runs the summary per OS with `--input=<directory>` and
 `results.json` beneath it and fails when a shard is missing or duplicated, so
 the summary never reports a partial run as complete. Tests for that merge live
 in `tools/coverage/e2e-shard-reports.test.mjs` (`pnpm run coverage:tools:test`).
+
+The shared Electron launcher waits for Playwright's first window and selects a
+non-DevTools URL, including a later renderer when DevTools appears first.
+It then waits for the app root, visible rail, fonts and finite rail entrance
+animations, without a fixed startup sleep. Visibility comes first because
+source inventory loading can hide the workspace. `electron-app-readiness.e2e.ts`
+covers this delayed startup gate and animation completion. A visible startup
+failure alert is also ready for tests: failed migration/recovery scenarios need
+the Electron bridge while the workspace stays hidden. Window-selection and
+process-lifecycle regression tests run once per OS before the E2E suite.
+Every test still owns its temporary profile, and restarts still confirm the
+previous process exited before relaunching.
 
 For local investigation only, Chromium browser V8 coverage can be explored with:
 

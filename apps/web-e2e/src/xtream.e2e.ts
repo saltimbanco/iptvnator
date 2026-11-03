@@ -1,5 +1,6 @@
 import type { APIRequestContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
+import { configureMockProviderBackend } from './provider-target-route';
 import {
     closeSeriesMenu,
     pressTab,
@@ -48,6 +49,9 @@ import {
 const EPG_USERNAME = 'epg';
 const EPG_PASSWORD = 'epg';
 
+// Keep provider-target and proxy requests under the fixture's page.route mocks.
+test.use({ serviceWorkers: 'block' });
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -75,6 +79,15 @@ async function openPlaylistDetailsDialog(page: Page, title: string) {
 
     const dialog = page.locator('mat-dialog-container');
     await expect(dialog).toBeVisible();
+    // A visible dialog can precede reactive-form setup/hydration. Filling
+    // its first input earlier lets the initial writeValue replace the edit.
+    await expect(dialog.locator('fieldset')).toHaveAttribute(
+        'aria-busy',
+        'false'
+    );
+    await expect(dialog.locator('input[formcontrolname="title"]')).toHaveValue(
+        title
+    );
     return dialog;
 }
 
@@ -83,7 +96,9 @@ async function openPlaylistDetailsDialog(page: Page, title: string) {
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ page, request }) => {
-    await request.post(`${MOCK_SERVER}/reset`);
+    await request.post(`${MOCK_SERVER}/reset?username=user1&password=pass1`);
+
+    await configureMockProviderBackend(page);
 
     // Playwright creates a fresh browser context per test, so extra
     // IndexedDB cleanup here only risks racing with app-managed DB handles.
@@ -370,7 +385,7 @@ test('@xtream reset — data regenerates identically after reset', async ({
     const url = `${MOCK_SERVER}/player_api.php?username=${DEFAULT_USERNAME}&password=${DEFAULT_PASSWORD}&action=get_live_categories`;
 
     const before = await (await request.get(url)).json();
-    await request.post(`${MOCK_SERVER}/reset`);
+    await request.post(`${MOCK_SERVER}/reset?username=user1&password=pass1`);
     const after = await (await request.get(url)).json();
 
     // Data is deterministic: same after reset
@@ -549,6 +564,9 @@ test('@xtream playlist details edit is retained in the PWA browser context', asy
     await setInputValue(
         dialog.locator('input[formcontrolname="password"]'),
         'minimal'
+    );
+    await expect(dialog.locator('input[formcontrolname="title"]')).toHaveValue(
+        'Edited PWA Xtream Portal'
     );
     await dialog
         .locator('mat-dialog-actions')
@@ -1028,6 +1046,7 @@ type XtreamRawEpgListing = {
 test('@xtream posters-only wall — hides VOD titles behind a hover caption after Save', async ({
     page,
 }) => {
+    await expect(page).toHaveURL(/\/workspace\/dashboard$/);
     await addXtreamPortal(page);
     await page.locator('.context-panel .category-item').first().click();
 
@@ -1070,6 +1089,10 @@ test('@xtream posters-only wall — hides VOD titles behind a hover caption afte
 async function getEpgFixtureStream(
     request: APIRequestContext
 ): Promise<XtreamLiveStream> {
+    // The cached "current" programme expires during a long full-suite run.
+    await request.post(
+        `${MOCK_SERVER}/reset?username=${EPG_USERNAME}&password=${EPG_PASSWORD}`
+    );
     const categories = (await (
         await request.get(
             `${MOCK_SERVER}/player_api.php?username=${EPG_USERNAME}&password=${EPG_PASSWORD}&action=get_live_categories`
@@ -1192,17 +1215,19 @@ for (const theme of ['light', 'dark']) {
         ).toBeChecked();
         await expect(row).toBeVisible();
 
-        // Phone width: the title keeps readable room and the actions move
-        // under the text instead of squeezing it.
+        // Phone width: the text column keeps readable room and the actions
+        // move below it. A short title's intrinsic width is not that room.
         await page.setViewportSize({ width: 360, height: 740 });
         await row.hover();
-        const narrowTitle = await title.boundingBox();
+        const narrowText = await row
+            .locator('.episode-item__text')
+            .boundingBox();
         const narrowActions = await row
             .locator('.episode-item__actions')
             .boundingBox();
-        expect(narrowTitle?.width ?? 0).toBeGreaterThan(120);
+        expect(narrowText?.width ?? 0).toBeGreaterThan(120);
         expect(narrowActions?.y ?? 0).toBeGreaterThanOrEqual(
-            (narrowTitle?.y ?? 0) + (narrowTitle?.height ?? 0)
+            (narrowText?.y ?? 0) + (narrowText?.height ?? 0)
         );
         // A grid card at that width keeps its text under the artwork.
         await page

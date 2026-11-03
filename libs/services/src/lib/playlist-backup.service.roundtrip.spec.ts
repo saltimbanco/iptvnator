@@ -184,6 +184,74 @@ describe('PlaylistBackupService export → import round-trip', () => {
 
     // The browser build applies an import at once (see the PWA Xtream spec),
     // so only the desktop leaves one pending while its catalog downloads.
+    it.each<{ selection: NonNullable<Playlist['xtreamContentTypes']> }>([
+        { selection: [] },
+        { selection: ['live'] },
+        { selection: ['movie', 'series'] },
+    ])(
+        'round-trips desktop content selection %p, including no catalogs',
+        async ({ selection }) => {
+            const state = seedState();
+            state.playlists.find(
+                (playlist) => playlist._id === 'xtream-1'
+            )!.xtreamContentTypes = [...selection];
+            const service = createPlaylistBackupService(
+                createStatefulBackupCollaborators(state)
+            );
+            const backup = await service.exportBackup();
+            expect(
+                (
+                    backup.manifest.playlists.find(
+                        (entry) => entry.portalType === 'xtream'
+                    ) as XtreamPlaylistBackupEntry
+                ).xtreamContentTypes
+            ).toEqual(selection);
+            state.playlists.find(
+                (playlist) => playlist._id === 'xtream-1'
+            )!.xtreamContentTypes = undefined;
+            expect((await service.importBackup(backup.json)).failed).toBe(0);
+            expect(
+                state.playlists.find((playlist) => playlist._id === 'xtream-1')
+                    ?.xtreamContentTypes
+            ).toEqual(selection);
+        }
+    );
+
+    it('exports current playback positions during cache-only recovery without exporting its internal flag', async () => {
+        const state = seedState();
+        const collaborators = createStatefulBackupCollaborators(state);
+        collaborators.pendingRestoreService.set('xtream-1', {
+            hiddenCategories: [],
+            favorites: [],
+            recentlyViewed: [],
+            playbackPositions: [...state.playbackPositions],
+            preservePlaybackPositions: true,
+        });
+        state.playbackPositions = [
+            { contentXtreamId: 501, contentType: 'vod', positionSeconds: 222 },
+            {
+                contentXtreamId: 777,
+                contentType: 'episode',
+                positionSeconds: 31,
+            },
+        ];
+        const service = createPlaylistBackupService(collaborators);
+        const exported = await service.exportBackup();
+        const userState = xtreamEntry(exported.manifest).userState;
+        expect(userState.playbackPositions).toEqual(state.playbackPositions);
+        expect(userState).not.toHaveProperty('preservePlaybackPositions');
+        const positions = [...state.playbackPositions];
+        const imported = JSON.parse(exported.json) as PlaylistBackupManifestV1;
+        Object.assign(xtreamEntry(imported).userState, {
+            preservePlaybackPositions: true,
+        });
+        state.playbackPositions = [];
+        expect(
+            (await service.importBackup(JSON.stringify(imported))).failed
+        ).toBe(0);
+        expect(state.playbackPositions).toEqual(positions);
+    });
+
     it('preserves a fresh pending import on re-export', async () => {
         const state = seedState();
         state.xtreamFavorites.push({
@@ -211,10 +279,17 @@ describe('PlaylistBackupService export → import round-trip', () => {
         expect(snapshot).not.toBeNull();
         // Durable favorites remain readable independently of the catalog;
         // other pending state does not require a completed import.
+        const readPositions =
+            collaborators.playbackPositionService
+                .getAllPlaybackPositionsOrThrow;
         jest.spyOn(
             collaborators.playbackPositionService,
             'getAllPlaybackPositionsOrThrow'
-        ).mockRejectedValue(new Error('Position storage unavailable'));
+        ).mockImplementation((id) =>
+            id === 'xtream-1'
+                ? Promise.reject(new Error('Position storage unavailable'))
+                : readPositions(id)
+        );
         const exported = await service.exportBackup();
         expect(xtreamEntry(exported.manifest).userState).toEqual(originalState);
         expect(
@@ -427,7 +502,7 @@ describe('PlaylistBackupService export → import round-trip', () => {
             );
 
             const failed = await service.importBackup(original.json);
-            expect(failed.failed).toBe(1);
+            expect(failed.failed).toBe(2);
             expect(visibility).not.toHaveBeenCalled();
             expect(collections).not.toHaveBeenCalled();
             expect(favorites).not.toHaveBeenCalled();
@@ -444,7 +519,7 @@ describe('PlaylistBackupService export → import round-trip', () => {
                 'completed';
             const retried = await service.importBackup(original.json);
             expect(retried.failed).toBe(0);
-            expect(positions).toHaveBeenCalledTimes(1);
+            expect(positions).toHaveBeenCalledTimes(2);
             expect(
                 collaborators.pendingRestoreService.getOrThrow('xtream-1')
             ).toBeNull();
@@ -475,7 +550,7 @@ describe('PlaylistBackupService export → import round-trip', () => {
             'restoreXtreamFavoriteSnapshots'
         );
         const result = await service.importBackup(archive.json);
-        expect(result.failed).toBe(1);
+        expect(result.failed).toBe(2);
         expect(favorites).not.toHaveBeenCalled();
         expect(
             collaborators.pendingRestoreService.getOrThrow('xtream-1')
@@ -501,7 +576,7 @@ describe('PlaylistBackupService export → import round-trip', () => {
         ).toEqual(state.playbackPositions);
         const retried = await service.importBackup(original.json);
         expect(retried.failed).toBe(0);
-        expect(replace).toHaveBeenCalledTimes(2);
+        expect(replace).toHaveBeenCalledTimes(4);
         expect(
             collaborators.pendingRestoreService.getOrThrow('xtream-1')
         ).toBeNull();

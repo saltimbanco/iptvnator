@@ -17,17 +17,12 @@ for the default Docker deployment.
 The Docker image runs the browser PWA, not the Electron desktop application.
 That means:
 
-- Xtream and Stalker sources show their provider's programme guide: the
-  current show under each live channel and the guide beside the player.
-  Settings → EPG offers the guide layout and a time offset. XMLTV guides (M3U
-  EPG sources, the programme guide and EPG channel mapping) are not available
-  in the self-hosted PWA yet.
-- With server storage (the image default) playlists, M3U favorites and
-  history, and Xtream favorites, recently viewed items and playback positions
-  live on the server, and every browser that opens the instance shares them.
-  Settings, parental locks, the global favorites order and UI preferences stay
-  per browser. With `IPTVNATOR_STORAGE=none` each browser keeps its own data
-  in IndexedDB and localStorage.
+- EPG/XMLTV panels and multi-EPG views are not available in the self-hosted PWA.
+- With server storage enabled, source definitions are shared by connected PWA
+  and Electron clients. Each browser retains a local IndexedDB projection and
+  its own Xtream user data. Progress and watched marks synchronize only after
+  enabling **Settings → Server → Viewing activity synchronization** on each
+  client. Everyone with server access shares that activity.
 - Docker cannot launch local desktop players or Embedded MPV. If a stream does
   not play inline in the browser, use the in-app copy URL action and open the
   stream manually in an external player such as MPV, VLC, or IINA.
@@ -107,7 +102,7 @@ safe local defaults shown below.
 | `NODE_EXTRA_CA_CERTS`                    | unset                   | Optional Node.js CA bundle path for providers using private certificate authorities. Mount the CA file into the container and set this path. |
 | `IPTVNATOR_STORAGE`                      | `server` in the image   | `server` opens the server storage database under `IPTVNATOR_DATA_DIR` and its `/api/v1` routes; `none` keeps the backend stateless.          |
 | `IPTVNATOR_DATA_DIR`                     | `/data` in the image    | Data root; the database is `<root>/databases/iptvnator.db`. Mount a volume here.                                                             |
-| `IPTVNATOR_ACCESS_TOKEN`                 | unset                   | When set, every route except `/`, `/health`, `/config.js` and `/v1/instance` requires `Authorization: Bearer <token>`, proxy routes included. Each browser asks for the token once and keeps it. Needs `IPTVNATOR_STORAGE=server`; the backend refuses to start otherwise. |
+| `IPTVNATOR_ACCESS_TOKEN`                 | unset                   | Optional shared access token. Enter it in the client connection UI; all non-public API and provider proxy routes require it. |
 | `IPTVNATOR_MAX_DOCUMENT_MB`              | `64`                    | Largest playlist document the backend accepts. Keep the nginx `client_max_body_size` in step.                                                |
 | `IPTVNATOR_BACKEND_START_TIMEOUT`        | `300`                   | Seconds the entrypoint waits for the backend's `/health` before giving up. Database migrations run before the backend listens.              |
 
@@ -143,24 +138,96 @@ the `restart: unless-stopped` policy.
 
 The image opens a server storage database on the `/data` volume
 (`IPTVNATOR_STORAGE=server`, `IPTVNATOR_DATA_DIR=/data`) and serves its API
-under `/api/v1`. The PWA finds it on start and keeps playlists, favorites,
-history and playback positions there, so every phone, TV and computer that
-opens the instance sees the same library. Settings → Server shows the
-connection, the database size and path, and exports a backup.
+under `/api/v1`. Source definitions are shared between devices connected to
+that instance. Open the NAS web address on phones/tablets, or use Settings →
+Data → Server in Electron to enter the same app address. Names, connections
+and uploaded M3U text synchronize; favorites, history, playback positions and
+EPG remain local. Visible clients refresh within a 15-second polling interval.
 
-The first browser that opens an instance with an empty database offers to
-move the playlists it already kept, with their Xtream favorites and
-progress; nothing is deleted from the browser. Later browsers can merge
-theirs from Settings → Server.
+Settings → Server can preview and import the device's original local sources.
+Matching connections are deduplicated; the original library is retained.
+Disconnecting returns to that library without removing sources from NAS.
+Connection changes restart/reload the client. A previously synchronized client
+keeps its cached sources while offline; shared source edits require the server.
 
-Provider credentials are stored unencrypted in that database, as the
-desktop app does. Do not expose an instance with server storage to the
-internet without authentication. Set `IPTVNATOR_ACCESS_TOKEN` to require a
-token: each browser then asks for it once on a sign-in page. Back up the
-volume like any database: stop the container, then copy the `databases`
-folder. Files copied while the backend runs can be out of step with the
-`-wal` journal; Settings → Server → Export backup is the way to take a copy
-without stopping the container.
+For Synology, mount a persistent folder or named volume at `/data`, retain its
+write permissions, and expose the app port through your existing NAS network or
+reverse proxy. Use a container-capable NAS and an image matching its CPU
+architecture. Set `CLIENT_URL` to the actual browser origin. Keep an HTTPS
+reverse proxy and a trusted certificate for browser installation/secure-context
+features; plain HTTP LAN access is not equivalent to an installable PWA.
+Manually entered client addresses accept the app's reverse-proxy subpath;
+`https://nas.example/iptvnator` selects `/iptvnator/api`.
+
+Provider credentials will be stored unencrypted in that database, as the
+desktop app does. Protect externally accessible instances with the shared token
+or reverse-proxy authentication. Browser tokens last for the tab; desktop uses
+OS-protected storage where available and otherwise asks again after restart.
+Back up the volume like any database: stop the container, or copy
+`databases/iptvnator.db` together with its `-wal` file.
+
+## Connect your clients
+
+The **Server** page connects to your own IPTVnator installation. It does not
+create a server or connect directly to your IPTV provider. Run the Docker
+container once on your NAS or home server, then connect your clients to it.
+
+1. Start the container with the [Compose instructions above](#run-with-docker-compose).
+   Keep `IPTVNATOR_STORAGE=server` and a persistent volume mounted at `/data`.
+2. Find the address that opens IPTVnator from another device, for example
+   `http://192.168.1.20:4333`. Replace the example IP with your server's LAN
+   address. `localhost` means the device you are currently using, so it is not
+   the NAS address when entered on another computer or phone.
+3. If you set `IPTVNATOR_ACCESS_TOKEN` in the container's environment, use that
+   exact value as the access token. Otherwise leave the field empty. If someone
+   else runs the server, ask them for its address and token. This is not your
+   IPTV provider's password. Changing the environment requires recreating the
+   container with `docker compose -f docker/docker-compose.yml up -d`.
+4. In Electron, open **Settings → Server**, enter the app address and token,
+   then choose **Connect**. Use the address from step 2, not the container's
+   internal backend port, `/api/v1`, a provider login URL or an address with
+   query parameters. The client adds `/api` automatically; an existing `/api`
+   suffix is also accepted. Connection changes restart/reload the application.
+5. On a phone or another browser, open the same server address. The bundled
+   PWA discovers its server automatically. If it asks for a token, open
+   **Settings → Server** and enter the same token there. A standalone PWA can
+   also connect manually through that page.
+6. After connecting, the page shows **Connected** and the last synchronization
+   time. To copy the device's original sources, choose **Import local sources**,
+   review the preview and confirm. Disconnecting returns to the retained local
+   library; it does not delete the server's sources.
+
+Connecting synchronizes source definitions: names, connection details and
+uploaded M3U text. Enable **Viewing activity synchronization** separately on each
+client to share Xtream and Stalker progress and watched marks within the same
+source. Older local activity uploads only through the separate import preview;
+enabling synchronization sends new actions and downloads server activity.
+Favorites, recently viewed items, EPG and device settings remain local. One
+server has one shared source library and viewing activity, without separate
+user accounts. Browser tokens last for the tab; desktop
+uses protected storage when available. Keep the same token available for a
+later browser session.
+
+### If connecting fails
+
+- **Invalid address:** enter a full `http://` or `https://` app address. Do not
+  put credentials, query parameters or `#` fragments in the address field.
+- **Server unavailable:** open the same address in a browser on this device.
+  Check that the container is running, the host port is reachable, and VPN or
+  firewall rules allow the connection. Check the container logs if it does not
+  start. The form keeps your address and token so you can retry.
+- **Access token rejected:** copy `IPTVNATOR_ACCESS_TOKEN` from the running
+  container's configuration or ask its owner. A token-protected server requires
+  it even though servers without a token can leave this field empty.
+- **Incompatible server:** use a current IPTVnator image with
+  `IPTVNATOR_STORAGE=server`. The old standalone backend and an IPTV provider's
+  portal are not source-sync servers.
+- **Works in Electron but not in a browser:** use HTTPS for an HTTPS PWA's
+  server connection; browsers block mixed-content HTTP requests. Set
+  `CLIENT_URL` to the actual PWA origin for CORS. Opening the bundled PWA at the
+  server's own address is the simplest browser setup. The
+  [runtime configuration reference](#runtime-configuration) covers origins and
+  trusted certificates.
 
 ## IPv6, VPNs, And Connection Fallback
 

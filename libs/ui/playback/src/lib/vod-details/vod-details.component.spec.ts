@@ -9,6 +9,7 @@ import {
     TranslateService,
 } from '@ngx-translate/core';
 import {
+    AgeRatingChipComponent,
     CastCrewRowComponent,
     DetailActionButtonComponent,
     DetailActionsTemplateDirective,
@@ -307,7 +308,11 @@ describe('VodDetailsComponent offline playback', () => {
                 },
                 {
                     provide: SettingsStore,
-                    useValue: { player: signal(VideoPlayer.Html5Player) },
+                    useValue: {
+                        player: signal(VideoPlayer.Html5Player),
+                        language: signal('en'),
+                        ageRatingCountry: signal('auto'),
+                    },
                 },
                 {
                     provide: Router,
@@ -322,6 +327,7 @@ describe('VodDetailsComponent offline playback', () => {
                 // player swapped for the stub above.
                 set: {
                     imports: [
+                        AgeRatingChipComponent,
                         CastCrewRowComponent,
                         DetailActionButtonComponent,
                         DetailActionsTemplateDirective,
@@ -376,6 +382,37 @@ describe('VodDetailsComponent offline playback', () => {
 
     afterEach(() => {
         fixture?.destroy();
+    });
+
+    it.each(['0042', 'movie-42', ' 0042 '])(
+        'preserves the provider string ID %s in correction identities',
+        async (id) => {
+            await render({
+                item: {
+                    ...STALKER_VOD,
+                    data: { ...STALKER_VOD.data, id },
+                },
+            });
+            expect(fixture.componentInstance.tmdbMatch()?.identity.itemId).toBe(
+                id.trim()
+            );
+        }
+    );
+
+    it('scopes embedded Stalker series corrections as TV even before enrichment', async () => {
+        await render();
+        fixture.componentRef.setInput('item', {
+            ...STALKER_VOD,
+            data: { ...STALKER_VOD.data, series: [1, 2] },
+        });
+        fixture.detectChanges();
+        expect(fixture.componentInstance.tmdbMatch()?.identity).toEqual({
+            provider: 'stalker',
+            catalog: 'vod',
+            playlistId: 'stalker-1',
+            mediaType: 'tv',
+            itemId: '42',
+        });
     });
 
     it('renders no provider stand-ins in the hero or the About block', async () => {

@@ -7,7 +7,9 @@ import {
     withState,
 } from '@ngrx/signals';
 import {
+    normalizeXtreamContentTypes,
     PlaylistImportScope,
+    XtreamContentType,
     XtreamCategory,
     XtreamLiveStream,
     XtreamSerieItem,
@@ -28,6 +30,7 @@ import {
     resetHostConnectivityGuard,
     SettingsStore,
     SourceActivityService,
+    RuntimeCapabilitiesService,
     XtreamPendingRestoreService,
     XtreamImportStatus,
 } from '@iptvnator/services';
@@ -164,7 +167,11 @@ export function withContent() {
     const logger = createLogger('withContent');
     type ParentPortalStoreLike = {
         currentPlaylist?: () =>
-            (XtreamCredentials & { id?: string } & PlaylistImportScope) | null;
+            | (XtreamCredentials & {
+                  id?: string;
+                  xtreamContentTypes?: XtreamContentType[];
+              } & PlaylistImportScope)
+            | null;
         playlistId?: () => string | null;
         portalStatus?: () => PortalStatusType;
         checkPortalStatus?: () => Promise<PortalStatusType>;
@@ -225,6 +232,13 @@ export function withContent() {
 
         withMethods((store) => {
             const dataSource = inject(XTREAM_DATA_SOURCE);
+            const runtime = inject(RuntimeCapabilitiesService);
+            const usesSqlite = runtime.supportsXtreamSqliteDataSource;
+            const isEnabled = (type: ContentType): boolean =>
+                !usesSqlite ||
+                normalizeXtreamContentTypes(
+                    getPortalStore().currentPlaylist?.()?.xtreamContentTypes
+                ).includes(type === 'vod' ? 'movie' : type);
             /**
              * A filtered reload was requested (parental lock changed) while
              * the initial hydration was still publishing rows it read under
@@ -308,11 +322,11 @@ export function withContent() {
                     case 'live':
                     case 'vod':
                     case 'series':
-                        return [scope];
+                        return isEnabled(scope) ? [scope] : [];
                     case 'search':
                     case 'recently-added':
                     default:
-                        return importTypes;
+                        return importTypes.filter(isEnabled);
                 }
             };
 
@@ -350,8 +364,8 @@ export function withContent() {
                     }
 
                     return {
-                        isLoadingCategories: true,
-                        isLoadingContent: true,
+                        isLoadingCategories: types.length > 0,
+                        isLoadingContent: types.length > 0,
                         isImporting: false,
                         isContentInitialized: options?.preserveInitialized
                             ? state.isContentInitialized
@@ -411,14 +425,18 @@ export function withContent() {
              * The global "disable VOD" setting wins over every scope.
              */
             const getActiveImportTypes = (): ContentType[] => {
-                if (settingsStore.disableVod?.() === true) {
-                    return importTypes.filter((type) => type === 'live');
-                }
                 const playlist = getPortalStore().currentPlaylist?.();
-                return importTypes.filter((type) =>
+                const inImportScope = (type: ContentType): boolean =>
                     type === 'live'
                         ? shouldImportLive(playlist)
-                        : shouldImportVod(playlist)
+                        : shouldImportVod(playlist);
+                if (settingsStore.disableVod?.() === true) {
+                    return importTypes.filter(
+                        (type) => type === 'live' && isEnabled(type)
+                    );
+                }
+                return importTypes.filter(
+                    (type) => inImportScope(type) && isEnabled(type)
                 );
             };
 
@@ -494,6 +512,8 @@ export function withContent() {
                 }
 
                 const types = getTypesForCacheScope(scope);
+                if (types.length === 0)
+                    return importTypes.every((type) => !isEnabled(type));
 
                 if (
                     scope === 'search' ||
@@ -900,45 +920,17 @@ export function withContent() {
                 type: ContentType,
                 status: XtreamImportStatus
             ): Promise<void> => {
+                if (!usesSqlite) return;
                 const importType = type === 'vod' ? 'movie' : type;
-                await databaseService.setXtreamImportStatus(
+                const saved = await databaseService.setXtreamImportStatus(
                     playlistId,
                     importType,
                     status
                 );
-            };
-
-            const clearImportCache = async (
-                playlistId: string,
-                type: ContentType
-            ): Promise<void> => {
-                const importType = type === 'vod' ? 'movie' : type;
-                await databaseService.clearXtreamImportCache(
-                    playlistId,
-                    importType
-                );
-            };
-
-            const finalizePendingImportTypes = async (
-                playlistId: string,
-                completedTypes: Set<ContentType>,
-                status: XtreamImportStatus
-            ): Promise<void> => {
-                for (const type of importTypes) {
-                    if (completedTypes.has(type)) {
-                        continue;
-                    }
-
-                    // Only types that performed remote/save work this session
-                    // can hold partial data. A type still pending because it
-                    // was being read from the local cache keeps its healthy
-                    // catalog instead of being cleared into a redownload.
-                    if (!sessionRemoteWorkTypes.has(type)) {
-                        continue;
-                    }
-
-                    await setImportStatus(playlistId, type, status);
-                    await clearImportCache(playlistId, type);
+                if (!saved && status === 'completed') {
+                    throw new Error(
+                        'Could not persist catalog completion status.'
+                    );
                 }
             };
 
@@ -951,7 +943,7 @@ export function withContent() {
                         ...state.contentLoadStateByType,
                     };
 
-                    for (const type of importTypes) {
+                    for (const type of importTypes.filter(isEnabled)) {
                         if (completedTypes.has(type)) {
                             continue;
                         }
@@ -1148,10 +1140,15 @@ export function withContent() {
                     // it published; read them again under the current lock.
                     await runDeferredReload();
                 } catch (error) {
-                    if (store.isImporting()) {
+                    if (store.isImporting() && usesSqlite) {
+                        const { finalizePendingImportTypes } =
+                            await import('./xtream-import-failure');
                         await finalizePendingImportTypes(
+                            databaseService,
                             ctx.playlistId,
+                            importTypes,
                             completedTypes,
+                            sessionRemoteWorkTypes,
                             isDbAbortError(error) ? 'cancelled' : 'failed'
                         );
                     }
@@ -1459,7 +1456,6 @@ export function withContent() {
                         if (!activeTypes.has('series')) {
                             updateContentTypeLoadState('series', 'ready');
                             options?.completedTypes?.add('series');
-                            patchState(store, { isLoadingContent: false });
                         } else {
                             setActiveImportProgress('series');
                             const seriesOperationId =
@@ -1501,6 +1497,7 @@ export function withContent() {
                             );
                             updateContentTypeLoadState('series', 'ready');
                         }
+                        patchState(store, { isLoadingContent: false });
                     } catch (error) {
                         if (!isDbAbortError(error)) {
                             logger.error('Error fetching content', error);

@@ -60,6 +60,19 @@ Do not add broad protocol allow-lists for renderer navigation. If a new
 desktop-only flow needs to open a URL outside IPTVnator, route it through the
 default browser unless the app window is deliberately meant to host that URL.
 
+## Desktop Maintenance Commands
+
+Native application menu commands use the push-only `APP:MENU_ACTION` channel.
+The preload accepts only `settings` and `check-for-updates`, retains the latest
+command until Angular subscribes, and exposes an unsubscribe function. The
+renderer chooses the settings route through Angular's router and retains its
+unsaved-changes guards; the native menu never supplies an arbitrary URL. Menu
+clicks during initial loading wait for the preload, and a command with no live
+window reactivates the application before delivery. The frameless title-bar
+button invokes the payload-free `APP:MENU_OPEN` handler, which resolves the
+live sender window and opens the fixed application menu; renderers cannot
+provide menu entries or commands.
+
 ## Window Back Gestures
 
 `apps/electron-backend/src/app/services/window-back-gestures.ts` forwards the
@@ -221,6 +234,16 @@ end-to-end contract against a mock stream that answers 403 without the portal
 credentials.
 
 ## Main-Process Remote Requests
+
+Source synchronization uses a narrow typed preload surface and a persisted
+server selection. Its main-process adapter builds versioned API paths from
+named operations and permits an explicitly configured LAN server. Requests use
+the validated Axios transport with certificate checks and no redirects, so a
+NAS token cannot be replayed to a redirected provider or other host. Tokens are
+stored through OS-protected `safeStorage`, with a process-only fallback when
+protected storage is unavailable. The persisted connection file contains no
+plaintext token. Desktop source profiles are selected before opening any
+database connection; changing the profile restarts the app.
 
 Renderer-triggered HTTP requests must pass through the URL policy in
 `apps/electron-backend/src/app/events/url-safety.ts`. The policy rejects

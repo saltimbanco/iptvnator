@@ -1,4 +1,5 @@
 import { Location } from '@angular/common';
+import type { TmdbMatchContext } from '@iptvnator/services';
 import {
     Component,
     computed,
@@ -13,6 +14,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
+    AgeRatingChipComponent,
     CastCrewRowComponent,
     DetailActionButtonComponent,
     DetailActionsTemplateDirective,
@@ -92,6 +94,7 @@ import { SerialDetailsDownloadAdapterService } from './serial-details-download-a
     ],
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
+        AgeRatingChipComponent,
         CastCrewRowComponent,
         DetailActionButtonComponent,
         DetailActionsTemplateDirective,
@@ -126,6 +129,21 @@ export class SerialDetailsComponent implements OnDestroy {
         viewChild<SeasonContainerComponent>('seasonContainer');
 
     readonly selectedItem = signal<XtreamSerieDetailsView | null>(null);
+    readonly tmdbMatch = computed<TmdbMatchContext | null>(() => {
+        const item = this.selectedItem();
+        const playlistId = this.currentPlaylistId();
+        if (!item?.series_id || !playlistId) return null;
+        return {
+            identity: {
+                provider: 'xtream',
+                playlistId,
+                mediaType: 'tv',
+                itemId: String(item.series_id),
+            },
+            title: item.info.name,
+            tmdbId: item.info.tmdb_id,
+        };
+    });
     readonly selectedContentType = this.xtreamStore.selectedContentType;
     readonly scrollToCast = scrollToCastCrewRow;
     readonly isFavorite = this.xtreamStore.isFavorite;

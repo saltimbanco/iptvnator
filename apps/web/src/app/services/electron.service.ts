@@ -6,6 +6,7 @@ import { PlaylistActions } from '@iptvnator/m3u-state';
 import { DialogService } from '@iptvnator/ui/components/confirm-dialog';
 import {
     DataService,
+    type PlaylistImportRecovery,
     SettingsStore,
     SourceActivityService,
 } from '@iptvnator/services';
@@ -153,6 +154,34 @@ export class ElectronService extends DataService {
 
     getAppVersion(): string {
         return AppConfig.version;
+    }
+
+    override fetchPlaylistDefinition(
+        url: string,
+        userAgent?: string
+    ): Promise<Playlist> {
+        return window.electron.fetchPlaylistByUrl(url, undefined, {
+            ...this.settingsStore.getTrustOptions(),
+            userAgent,
+        });
+    }
+
+    override playlistImportRecovery(
+        error: unknown,
+        retry: () => void
+    ): PlaylistImportRecovery | null {
+        const securityError = parseSecurityPolicyError(error);
+        if (
+            securityError?.code !==
+                ELECTRON_BRIDGE_SECURITY_ERROR_CODES.InvalidTlsCertificate ||
+            !securityError.host
+        )
+            return null;
+        return {
+            messageKey: 'HOME.URL_UPLOAD.ERROR_INVALID_TLS',
+            actionKey: 'HOME.URL_UPLOAD.TRUST_TLS_HOST',
+            run: () => this.confirmTrustPlaylistHost(securityError.host, retry),
+        };
     }
 
     async sendIpcEvent<T = unknown>(
@@ -360,7 +389,10 @@ export class ElectronService extends DataService {
                                 this.translateService.instant(
                                     'PORTALS.REQUEST_ERRORS.NOT_FOUND'
                                 ),
-                            status: errorInfo?.status ?? 404,
+                            status:
+                                errorInfo?.status ??
+                                this.extractHttpStatusCode(err) ??
+                                '—',
                         }
                     ),
                     this.translateService.instant('CLOSE'),
@@ -443,7 +475,9 @@ export class ElectronService extends DataService {
         }
         // Parse status from error message string (IPC serialization)
         const msg = String((error as { message?: string })?.message ?? error);
-        const match = msg.match(/status code (\d{3})/);
+        const match = msg.match(
+            /(?:status code|HTTP Error|Status:)\s*(\d{3})/i
+        );
         return match ? parseInt(match[1], 10) : null;
     }
 
@@ -464,7 +498,7 @@ export class ElectronService extends DataService {
                     data.title,
                     {
                         ...this.settingsStore.getTrustOptions(),
-                        userAgent: data.userAgent,
+                        userAgent: data.userAgent?.trim() || undefined,
                     }
                 );
             } else if (data.filePath && !data.url) {
@@ -486,6 +520,7 @@ export class ElectronService extends DataService {
                         {
                             ...playlistObject,
                             _id: data.id,
+                            userAgent: data.userAgent?.trim() || undefined,
                         },
                         {
                             importLive: data.importLive,

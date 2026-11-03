@@ -48,8 +48,12 @@ export class PlaylistRefreshService {
                 error.name = 'AbortError';
                 throw error;
             }
+            const refreshed = {
+                ...result,
+                userAgent: payload.userAgent?.trim() || undefined,
+            };
             this.healthEvidence?.results.next({
-                playlist: result,
+                playlist: refreshed,
                 result: {
                     state: 'active',
                     reason: 'available',
@@ -59,8 +63,8 @@ export class PlaylistRefreshService {
             // The worker kept the row's scope; drop VOD items while it is
             // disabled globally.
             return this.settingsStore.disableVod?.() === true
-                ? applyImportScopeToPlaylist(result, result, true)
-                : result;
+                ? applyImportScopeToPlaylist(refreshed, refreshed, true)
+                : refreshed;
         } finally {
             unsubscribe?.();
         }

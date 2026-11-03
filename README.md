@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/4gray/iptvnator/releases"><img src="https://img.shields.io/github/release/4gray/iptvnator.svg?style=for-the-badge&logo=github" alt="Release"></a>
   <a href="https://github.com/4gray/iptvnator/releases"><img src="https://img.shields.io/github/v/release/4gray/iptvnator?include_prereleases&label=pre-release&logo=github&style=for-the-badge" /></a>
- <a href="https://github.com/4gray/iptvnator/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/4gray/iptvnator/ci.yml?branch=master&style=for-the-badge&logo=github&label=CI"></a> <a href="https://github.com/4gray/iptvnator/releases"><img src="https://img.shields.io/github/downloads/4gray/iptvnator/total?style=for-the-badge&logo=github" alt="Releases"></a> <a href="https://app.codecov.io/gh/4gray/iptvnator"><img alt="Codecov" src="https://img.shields.io/codecov/c/github/4gray/iptvnator?branch=master&style=for-the-badge&logo=codecov&logoColor=white"></a> <a href="https://t.me/iptvnator"><img src="https://img.shields.io/badge/telegram-iptvnator-blue?logo=telegram&style=for-the-badge" alt="Telegram"></a> <a href="https://bsky.app/profile/iptvnator.bsky.social"><img src="https://img.shields.io/badge/bluesky-iptvnator-darkblue?logo=bluesky&style=for-the-badge" alt="Bluesky"></a>
+ <a href="https://github.com/4gray/iptvnator/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/4gray/iptvnator/ci.yml?branch=master&style=for-the-badge&logo=github&label=CI"></a> <a href="https://github.com/4gray/iptvnator/releases"><img src="https://img.shields.io/github/downloads/4gray/iptvnator/total?style=for-the-badge&logo=github" alt="Releases"></a> <a href="https://app.codecov.io/gh/4gray/iptvnator"><img alt="Codecov" src="https://img.shields.io/codecov/c/github/4gray/iptvnator/master?style=for-the-badge&logo=codecov&logoColor=white"></a> <a href="https://t.me/iptvnator"><img src="https://img.shields.io/badge/telegram-iptvnator-blue?logo=telegram&style=for-the-badge" alt="Telegram"></a> <a href="https://bsky.app/profile/iptvnator.bsky.social"><img src="https://img.shields.io/badge/bluesky-iptvnator-darkblue?logo=bluesky&style=for-the-badge" alt="Bluesky"></a>
 </p>
 
 🌐 **[Website](https://4gray.github.io/iptvnator/)** | <a href="https://t.me/iptvnator">Telegram channel for discussions</a> | <a href="https://ko-fi.com/4gray" target="_blank">Buy me a coffee</a> | <a href="https://github.com/sponsors/4gray">GitHub Sponsors</a>
@@ -136,9 +136,10 @@ The application is available at <http://localhost:4333>. See
 compose file and [`docker/README.md`](./docker/README.md) for environment
 variables, reverse proxy notes, PWA limitations, and build details.
 
-The image keeps playlists, favorites and watch progress on the server, so
-every browser that opens it shares one library. The first browser that opens
-an updated instance offers to move the playlists it already has.
+The image shares source definitions between connected Electron and PWA clients.
+Favorites, history and watch progress remain on each device. Follow the
+[client connection guide](./docker/README.md#connect-your-clients) to find the
+server address, configure an optional access token and import local sources.
 
 The self-hosted image runs the browser PWA rather than the Electron desktop app:
 M3U XMLTV, Embedded MPV, managed MPV/VLC launching, the download manager,
@@ -300,7 +301,7 @@ needed.
 
 Requirements:
 
-- Node.js 22.22.3 or newer within 22.x, or 24.15.0 or newer within 24.x
+- Node.js 24.22.1 (see `.nvmrc`); patched Node 22.23.4 or newer within 22.x is also supported
 - pnpm 10.33.0 (via Corepack)
 
 The repository's `.nvmrc` pins the Node.js version used by CI. With nvm,

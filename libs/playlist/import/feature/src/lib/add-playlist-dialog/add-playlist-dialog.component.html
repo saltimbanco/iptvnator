@@ -1,8 +1,5 @@
 <div class="apd">
-    <app-dialog-shell
-        [heading]="'HOME.URL_UPLOAD.ADD_PLAYLIST' | translate"
-        [subtitle]="'HOME.ADD_PLAYLIST.PICK_METHOD' | translate"
-    >
+    <app-dialog-shell [heading]="'HOME.URL_UPLOAD.ADD_PLAYLIST' | translate">
         <div
             class="apd-method-grid"
             appRadioGroup
@@ -15,8 +12,12 @@
                     type="button"
                     [appRadioOption]="method() === opt.value"
                     class="apd-method"
+                    [disabled]="urlImport.pending()"
                     [class.active]="method() === opt.value"
-                    (click)="method.set(opt.value)"
+                    [attr.aria-describedby]="
+                        method() === opt.value ? 'apd-method-help' : null
+                    "
+                    (click)="selectMethod(opt.value)"
                 >
                     <span class="apd-method__icon" aria-hidden="true">
                         <mat-icon>{{ opt.icon }}</mat-icon>
@@ -24,24 +25,49 @@
                     <span class="apd-method__title">
                         {{ opt.labelKey | translate }}
                     </span>
-                    <span class="apd-method__sub">
-                        {{ opt.subKey | translate }}
-                    </span>
                 </button>
             }
         </div>
+        <p id="apd-method-help" class="apd-method-help">
+            {{ selectedMethod().subKey | translate }}
+        </p>
 
-        <div class="apd-form-area">
+        <div class="apd-form-area" (input)="urlImport.clearError()">
+            @if (urlImport.pending()) {
+                <p role="status">
+                    {{ 'HOME.URL_UPLOAD.FETCHING' | translate }}
+                </p>
+            } @else if (urlImport.errorKey(); as key) {
+                <p #urlFeedback class="apd-import-error" role="alert">
+                    {{ key | translate }}
+                    @if (urlImport.errorCode(); as code) {
+                        {{ ' (' + code + ')' }}
+                    }
+                </p>
+                @if (urlImport.recovery(); as recovery) {
+                    <button
+                        mat-button
+                        type="button"
+                        class="apd-import-recovery"
+                        (click)="recovery.run()"
+                    >
+                        {{ recovery.actionKey | translate }}
+                    </button>
+                }
+            }
             @switch (playlistType()) {
                 @case ('file') {
                     <app-file-upload
+                        [autoImportEpg]="autoImportEpg()"
                         (fileRejected)="rejectFile($event)"
                         (imported)="onFileImported()"
                         (closeDialog)="closeDialog()"
                     />
                 }
                 @case ('url') {
-                    <app-url-upload />
+                    <app-url-upload
+                        (xtreamSelected)="onCandidateSelected($event, true)"
+                    />
                 }
                 @case ('text') {
                     <app-text-import (textAdded)="uploadAsText($event)" />
@@ -50,6 +76,11 @@
                     <app-stalker-portal-import (addClicked)="closeDialog()" />
                 }
                 @case ('xtream') {
+                    @if (canReturnToM3u()) {
+                        <button mat-button type="button" (click)="backToM3u()">
+                            {{ 'HOME.URL_UPLOAD.BACK_TO_M3U' | translate }}
+                        </button>
+                    }
                     <app-xtream-code-import (addClicked)="closeDialog()" />
                 }
                 @case ('auto') {
@@ -63,10 +94,28 @@
                     <app-bulk-import (imported)="closeDialog()" />
                 }
             }
+            @if (isM3uImport() && epgEnabled()) {
+                <div class="apd-epg-option">
+                    <mat-checkbox
+                        [checked]="autoImportEpg()"
+                        (change)="autoImportEpg.set($event.checked)"
+                        [disabled]="
+                            urlImport.pending() || !!fileUpload()?.isImporting()
+                        "
+                        aria-describedby="apd-epg-option-hint"
+                        data-test-id="m3u-import-epg"
+                    >
+                        {{ 'HOME.ADD_PLAYLIST.IMPORT_EPG' | translate }}
+                    </mat-checkbox>
+                    <p id="apd-epg-option-hint">
+                        {{ 'HOME.ADD_PLAYLIST.IMPORT_EPG_HINT' | translate }}
+                    </p>
+                </div>
+            }
         </div>
         <div appDialogFooterStart>
             @if (playlistType() === 'xtream') {
-                <p class="w-full" id="xtream-http-test-notice">
+                <p class="apd-connection-notice" id="xtream-http-test-notice">
                     {{
                         'HOME.XTREAM_PLAYLIST.CONNECTION_TEST.HTTP_PERMISSION'
                             | translate
@@ -91,7 +140,9 @@
                     <button
                         mat-flat-button
                         type="button"
-                        [disabled]="!urlUpload()?.form?.valid"
+                        [disabled]="
+                            urlImport.pending() || !urlUpload()?.form?.valid
+                        "
                         (click)="submitUrlPlaylist()"
                     >
                         {{ 'HOME.URL_UPLOAD.ADD_PLAYLIST' | translate }}

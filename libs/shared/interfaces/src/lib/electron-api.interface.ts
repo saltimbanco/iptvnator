@@ -1,7 +1,12 @@
+export type ElectronBridgeAppMenuAction = 'settings' | 'check-for-updates';
 import type { AppUpdateChannel } from './app-update-channel.util';
 import type { SourceProbeContext, SourceHealthResult } from './source-health';
 import type { PortalRequestFailureEnvelope } from './portal-request-failure.util';
 import type { XtreamConnectionFailure } from './xtream-connection-test';
+import type {
+    XtreamCatalogStateCondition,
+    XtreamCatalogStateResult,
+} from './xtream-content-selection';
 import type { ZoomLevelAction } from './zoom-level.util';
 import type {
     CatchupDownloadMetadata,
@@ -743,6 +748,29 @@ export interface ElectronRecordingItem {
 }
 
 export interface ElectronBridgeApi {
+    onAppMenuAction: (
+        callback: (action: ElectronBridgeAppMenuAction) => void
+    ) => () => void;
+    activityLocalRequest?: (
+        request: import('./activity-sync/activity-sync.wire').ActivityLocalRequest
+    ) => Promise<unknown>;
+    sourceSyncConnection?: () =>
+        import('./source-sync.interface').SourceServerConnection | null;
+    sourceSyncRequest?: (
+        request: import('./source-sync.interface').SourceServerRequest
+    ) => Promise<import('./source-sync.interface').SourceServerResponse>;
+    sourceSyncConfigure?: (
+        url: string,
+        token: string,
+        restart: boolean
+    ) => Promise<
+        import('./source-sync.interface').SourceServerConnection & {
+            tokenPersisted: boolean;
+        }
+    >;
+    sourceSyncDisconnect?: () => Promise<void>;
+    sourceSyncLocalSources?: () => Promise<Playlist[]>;
+    onSourceSyncResume?: (callback: () => void) => () => void;
     onPortalDebugEvent?: (
         callback: (data: PortalDebugEvent) => void
     ) => () => void;
@@ -770,6 +798,8 @@ export interface ElectronBridgeApi {
      */
     toggleFullScreenWindow: () => Promise<ElectronBridgeWindowState>;
     closeWindow: () => Promise<void>;
+    /** Opens the fixed native application menu for frameless desktop windows. */
+    showApplicationMenu?: () => Promise<void>;
     /**
      * Zoom shortcuts (Cmd/Ctrl and +/−/0). Synchronous and preload-local:
      * steps the FRAME-BOUND temporary zoom level through `webFrame` (never a
@@ -898,6 +928,8 @@ export interface ElectronBridgeApi {
         playlists: Playlist[],
         options?: ElectronBridgeTrustOptions
     ) => Promise<AutoUpdatePlaylistsResult>;
+    /** Stops imports without removing sources, mappings or cached programmes. */
+    setEpgEnabled?: (enabled: boolean) => Promise<void>;
     fetchEpg: (
         urls: string[],
         options?: ElectronBridgeTrustOptions
@@ -928,7 +960,10 @@ export interface ElectronBridgeApi {
     /** Native picker for a local XMLTV file; resolves null when cancelled. */
     openEpgFileDialog: () => Promise<string | null>;
     clearEpgData: () => Promise<ElectronBridgeResult>;
-    reconcileEpgSources: (urls: string[]) => Promise<ElectronBridgeResult>;
+    reconcileEpgSources: (
+        urls: string[],
+        epgEnabled?: boolean
+    ) => Promise<ElectronBridgeResult>;
     clearEpgDataForSource: (sourceUrl: string) => Promise<ElectronBridgeResult>;
     checkEpgFreshness: (
         urls: string[],
@@ -1057,7 +1092,8 @@ export interface ElectronBridgeApi {
     ) => Promise<ElectronBridgeResult>;
     dbDeleteXtreamContent: (
         playlistId: string,
-        operationId?: string
+        operationId?: string,
+        contentTypes?: import('./xtream-content-selection').XtreamContentType[]
     ) => Promise<{
         success: boolean;
         favorites: XtreamBackupFavoriteItem[];
@@ -1074,7 +1110,14 @@ export interface ElectronBridgeApi {
         favorites: XtreamBackupFavoriteItem[],
         recentlyViewed: XtreamBackupRecentlyViewedItem[],
         operationId?: string
-    ) => Promise<ElectronBridgeResult>;
+    ) => Promise<
+        ElectronBridgeResult & {
+            resolvedHistory?: Pick<
+                XtreamBackupRecentlyViewedItem,
+                'contentType' | 'xtreamId'
+            >[];
+        }
+    >;
     dbHasCategories: (playlistId: string, type: string) => Promise<boolean>;
     dbGetCategories: (
         playlistId: string,
@@ -1093,8 +1136,9 @@ export interface ElectronBridgeApi {
     ) => Promise<ElectronBridgeCategoryRow[]>;
     dbUpdateCategoryVisibility: (
         categoryIds: number[],
-        hidden: boolean
-    ) => Promise<ElectronBridgeResult>;
+        hidden: boolean,
+        explicit?: boolean
+    ) => Promise<ElectronBridgeResult & { explicitRecorded?: true }>;
     /**
      * Re-stamps `categories.locked` for one playlist and type from the given
      * provider category ids: rows in the list become locked, every other row
@@ -1162,8 +1206,10 @@ export interface ElectronBridgeApi {
     dbReorderGlobalFavorites: (
         updates: ElectronBridgeFavoriteReorderUpdate[]
     ) => Promise<ElectronBridgeResult>;
+    /** Ordinary reads cap at 100; recovery explicitly requests all entries. */
     dbGetRecentItems: (
-        playlistId: string
+        playlistId: string,
+        options?: { all?: boolean }
     ) => Promise<ElectronBridgeXtreamContent[]>;
     dbAddRecentItem: (
         contentId: number,
@@ -1193,8 +1239,12 @@ export interface ElectronBridgeApi {
     dbGetAppState: (key: string) => Promise<string | null>;
     dbSetAppState: (
         key: string,
-        value: string
-    ) => Promise<ElectronBridgeResult>;
+        value: string,
+        condition?: XtreamCatalogStateCondition
+    ) => Promise<XtreamCatalogStateResult>;
+    dbCheckXtreamCatalogConnection: (
+        condition: XtreamCatalogStateCondition
+    ) => Promise<XtreamCatalogStateResult>;
     // TMDB metadata cache
     dbGetTmdbMetadata: (
         mediaType: TmdbCacheMediaType,

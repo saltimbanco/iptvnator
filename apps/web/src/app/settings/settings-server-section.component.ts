@@ -1,122 +1,247 @@
 import {
     ChangeDetectionStrategy,
     Component,
-    computed,
     inject,
-    output,
     signal,
-    ViewEncapsulation,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslatePipe } from '@ngx-translate/core';
-import { ServerStorageStatusService } from '@iptvnator/services';
 import {
-    SERVER_STORAGE_CONFIG,
-    ServerMigrationService,
-    ServerStorageSession,
-    type ServerMigrationResult,
-} from '@iptvnator/services/server-storage';
-import type { ServerStorageStatusResponse } from '@iptvnator/shared/interfaces';
+    FormControl,
+    FormsModule,
+    ReactiveFormsModule,
+    Validators,
+} from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { SettingsSyncStatusComponent } from './settings-sync-status.component';
+import { MatInputModule } from '@angular/material/input';
+import { TranslateModule } from '@ngx-translate/core';
+import { provideFormFieldDefaults } from '@iptvnator/ui/components/form-field-defaults';
+import { SettingsActivitySectionComponent } from './settings-activity-section.component';
+import { createRandomId, type Playlist } from '@iptvnator/shared/interfaces';
+import {
+    normalizeSourceServerUrl,
+    sourceFromPlaylist,
+} from '@iptvnator/shared/interfaces/source-definition';
+import {
+    SourceSyncService,
+    assertSourceInstance,
+    saveBrowserSourceConnection,
+    disconnectBrowserSourceConnection,
+    readLocalSourcesForImport,
+    requestSourceServer,
+} from '@iptvnator/services/source-sync';
 
-/**
- * Settings → Server: shown only when the PWA runs against self-hosted
- * server storage. Rendered without `@defer` so settings search can reveal
- * its rows on the first visit; the code rides in the lazy settings chunk.
- */
 @Component({
     selector: 'app-settings-server-section',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [provideFormFieldDefaults()],
     imports: [
-        MatButtonModule,
+        SettingsActivitySectionComponent,
+        SettingsSyncStatusComponent,
         MatIconModule,
-        MatProgressSpinnerModule,
-        TranslatePipe,
+        FormsModule,
+        ReactiveFormsModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatInputModule,
+        TranslateModule,
     ],
     templateUrl: './settings-server-section.component.html',
-    encapsulation: ViewEncapsulation.None,
-    changeDetection: ChangeDetectionStrategy.OnPush,
+    styleUrl: './settings-server-section.component.scss',
 })
 export class SettingsServerSectionComponent {
-    private readonly status = inject(ServerStorageStatusService);
-    private readonly session = inject(ServerStorageSession);
-    private readonly migration = inject(ServerMigrationService);
-
-    readonly exportData = output<void>();
-
-    readonly state = this.status.state;
-    readonly usesToken = computed(
-        () => this.status.instance()?.auth === 'token'
-    );
-    /** The backend's origin; the page's own in Docker (`/api`). */
-    readonly address = backendOrigin(inject(SERVER_STORAGE_CONFIG).baseUrl);
-    readonly details = signal<ServerStorageStatusResponse | null>(null);
-    readonly browserPlaylistCount = signal(0);
-    readonly importing = signal(false);
-    readonly importFailed = signal(false);
-    readonly importResult = signal<ServerMigrationResult | null>(null);
-    readonly sizeLabel = computed(() =>
-        formatMegabytes(this.details()?.databaseBytes ?? 0)
-    );
-    readonly showBrowserImport = computed(
-        () => this.browserPlaylistCount() > 0 || this.importResult() !== null
-    );
-    readonly movedSomething = computed(() => {
-        const result = this.importResult();
-        return !!result && result.imported + result.merged > 0;
+    readonly sync = inject(SourceSyncService);
+    readonly busy = signal(false);
+    readonly connecting = signal(false);
+    readonly message = signal('');
+    readonly preview = signal<Playlist[] | null>(null);
+    readonly urlControl = new FormControl(this.sync.connection?.apiUrl ?? '', {
+        nonNullable: true,
+        validators: [
+            Validators.required,
+            (control) => {
+                try {
+                    normalizeSourceServerUrl(control.value.trim());
+                    return null;
+                } catch {
+                    return { serverUrl: true };
+                }
+            },
+        ],
     });
+    token = '';
 
-    constructor() {
-        void this.load();
-    }
-
-    async load(): Promise<void> {
+    isCurrentServer(): boolean {
+        const input = this.urlControl.value.trim().replace(/\/+$/, '');
+        if (!this.sync.connection) return false;
         try {
-            this.details.set(await this.session.fetchStatus());
-        } catch {
-            this.details.set(null);
-        }
-        try {
-            this.browserPlaylistCount.set(
-                this.migration.browserDataMoved()
-                    ? 0
-                    : (await this.migration.browserPlaylists()).length
+            return (
+                input === this.sync.connection.apiUrl ||
+                normalizeSourceServerUrl(input) === this.sync.connection.apiUrl
             );
         } catch {
-            this.browserPlaylistCount.set(0);
+            return false;
         }
     }
 
-    async importBrowserPlaylists(): Promise<void> {
-        this.importing.set(true);
-        this.importFailed.set(false);
+    async refresh(): Promise<void> {
+        if (this.busy()) return;
+        this.busy.set(true);
+        this.message.set('');
         try {
-            this.importResult.set(await this.migration.moveBrowserData());
-            await this.load();
-        } catch {
-            this.importFailed.set(true);
+            await this.sync.refresh();
+        } catch (error) {
+            this.showError(error);
         } finally {
-            this.importing.set(false);
+            this.busy.set(false);
         }
     }
 
-    signOut(): void {
-        this.session.signOut();
+    async connect(): Promise<void> {
+        if (this.busy()) return;
+        this.message.set('');
+        this.urlControl.markAsTouched();
+        if (this.urlControl.invalid) return;
+        if (this.isCurrentServer() && !this.token) {
+            await this.refresh();
+            return;
+        }
+        this.busy.set(true);
+        this.connecting.set(true);
+        try {
+            const input = this.urlControl.value.trim().replace(/\/+$/, '');
+            const apiUrl =
+                input === this.sync.connection?.apiUrl
+                    ? input
+                    : normalizeSourceServerUrl(input);
+            if (window.electron?.sourceSyncConfigure) {
+                await window.electron.sourceSyncConfigure(
+                    apiUrl,
+                    this.token,
+                    !this.isCurrentServer()
+                );
+                this.token = '';
+                if (this.isCurrentServer()) await this.sync.refresh();
+            } else {
+                const response = await fetch(`${apiUrl}/v1/instance`, {
+                    redirect: 'error',
+                    signal: AbortSignal.timeout(10000),
+                });
+                if (!response.ok)
+                    throw new Error(
+                        [401, 403].includes(response.status)
+                            ? 'SOURCE_SYNC.LOCKED'
+                            : 'SOURCE_SYNC.CONNECTION_FAILED'
+                    );
+                const instance: unknown = await response.json().catch(() => {
+                    throw new Error('SOURCE_SYNC.INCOMPATIBLE');
+                });
+                assertSourceInstance(instance);
+                if (
+                    this.isCurrentServer() &&
+                    instance.instanceId !== this.sync.connection?.instanceId
+                )
+                    throw new Error('SOURCE_SYNC.INSTANCE_CHANGED');
+                const check = await fetch(`${apiUrl}/v1/sources`, {
+                    headers: this.token
+                        ? { Authorization: `Bearer ${this.token}` }
+                        : {},
+                    redirect: 'error',
+                    signal: AbortSignal.timeout(10000),
+                });
+                if (!check.ok)
+                    throw new Error(
+                        [401, 403].includes(check.status)
+                            ? 'SOURCE_SYNC.LOCKED'
+                            : 'SOURCE_SYNC.CONNECTION_FAILED'
+                    );
+                saveBrowserSourceConnection(
+                    { apiUrl, instanceId: instance.instanceId! },
+                    this.token
+                );
+                this.token = '';
+                if (this.isCurrentServer()) await this.sync.refresh();
+                else location.reload();
+            }
+        } catch (error) {
+            this.showError(error, 'SOURCE_SYNC.CONNECTION_FAILED');
+        } finally {
+            this.busy.set(false);
+            this.connecting.set(false);
+        }
     }
 
-    reload(): void {
-        window.location.reload();
+    async disconnect(): Promise<void> {
+        this.busy.set(true);
+        try {
+            if (window.electron?.sourceSyncDisconnect)
+                await window.electron.sourceSyncDisconnect();
+            else {
+                if (!disconnectBrowserSourceConnection())
+                    throw new Error('SOURCE_SYNC.REQUEST_FAILED');
+                location.reload();
+            }
+        } catch (error) {
+            this.showError(error);
+        } finally {
+            this.busy.set(false);
+        }
     }
-}
 
-function backendOrigin(baseUrl: string): string {
-    try {
-        return new URL(baseUrl, globalThis.location?.href).origin;
-    } catch {
-        return baseUrl;
+    async previewImport(): Promise<void> {
+        this.busy.set(true);
+        try {
+            this.preview.set(await readLocalSourcesForImport());
+        } catch (error) {
+            this.showError(error);
+        } finally {
+            this.busy.set(false);
+        }
     }
-}
 
-function formatMegabytes(bytes: number): string {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    async importSources(): Promise<void> {
+        this.busy.set(true);
+        this.message.set('');
+        try {
+            for (const playlist of this.preview() ?? []) {
+                const source = {
+                    ...sourceFromPlaylist(playlist),
+                    id: createRandomId(),
+                };
+                const response = await requestSourceServer({
+                    operation: 'create',
+                    id: source.id,
+                    source,
+                });
+                if (response.status >= 400)
+                    throw new Error('SOURCE_SYNC.IMPORT_FAILED');
+            }
+            await this.sync.refresh();
+            this.preview.set(null);
+            this.message.set('SOURCE_SYNC.IMPORTED');
+        } catch (error) {
+            this.showError(error);
+        } finally {
+            this.busy.set(false);
+        }
+    }
+
+    private showError(
+        error: unknown,
+        fallback = 'SOURCE_SYNC.REQUEST_FAILED'
+    ): void {
+        const key =
+            error instanceof Error
+                ? error.message.match(/SOURCE_SYNC\.[A-Z_]+/)?.[0]
+                : undefined;
+        this.message.set(
+            fallback === 'SOURCE_SYNC.CONNECTION_FAILED' &&
+                (!key ||
+                    key === 'SOURCE_SYNC.OFFLINE' ||
+                    key === 'SOURCE_SYNC.REQUEST_FAILED')
+                ? fallback
+                : (key ?? fallback)
+        );
+    }
 }

@@ -32,6 +32,12 @@ export interface PlaylistBackupBaseEntry {
 
 export interface M3uPlaylistBackupEntry extends PlaylistBackupBaseEntry {
     portalType: 'm3u';
+    autoImportEpg?: boolean;
+    /** Enabled sources may have unknown origin in legacy playlists. */
+    epgUrls?: string[];
+    /** Absent in legacy archives; retain local overrides when merging those. */
+    manualEpgUrls?: string[];
+    disabledEpgUrls?: string[];
     source: {
         kind: M3uBackupSourceKind;
         rawM3u: string;
@@ -127,6 +133,7 @@ export interface XtreamBackupUserState {
 
 export interface XtreamPlaylistBackupEntry extends PlaylistBackupBaseEntry {
     portalType: 'xtream';
+    xtreamContentTypes?: import('./xtream-content-selection').XtreamContentType[];
     connection: {
         serverUrl: string;
         username: string;
@@ -155,6 +162,8 @@ export interface StalkerPlaylistBackupEntry extends PlaylistBackupBaseEntry {
     userState: {
         favorites: StalkerPortalItem[];
         recentlyViewed: StalkerPortalItem[];
+        /** Absent in historical archives: preserve existing local activity on restore. */
+        playbackPositions?: PlaybackPositionData[];
         /** Parental-lock genres; optional with the same absence rule as Xtream. */
         lockedCategories?: StalkerBackupLockedCategory[];
     };

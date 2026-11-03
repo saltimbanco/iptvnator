@@ -1,10 +1,15 @@
 import {
     Component,
     inject,
-    OnInit,
     signal,
+    computed,
+    output,
+    ElementRef,
+    viewChild,
     ChangeDetectionStrategy,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import {
     FormBuilder,
     FormControl,
@@ -18,43 +23,91 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { RuntimeCapabilitiesService } from '@iptvnator/services';
 import { ImportScopeComponent } from '../import-scope/import-scope.component';
 import { provideFormFieldDefaults } from '@iptvnator/ui/components/form-field-defaults';
+import { RevealDetailsDirective } from '@iptvnator/ui/components/reveal-details';
+import {
+    suggestXtreamFromUrl,
+    UrlXtreamSuggestion,
+} from './url-xtream-suggestion';
 
 @Component({
     selector: 'app-url-upload',
     providers: [provideFormFieldDefaults()],
     templateUrl: './url-upload.component.html',
+    styleUrl: './url-upload.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
         ImportScopeComponent,
         MatFormFieldModule,
         MatInputModule,
+        MatButtonModule,
         ReactiveFormsModule,
         TranslatePipe,
+        RevealDetailsDirective,
     ],
 })
-export class UrlUploadComponent implements OnInit {
+export class UrlUploadComponent {
     private readonly fb = inject(FormBuilder);
     private readonly runtime = inject(RuntimeCapabilitiesService);
 
-    form!: FormGroup<{
+    readonly form: FormGroup<{
         playlistName: FormControl<string>;
         playlistUrl: FormControl<string>;
         userAgent: FormControl<string>;
-    }>;
+    }> = this.fb.nonNullable.group({
+        playlistUrl: [
+            '',
+            [
+                Validators.required,
+                (control) => {
+                    try {
+                        const url = new URL(control.value.trim());
+                        return /^https?:\/\//i.test(control.value.trim()) &&
+                            /^https?:$/.test(url.protocol) &&
+                            url.hostname
+                            ? null
+                            : { url: true };
+                    } catch {
+                        return { url: true };
+                    }
+                },
+            ],
+        ],
+        playlistName: [''],
+        userAgent: [''],
+    });
     readonly isDesktop = this.runtime.isElectron;
     /** Section scope: live channels vs VOD (movies + series). */
     readonly importLive = signal(true);
     readonly importVod = signal(true);
+    readonly userAgent = toSignal(this.form.controls.userAgent.valueChanges, {
+        initialValue: '',
+    });
+    private readonly urlInput =
+        viewChild<ElementRef<HTMLInputElement>>('urlInput');
+    readonly xtreamSelected = output<UrlXtreamSuggestion>();
+    private readonly playlistUrl = toSignal(
+        this.form.controls.playlistUrl.valueChanges,
+        {
+            initialValue: '',
+        }
+    );
+    readonly xtreamSuggestion = computed(() =>
+        suggestXtreamFromUrl(this.playlistUrl())
+    );
 
-    ngOnInit(): void {
-        const urlRegex = '(https?://.*?)';
-        this.form = this.fb.nonNullable.group({
-            playlistUrl: [
-                '',
-                [Validators.required, Validators.pattern(urlRegex)],
-            ],
-            playlistName: [''],
-            userAgent: [''],
+    focusUrl(): void {
+        this.urlInput()?.nativeElement.focus();
+    }
+
+    useXtream(): void {
+        const candidate = this.xtreamSuggestion();
+        if (!candidate || this.form.disabled) return;
+        const draft = this.form.getRawValue();
+        this.xtreamSelected.emit({
+            ...candidate,
+            suggestedTitle:
+                draft.playlistName.trim() || candidate.suggestedTitle,
+            userAgent: draft.userAgent.trim() || undefined,
         });
     }
 

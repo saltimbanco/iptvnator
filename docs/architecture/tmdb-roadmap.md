@@ -12,12 +12,31 @@ Emby, Stremio and Kodi present metadata. Line numbers reference the state
 of the repo at that date and will drift — treat them as pointers, not
 addresses.
 
+Manual match correction (F2 / recommendation 8) now ships in Stalker and Xtream
+movie/series detail menus. Its persistence, provider-only mode and reset behavior
+are specified in [TMDB Metadata Enrichment](./tmdb-metadata-enrichment.md#manual-match-correction).
+
 > Three items in here are **defects in shipped code**, not features:
 > A1 (broken provider `tmdb_id` suppresses enrichment), A2 (series cast is
 > latest-season-only) and F1 (cache retention exceeds the TMDB ToS limit).
 > They come first.
 
 ## 0. The one decision that gates everything
+
+### Update: age classifications (2026-10-27)
+
+The certification plate from B4 is implemented in the primary Angular movie
+and series detail views, with an independent classification-country setting.
+`release_dates` / `content_ratings` are appended to existing detail calls.
+Legacy fresh `id:…|v2` payloads are upgraded lazily in place; an unsuccessful
+upgrade preserves the fresh legacy metadata. Empty classification results do
+not trigger repeat upgrades. This focused path supersedes the consolidated
+v3-bump prerequisite **for certifications only**: it avoids invalidating every
+cached title or pulling unrelated artwork/title work into this feature.
+See [the age-classification contract](tmdb-metadata-enrichment.md#age-classifications-in-movie-and-series-details).
+The broader append proposal below remains historical planning for the other
+capabilities; recheck it against the current shared client before implementing.
+
 
 `buildDetailsLookupKey` (`libs/shared/tmdb/src/lib/tmdb-matcher.ts`) is `id:{tmdbId}|v2`. Six separate ideas below each "need a v3 bump", and a bump invalidates **every cached details row for every user**. Make this decision **once**:
 
@@ -74,7 +93,7 @@ These add **no surface area**. They make what already ships correct. High levera
 | B1  | **Title logos (clearlogo) on detail + dashboard heroes** | M/H    | Plex, Emby, Kodi and Jellyfin all independently converged on the same `clearlogo` asset. Biggest perceived-quality delta available. **Zero new i18n keys.**                                                                 |
 | B2  | **Localized poster / textless backdrop selection**       | M      | Same `images` append. Pure merge-output change, both environments.                                                                                                                                                          |
 | B3  | **Extras shelf**                                         | L/M    | See §1.                                                                                                                                                                                                                     |
-| B4  | **Editorial meta rail** (tagline + certification plate)  | M      | Tagline is free today; certification joins the v3 append.                                                                                                                                                                   |
+| B4  | **Editorial meta rail** (tagline + certification plate)  | M      | Tagline is free today; the certification plate ships via the focused lazy-upgrade path above.                                                                                                                                                                   |
 | B5  | Poster-derived ambient palette                           | M/H    | `image.tmdb.org` returns `access-control-allow-origin: *`, so the canvas is untainted. But it must **not** animate over the Embedded MPV transparency hole, and needs an owning service with teardown-on-navigation. Defer. |
 
 ⚠️ B1 gotcha: `include_image_language` takes **ISO 639-1** codes, but `TmdbRuntimeService.language()` returns region-suffixed (`ru-RU`). A `.split('-')[0]` helper doesn't exist yet. And the param is **mandatory** — without it, appended images inherit `language=ru-RU` and return near-empty logos for all 17 non-English locales.
@@ -131,7 +150,7 @@ Realistic: **H, multi-PR.** Worth doing eventually; not worth doing next.
 | #   | Idea                                       | Effort |
 | --- | ------------------------------------------ | ------ |
 | F1  | **6-month cache TTL sweep + purge button** | L+     |
-| F2  | **"Wrong movie?" manual match override**   | M      |
+| F2  | **"Wrong movie?" manual match override — implemented** | M      |
 
 F1 is a **live compliance gap in shipped code**, not a feature. `tmdb.operations.ts` has only `get`/`set`; `setTmdbMetadata` uses `onConflictDoUpdate`, so untouched rows persist forever. The ToS caps retention at 6 months. `fetched_at` already exists (`schema.ts:376`).
 
@@ -162,7 +181,7 @@ F1 is a **live compliance gap in shipped code**, not a feature. `tmdb.operations
 
 | Idea                                                   | Why not                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Family mode / certification gate + PIN**             | Enrichment is lazy and per-open, so a gate **fails open on every unmatched title** (passes everything) or **fails closed** (empty app on day one). Structurally impossible for PWA (no catalog DB), Stalker (server-paginated) and M3U (no enrichment at all) — and TMDB covers **no live channels**, which is where IPTV family risk actually concentrates. An age gate that silently passes unmatched titles is worse than none, because parents will trust it. **Ship instead:** adult-category keyword blocklist + Stalker's existing `censored` flag + PIN, with TMDB certification as a per-title **badge only**. Never describe the badge as a safety feature, in UI copy or release notes. |
+| **Family mode / certification gate + PIN**             | Enrichment is lazy and per-open, so a gate **fails open on every unmatched title** (passes everything) or **fails closed** (empty app on day one). Structurally impossible for PWA (no catalog DB), Stalker (server-paginated) and M3U (no complete-catalog enrichment) — and TMDB covers **no live channels**, which is where IPTV family risk actually concentrates. An age gate that silently passes unmatched titles is worse than none, because parents will trust it. **Ship instead:** adult-category keyword blocklist + Stalker's existing `censored` flag + PIN, with TMDB certification as a per-title **badge only**. Never describe the badge as a safety feature, in UI copy or release notes. |
 | **`/find/{external_id}`**                              | Verified: no provider interface in this repo exposes an IMDb or TVDB **id** — only `rating_imdb` (a score). M3U `tvg-id` is an XMLTV _channel_ id, and M3U has no TMDB path. The only `imdb_id` obtainable comes from TMDB itself, which is circular. No inbound caller exists.                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | **`watch/providers`**                                  | Tells the user a title is on Netflix. In a player whose premise is the user's _own_ streams, this reads as an ad for a competitor and drags in a mandatory JustWatch attribution obligation on top of ours. Direct conflict with the product stance.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **TMDB / Trakt account sync (v3 session or v4 OAuth)** | Requires every user to hold a TMDB account and complete a browser OAuth flow, to sync data we already store _better_ — our favorites are playlist-scoped and playlist-aware; TMDB's are not. High friction, new credential surface, low payoff. Guest sessions expire in 60 min with no reattachment — a dead end.                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -277,6 +296,6 @@ Zero i18n keys. Zero UI change.
 1. **A1** (broken `tmdb_id`) + **F1** (retention sweep) — correctness and compliance, no new surface, no cache bump
 2. **Extras shelf** + **series structure** — pure zero-call presentation wins off already-cached payloads
 3. **Consolidated v3 append PR** — `images` + `release_dates`/`content_ratings` + `alternative_titles` + `aggregate_credits`, with payload trimming, mediaType-scoped key
-4. **Title logos**, **certification plate**, **aggregate-credits cast fix** — all ride the bump landed in step 3
-5. **"Because you watched X"** + **"Wrong movie?" override** — the two strategic bets
+4. **Title logos** and remaining cast/artwork work — certification already ships through the focused path above; recheck the cast implementation before planning another bump
+5. **"Because you watched X"** — the remaining strategic bet; manual match override now ships
 6. **Theme E** (library index) — only after A5 (backoff), batched cache ops, and a personal-key gate exist

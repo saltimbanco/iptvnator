@@ -11,7 +11,16 @@ export const PlaylistActions = createActionGroup({
     source: 'Playlists',
     events: {
         'Load Playlists': emptyProps(),
-        'Load Playlists Success': props<{ playlists: PlaylistMeta[] }>(),
+        'Load Shared Playlists': emptyProps(),
+        /** A local projection is already persisted; this only rehydrates the open view. */
+        'Hydrate Shared Playlist': props<{
+            playlist: Playlist;
+            playlistId: string;
+        }>(),
+        'Load Playlists Success': props<{
+            playlists: PlaylistMeta[];
+            authoritative?: boolean;
+        }>(),
         'Load Playlists Failure': emptyProps(),
         'Add Playlist': props<{ playlist: Playlist }>(),
         'Add Many Playlists': props<{
@@ -43,6 +52,7 @@ export const PlaylistActions = createActionGroup({
         }>(),
         'Update Many Playlists': props<{ playlists: Playlist[] }>(),
         'Parse Playlist': props<{
+            autoImportEpg?: boolean;
             uploadType: 'FILE' | 'URL' | 'TEXT';
             playlist: string;
             title: string;

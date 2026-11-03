@@ -20,7 +20,11 @@ describe('AppStartupStatusComponent', () => {
             imports: [AppStartupStatusComponent, TranslateModule.forRoot()],
             deferBlockBehavior: DeferBlockBehavior.Manual,
             providers: [
-                provideRouter([{ path: 'server-sign-in', children: [] }]),
+                provideRouter([
+                    { path: 'server-sign-in', children: [] },
+                    { path: 'workspace/settings', children: [] },
+                    { path: 'workspace/settings/:section', children: [] },
+                ]),
                 provideMockStore({
                     selectors: [
                         { selector: selectPlaylistsLoadingFlag, value: false },
@@ -73,6 +77,51 @@ describe('AppStartupStatusComponent', () => {
         expect(fixture.nativeElement.querySelector('section')).toBeNull();
     });
 
+    it.each([false, true])(
+        'allows server settings to recover an unavailable source inventory (failed: %s)',
+        async (failed) => {
+            TestBed.inject(MockStore).overrideSelector(
+                selectPlaylistsLoadFailed,
+                failed
+            );
+            const fixture = TestBed.createComponent(AppStartupStatusComponent);
+            fixture.componentRef.setInput('routeReady', true);
+            fixture.detectChanges();
+            expect(fixture.componentInstance.complete()).toBe(false);
+            await TestBed.inject(Router).navigateByUrl(
+                '/workspace/settings/server'
+            );
+            fixture.detectChanges();
+            expect(fixture.componentInstance.complete()).toBe(true);
+            expect(fixture.nativeElement.querySelector('section')).toBeNull();
+        }
+    );
+
+    it.each(['general', 'playback', 'epg', 'dashboard', 'parental', 'backup', 'about', 'server'])(
+        'allows the %s settings section through a failed startup', async (section) => {
+            const fixture = createFailedFixture();
+            fixture.componentRef.setInput('routeReady', true);
+            await TestBed.inject(Router).navigateByUrl('/workspace/settings/' + section);
+            fixture.detectChanges();
+            expect(fixture.componentInstance.complete()).toBe(true);
+        }
+    );
+
+    it.each([DeferBlockState.Placeholder, DeferBlockState.Error])(
+        'provides a settings escape when deferred recovery is %s',
+        async (state) => {
+            const fixture = createFailedFixture();
+            fixture.componentRef.setInput('routeReady', true);
+            const [recoveryBlock] = await fixture.getDeferBlocks();
+            await recoveryBlock.render(state);
+            fixture.nativeElement
+                .querySelector('[data-test-id="startup-open-settings"]')
+                .click();
+            await fixture.whenStable();
+            expect(TestBed.inject(Router).url).toBe('/workspace/settings');
+        }
+    );
+
     function createFailedFixture() {
         TestBed.inject(MockStore).overrideSelector(
             selectPlaylistsLoadFailed,
@@ -90,7 +139,7 @@ describe('AppStartupStatusComponent', () => {
         const buttons: HTMLButtonElement[] = Array.from(
             fixture.nativeElement.querySelectorAll('button')
         );
-        expect(buttons).toHaveLength(1);
+        expect(buttons).toHaveLength(2);
         expect(buttons[0].classList.contains('mat-mdc-unelevated-button')).toBe(
             material
         );

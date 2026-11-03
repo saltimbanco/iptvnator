@@ -850,41 +850,11 @@ describe('Embedded MPV native source recording invariants', () => {
         );
     });
 
-    it('requires the pinned Linux source runtime artifact and validates process isolation in CI', () => {
-        expect(buildAndMakeWorkflowSource).toContain(
-            'Build and stage pinned LGPL Linux runtime'
-        );
-        expect(buildAndMakeWorkflowSource).toContain(
-            'node tools/embedded-mpv/build-linux-runtime.mjs "${RUNTIME_PREFIX}"'
-        );
-        expect(buildAndMakeWorkflowSource).toContain(
-            'node tools/embedded-mpv/stage-runtime.mjs linux x64 "${RUNTIME_PREFIX}"'
-        );
-        expect(buildAndMakeWorkflowSource).toContain(
-            'name: linux-embedded-mpv-runtime'
-        );
-        expect(buildAndMakeWorkflowSource).toContain(
-            'path: vendor/embedded-mpv/linux-x64'
-        );
-        expect(buildAndMakeWorkflowSource).toContain(
-            'Download pinned Linux Embedded MPV runtime'
-        );
-        expect(buildAndMakeWorkflowSource).not.toContain('libopengl-dev');
+    it('ships Windows x64 only in this fork', () => {
+        expect(buildAndMakeWorkflowSource).toContain('- os: windows');
+        expect(buildAndMakeWorkflowSource).toContain('runner: windows-2022');
         expect(buildAndMakeWorkflowSource).not.toContain(
-            'Stage Linux embedded MPV build inputs'
-        );
-        expect(buildAndMakeWorkflowSource).toContain("matrix.os == 'linux'");
-        expect(buildAndMakeWorkflowSource).toContain(
-            "manifest.origin !== 'linux-frame-copy-build' || manifest.sourceRuntimeValidated !== true"
-        );
-        expect(buildAndMakeWorkflowSource).toContain(
-            'Linux embedded MPV addon must not link directly to libmpv'
-        );
-        expect(buildAndMakeWorkflowSource).toContain(
-            'test -f dist/apps/electron-backend/native/iptvnator_mpv_helper'
-        );
-        expect(buildAndMakeWorkflowSource).toContain(
-            'Linux frame-copy helper must need libmpv.so.2'
+            'Build and stage pinned LGPL Linux runtime'
         );
     });
 

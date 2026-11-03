@@ -26,6 +26,11 @@ relative assets for packaged `file://` launch. Runtime module inspection rejects
 Angular, NgRx, RxJS and Electron. TV client lint rejects Node/framework imports
 and existing domain/type constraints remain additive.
 
+Vite consumes the scoped paths from `tsconfig.base.json` in descending alias
+length, so configured sub-entrypoints resolve before a parent barrel. The
+Stalker client uses the shared `stalker-session` sub-entrypoint; `tv:verify-build`
+must continue to build this real graph and enforce the browser-only contract.
+
 ## Provider contract
 
 `ProviderClient` implements connection, paged catalogs/categories, metadata,
@@ -221,6 +226,14 @@ service or database. The existing server remains authoritative; the gateway does
 create a second shared database. Electron still does not activate server storage.
 
 ## Playback and local data
+
+TV source, catalog, season and settings choices use the shared `TvSelect`.
+Its large list owns directional and Tab focus; moving focus does not select.
+OK or a pointer click commits, while platform Back cancels and restores the
+trigger. Lists with more than twelve choices offer a text filter. Dialogs use
+`TvDialog` outside scrolling content so settings navigation cannot capture their
+keys. Long detail descriptions expose a full-text dialog whose scroll region
+accepts Up/Down; closing it restores the description action.
 
 One `HTMLVideoElement` exists for preview and fullscreen. Focus movement never
 switches streams. First OK starts live preview; repeated OK opens fullscreen.

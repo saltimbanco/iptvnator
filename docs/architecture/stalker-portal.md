@@ -205,6 +205,19 @@ plain-text body). Status-less TIMEOUTS also continue (a single handler can
 hang); only connection-level failures (refused, unresolvable host) abort
 discovery, since every candidate shares the host.
 
+For a new source, the Add dialog owns the discovery result. Cancel, dismissal,
+navigation or destroying its import form aborts further discovery/authentication
+steps and suppresses persistence and feedback from late completions. An HTTP
+request already on the wire still drains normally; cancellation never pretends
+to undo a provider-side identity change. The existing persisted-source Edit
+contract below remains different because it must retain remotely pinned identity.
+
+The catalog distinguishes a failed first page from a successfully empty category
+and from an append error. Initial failures keep the selected category and filters,
+show a persistent error with Retry, and do not report zero items. Retry resets the
+host connectivity guard before reloading the same resource. Repeated clicks join
+the reset; a source, category, type, query or page change retires that retry.
+
 The playlist-info Edit dialog compares URL, MAC, username/password, serial,
 device IDs and signatures as one connection identity. A metadata-only edit
 does not run discovery; its queued write omits every connection/mode field so
@@ -298,6 +311,11 @@ The shared playlist UI exposes only
 `resolved | auth-rejected | unreachable` result contract. The web composition
 layer implements the token with Stalker data-access; the UI library must not
 import Stalker discovery directly.
+
+Open Stalker workspace routes also listen for completed source-sync projections.
+They read the persisted row and compare connection fields with the active store.
+A changed connection reinitializes the session and category catalog under the
+route session's existing generation/queue guard; a rename keeps the session.
 
 **Lazy repair (existing playlists).** The flag is frozen in the DB, so
 records persisted by the old guess stay broken without repair — but a large
@@ -458,6 +476,38 @@ Detail metadata rule:
   `tmdb_*` keys, so a new enrichment field fails to compile until it is listed
   there instead of silently vanishing from the view (as the genre and country
   Discover chips once did).
+
+## Catalog Refine
+
+Stalker VOD categories (including All items and category search) offer **Hide
+watched** in Refine. The default is off; the preference survives category/search
+and inline-detail round trips within the active portal, and resets when the
+portal or route session is replaced. Existing progress classification (90%
+completion, including manual marks) hides only movies; started movies and all
+three supported series shapes remain visible. Initial progress read failures
+leave activation disabled with Retry. Refresh failures retain the last snapshot
+and show a retry notice; newer player updates beat in-flight snapshot reads.
+Accepted throttled inline-player writes feed the same catalog snapshot as
+external-player events, so returning from inline completion immediately hides
+that movie without re-reading the whole progress history.
+Catalog entry also refreshes local progress so watched toggles and inline
+playback in Favorites/Recent are reflected when returning to Movies; retained
+provider pages are not refetched for that refresh.
+
+`StalkerCatalogFacadeService` derives the visible list from retained raw pages;
+provider totals, deduplication and exhaustion remain store-owned. Counts say how
+many loaded items are shown versus the category total, not a filtered total.
+`stalker-catalog-watch-filter.ts` scans sequentially through up to three provider
+pages without visible additions per load-more request, then pauses with **Load
+more**. A delayed first page containing only hidden movies starts that same
+bounded scan after loading, including when the filter carries into another
+category. Clearing the filter restores retained rows without refetching. Filtered
+empty states distinguish partial results from exhausted results; append errors
+retain Retry for the same page. A new selection identity cancels continuation,
+and inline details suspend automatic page requests. If sparse visible additions
+trip the shared infinite-scroll height guard before a scrollbar exists, the
+catalog also pauses with **Load more**. The guard emits a notification without
+changing its budget; Xtream's existing status filter is unchanged.
 
 ## Stalker Identity Policy
 
@@ -702,6 +752,9 @@ outgrew the `max-lines` budget; never re-add it to the baseline):
 - `stalker-token-cache.ts` — the in-run token and pending-auth state, tagged
   with the identity fingerprint each session was negotiated for.
 - `stalker-session-store.ts` — the session persisted on the playlist row.
+- `@iptvnator/shared/interfaces/stalker-session` — canonical identity/session
+  fingerprints, also used by source-sync reconciliation. The former data-access
+  exports re-export these functions and preserve the persisted format.
 - `stalker-response-classification.ts` + `stalker-portal-error.ts` — failure
   detection and the typed `StalkerPortalError` the UI layers render.
 
@@ -1599,6 +1652,9 @@ records. Both accept the same closed set: boolean `true`, numeric `1`, or string
 - The previous season/episode hash remains available only as a compatibility
   alias in `legacyTrackingId`. The scoped ID is the in-memory episode key, and
   new playback positions always use it.
+- The open catalog observes shared-activity invalidation and reloads its position
+  maps. Subscriptions end with the facade; superseded reads, cleared playlists
+  and destroyed facades cannot repopulate those maps.
 - Quick-start actions preserve both their translation key and interpolation
   parameters when adapted for the Stalker CTA. Dropping `labelParams` exposes
   the raw `{{episode}}` placeholder.
@@ -1652,6 +1708,16 @@ series' positions and mapped episodes are available:
 - On the next position write, IPTVnator persists the scoped row through the
   strict, failure-propagating persistence boundary before removing a confirmed
   legacy row. If the scoped write fails, the legacy row remains intact.
+- Shared activity resets remain exact zero-position rows in series reads and
+  when mirrored to local storage. They take precedence over compatible legacy
+  progress; the guarded alias remains available for normal migration cleanup.
+  The first reset also sends resolved scoped tracking and season metadata, so a
+  client that has not opened the series can mirror the correct zero row.
+  A zero duration distinguishes these zero-position barriers in the local
+  mirror; ordinary launches at zero with unknown duration remain activity.
+  Next-up excludes the barriers from played activity without removing exact
+  rows needed for guarded reconciliation. Backups retain these barrier rows so
+  restoring alongside a legacy alias cannot resurrect its prior watched mark.
 - This is an on-read/on-write compatibility path, not a database schema
   migration or a bulk rewrite of saved positions.
 
@@ -1823,7 +1889,7 @@ snapshot-first + background re-fetch contract:
 ## Backup and Restore
 
 Versioned playlist backups include Stalker connection metadata plus playlist-
-scoped favorites/recent snapshots.
+scoped favorites/recent snapshots and portable playback positions.
 
 Exported fields:
 
@@ -1843,7 +1909,12 @@ the connection:
 - `stalkerWatchdogTimeout` / `stalkerTimeslot` (the cadence the profile
   advertised)
 - `stalkerAccountInfo`
-- playback positions in backup v1
+
+Playback positions are an optional v1 field: new backups include local/shared
+progress, watched marks and exact episode reset barriers. Older archives without
+this field keep existing positions; an empty array explicitly clears them.
+Restore writes the collection locally and remaps its playlist ID, without sending
+activity to the server.
 
 Import rule:
 

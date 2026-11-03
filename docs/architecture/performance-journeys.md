@@ -1469,6 +1469,23 @@ without that rule read 1,098,535 for the same build. Of the CDK, the overlay, sc
 portal chunks (about 78 KB) stay through the `FullscreenOverlayContainer`
 provider in `app.config.ts`, whose token lives in the overlay chunk.
 
+The OS file-open listener also stays eager so startup files cannot be lost,
+but it imports the file-import adapter only after receiving a valid request.
+`PlaylistFileImportService` is shared with the lazy picker and drop zone;
+resolving it eagerly from the listener otherwise pulls file parsing and
+import dispatch code into `main.js` even on launches without a file. The
+listener's tests preserve immediate acknowledgment, sequential imports and
+retry after a failed chunk load. This is a loading-boundary change with no
+new user-facing behavior; no feature flag or baseline increase is needed.
+
+EPG read helpers also load on demand: source importing and settings hydration
+do not need the programme-scope and channel-metadata lookup implementations.
+The first subscribed lookup loads their shared module; concurrent calls share
+it, failed chunk loads can retry, and source-revision guards retire requests
+before they can use a late module. The public Observable APIs and source
+priority rules stay the same. This loading boundary needs no feature flag or
+baseline increase.
+
 `--summary` writes the journey summary shape (`journeys.<journey>.counters`)
 that the ratchet checker consumes. `--dist <dir>` points the script at another
 build output, for example the `electron-performance` configuration.

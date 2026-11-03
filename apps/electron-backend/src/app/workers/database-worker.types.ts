@@ -2,6 +2,7 @@ import type { WorkerPerformanceCaptureResult } from './worker-performance-captur
 import type { DbWorkerSqlStatementsMessage } from './database-worker-sql-statement-count';
 
 export const DB_WORKER_OPERATIONS = [
+    'DB_ACTIVITY_LOCAL',
     'DB_HAS_CATEGORIES',
     'DB_GET_CATEGORIES',
     'DB_SAVE_CATEGORIES',
@@ -22,6 +23,7 @@ export const DB_WORKER_OPERATIONS = [
     'DB_UPSERT_APP_PLAYLISTS',
     'DB_MIGRATE_APP_PLAYLISTS',
     'DB_GET_APP_PLAYLISTS',
+    'DB_GET_STANDALONE_SOURCES',
     'DB_GET_APP_PLAYLIST_METAS',
     'DB_GET_APP_PLAYLIST',
     'DB_GET_APP_PLAYLIST_FAVORITE_CHANNELS',
@@ -31,6 +33,7 @@ export const DB_WORKER_OPERATIONS = [
     'DB_DELETE_PLAYLIST',
     'DB_GET_APP_STATE',
     'DB_SET_APP_STATE',
+    'DB_CHECK_XTREAM_CATALOG_CONNECTION',
     'DB_DELETE_ALL_PLAYLISTS',
     'DB_DELETE_XTREAM_CONTENT',
     'DB_RESTORE_XTREAM_USER_DATA',

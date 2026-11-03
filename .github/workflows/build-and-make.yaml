@@ -100,8 +100,8 @@ jobs:
                     # macOS builds - separate runners to avoid native module conflicts
                     # Fork: no Apple signing/notarization credentials (CSC_NAME etc.) are
                     # configured here, so macOS jobs abort at signing validation and block
-                    # the Create Draft Release job on tag runs. Windows x64 (with the
-                    # pinned embedded MPV runtime) and Linux remain the published targets.
+                    # the Create Draft Release job on tag runs. This fork ships
+                    # Windows x64 only (with the pinned embedded MPV runtime).
                     - os: windows
                       runner: windows-2022
                       arch: x64

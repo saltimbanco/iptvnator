@@ -37,6 +37,7 @@ import {
     waitForXtreamImportCompleted,
     xtreamPlaylistIdFromUrl,
 } from './xtream-import-wait';
+import { findMainWindow } from './electron-main-window';
 
 export const workspaceRoot = resolve(__dirname, '../../..');
 export const electronMainPath = join(
@@ -614,23 +615,7 @@ function assertPackagedRendererBuildIsElectronSafe(): void {
     }
 }
 
-async function findMainWindow(app: ElectronApplication): Promise<Page> {
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 2000));
-
-    const windows = app.windows();
-
-    for (const window of windows) {
-        const title = await window.title();
-
-        if (!title.includes('DevTools')) {
-            return window;
-        }
-    }
-
-    return app.firstWindow();
-}
-
-async function waitForAppReady(page: Page): Promise<void> {
+export async function waitForAppReady(page: Page): Promise<void> {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('app-root', { timeout: 30000 });
     try {
@@ -664,6 +649,30 @@ async function waitForAppReady(page: Page): Promise<void> {
             )}`
         );
     }
+
+    // The old startup sleep also hid the rail's entrance animation. Keep
+    // geometry-sensitive tests ready for interaction without a fixed delay.
+    const rail = page.locator('.app-rail');
+    // Source inventory can keep the workspace hidden after app-root mounts.
+    // Its entrance animations only start when that startup gate opens.
+    await page
+        .locator('.app-rail:visible, app-startup-status [role="alert"]:visible')
+        .first()
+        .waitFor({ state: 'visible' });
+    // Failed migrations expose recovery controls while keeping the rail hidden.
+    if (!(await rail.isVisible())) return;
+    await rail.evaluate(async (rail) => {
+        await document.fonts.ready;
+        await Promise.all(
+            rail
+                .getAnimations({ subtree: true })
+                .filter(
+                    (animation) =>
+                        animation.effect?.getTiming().iterations !== Infinity
+                )
+                .map((animation) => animation.finished.catch(() => undefined))
+        );
+    });
 }
 
 export async function openAddPlaylistDialog(page: Page): Promise<void> {
@@ -773,6 +782,7 @@ export async function dropM3uPlaylistOntoWorkspace(
 export async function addXtreamPortal(
     page: Page,
     options: {
+        contentTypes?: ('live' | 'movie' | 'series')[];
         name?: string;
         password?: string;
         serverUrl?: string;
@@ -798,6 +808,14 @@ export async function addXtreamPortal(
     await setInputValue(dialog.locator('#serverUrl'), serverUrl);
     await setInputValue(dialog.locator('#username'), username);
     await setInputValue(dialog.locator('#password'), password);
+    if (options.contentTypes) {
+        for (const type of ['live', 'movie', 'series'] as const) {
+            await dialog
+                .getByTestId(`xtream-load-${type}`)
+                .getByRole('checkbox')
+                .setChecked(options.contentTypes.includes(type));
+        }
+    }
     const addButton = dialog
         .getByRole('button', { name: /^(add|add playlist)$/i })
         .last();
@@ -1073,6 +1091,9 @@ export async function importM3uPlaylistFromUrl(
         playlistUrl
     );
     if (userAgent !== undefined) {
+        await dialog
+            .locator('[data-test-id="url-advanced-settings"] > summary')
+            .click();
         await setInputValue(
             dialog.getByRole('textbox', { name: 'User agent', exact: true }),
             userAgent

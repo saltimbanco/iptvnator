@@ -6,6 +6,7 @@ import {
 } from '@angular/core';
 import type {
     ElectronBridgeApi,
+    Playlist,
     PlaylistRefreshPayload,
 } from '@iptvnator/shared/interfaces';
 
@@ -64,4 +65,35 @@ describe('PlaylistRefreshService', () => {
         });
         expect(unsubscribe).toHaveBeenCalledTimes(1);
     });
+
+    it.each([undefined, 'Captured agent'])(
+        'retains the request User-Agent even when the worker result omits it (%s)',
+        async (userAgent) => {
+            Object.defineProperty(window, 'electron', {
+                configurable: true,
+                writable: true,
+                value: {
+                    refreshPlaylist: jest
+                        .fn()
+                        .mockResolvedValue({
+                            _id: payload.playlistId,
+                            playlist: { items: [] },
+                        } as unknown as Playlist),
+                },
+            });
+            const result = await runInInjectionContext(
+                createEnvironmentInjector(
+                    [
+                        {
+                            provide: SettingsStore,
+                            useValue: { disableVod: () => false },
+                        },
+                    ],
+                    Injector.NULL as unknown as EnvironmentInjector
+                ),
+                () => new PlaylistRefreshService()
+            ).refreshPlaylist({ ...payload, userAgent });
+            expect(result).toHaveProperty('userAgent', userAgent);
+        }
+    );
 });

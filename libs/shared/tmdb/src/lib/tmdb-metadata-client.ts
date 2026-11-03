@@ -1,13 +1,10 @@
+import { loadTmdbMatcher } from './tmdb-matcher-loader';
 import { TmdbMediaType } from '@iptvnator/shared/interfaces';
 import { TmdbApiClient, isTmdbNotFound } from './tmdb-api-client';
 import { TmdbClientCache, TmdbClientRuntime } from './tmdb-client-contracts';
 import { trimDetailsForCache } from './tmdb-cache-payload';
 import { TMDB_DETAILS_CACHE_TTL_MS } from './tmdb-config';
-import {
-    assessProviderId,
-    buildDetailsLookupKey,
-    parseProviderTmdbId,
-} from './tmdb-matcher';
+
 import { TmdbIdResolver } from './tmdb-id-resolver';
 import {
     detailsFallbackLanguage,
@@ -19,7 +16,13 @@ import {
     TmdbMovieDetails,
     TmdbTvDetails,
 } from './tmdb.types';
+
+const CLASSIFICATION_UPGRADE_RETRY_MS = 5 * 60 * 1000;
+const CLASSIFICATION_RETRY_LIMIT = 300;
+
 export class TmdbMetadataClient {
+    private readonly classificationRetryAfter = new Map<string, number>();
+
     constructor(
         private readonly runtime: TmdbClientRuntime,
         private readonly api: TmdbApiClient,
@@ -50,6 +53,21 @@ export class TmdbMetadataClient {
         return (await this.enrich('tv', query)) as TmdbTvDetails | null;
     }
 
+    /** A user-selected identity bypasses title matching, while retaining opt-in and caching. */
+    async getDetailsForMatch(
+        mediaType: TmdbMediaType,
+        tmdbId: number
+    ): Promise<TmdbDetails | null> {
+        if (!this.isEnabled() || !Number.isInteger(tmdbId) || tmdbId <= 0)
+            return null;
+        try {
+            return await this.getDetails(mediaType, tmdbId);
+        } catch {
+            this.report(`TMDB ${mediaType} manual match unavailable.`);
+            return null;
+        }
+    }
+
     private async enrich(
         mediaType: TmdbMediaType,
         query: TmdbEnrichmentQuery
@@ -59,6 +77,7 @@ export class TmdbMetadataClient {
         }
 
         try {
+            const { parseProviderTmdbId } = await loadTmdbMatcher();
             const providerId = parseProviderTmdbId(query.tmdbId);
             if (
                 providerId !== null &&
@@ -106,6 +125,7 @@ export class TmdbMetadataClient {
         providerId: number,
         query: TmdbEnrichmentQuery
     ): Promise<TmdbDetails | null> {
+        const { assessProviderId } = await loadTmdbMatcher();
         let details: TmdbDetails | null;
         try {
             details = await this.getDetails(mediaType, providerId);
@@ -208,32 +228,80 @@ export class TmdbMetadataClient {
         tmdbId: number,
         language: string
     ): Promise<TmdbDetails | null> {
+        const { buildDetailsLookupKey } = await loadTmdbMatcher();
         const lookupKey = buildDetailsLookupKey(tmdbId);
 
         const cached = await this.cache.get(mediaType, lookupKey, language);
+        let legacy: TmdbDetails | null = null;
         if (
             this.cache.isFresh(cached, TMDB_DETAILS_CACHE_TTL_MS) &&
             cached?.payload
         ) {
             try {
-                return JSON.parse(cached.payload) as TmdbDetails;
+                const parsed = JSON.parse(cached.payload) as TmdbDetails;
+                if (
+                    parsed &&
+                    typeof parsed === 'object' &&
+                    !Array.isArray(parsed)
+                ) {
+                    const field =
+                        mediaType === 'movie'
+                            ? 'release_dates'
+                            : 'content_ratings';
+                    if (Object.prototype.hasOwnProperty.call(parsed, field))
+                        return parsed;
+                    legacy = parsed;
+                }
             } catch {
                 // Corrupt cache row — fall through to a fresh fetch
             }
         }
 
-        const details =
-            mediaType === 'movie'
-                ? await this.api.getMovieDetails(
-                      tmdbId,
-                      language,
-                      this.runtime.apiKey()
-                  )
-                : await this.api.getTvDetails(
-                      tmdbId,
-                      language,
-                      this.runtime.apiKey()
-                  );
+        const retryKey = JSON.stringify([mediaType, lookupKey, language]);
+        if (
+            legacy &&
+            (this.classificationRetryAfter.get(retryKey) ?? 0) > Date.now()
+        ) {
+            return legacy;
+        }
+        this.classificationRetryAfter.delete(retryKey);
+
+        let details: TmdbDetails;
+        try {
+            details =
+                mediaType === 'movie'
+                    ? await this.api.getMovieDetails(
+                          tmdbId,
+                          language,
+                          this.runtime.apiKey()
+                      )
+                    : await this.api.getTvDetails(
+                          tmdbId,
+                          language,
+                          this.runtime.apiKey()
+                      );
+        } catch (error) {
+            // A failed optional capability upgrade must not cost the fresh
+            // metadata we already have. Never extend its freshness timestamp.
+            if (legacy) {
+                this.classificationRetryAfter.set(
+                    retryKey,
+                    Date.now() + CLASSIFICATION_UPGRADE_RETRY_MS
+                );
+                if (
+                    this.classificationRetryAfter.size >
+                    CLASSIFICATION_RETRY_LIMIT
+                ) {
+                    const oldest = this.classificationRetryAfter
+                        .keys()
+                        .next().value;
+                    if (oldest !== undefined)
+                        this.classificationRetryAfter.delete(oldest);
+                }
+                return legacy;
+            }
+            throw error;
+        }
 
         await this.cache.set({
             mediaType,

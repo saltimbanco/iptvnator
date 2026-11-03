@@ -51,6 +51,20 @@ These files own worker lifecycle and IPC bridging:
 
 ### Worker runtime
 
+Native SQLite imports in worker operation modules must stay type-only. The
+worker connection resolves the constructor after registering unpacked module
+paths and passes it to standalone-profile reads. An eager import prevents the
+entire packaged worker from starting, even when no server is connected.
+`database-worker-packaged.spec.ts` covers startup, source metadata and read-only
+standalone import with SQLite available only under `app.asar.unpacked`.
+
+`DB_GET_STANDALONE_SOURCES` reads the retained standalone database read-only
+for explicit server import. The worker opens that separate file without
+changing/migrating it, maps historical column names through the shared playlist
+codec, and closes it after the read. The active server-profile connection is
+unaffected. Source projection writes/deletes use the existing worker playlist
+operations and retain server source IDs.
+
 These files own the worker protocol and the SQLite work itself:
 
 1. `apps/electron-backend/src/app/workers/database-worker.types.ts`
@@ -264,6 +278,18 @@ same with and without profiling. `DB_GLOBAL_SEARCH` is deliberately not
 instrumented: it interleaves queries and ranking across sources, so these
 single-query phases would be misleading.
 
+### Cache history recovery
+
+The internal `xtream-history-recovery:` keys in `app_state` register Xtream cache
+recovery through `DB_SET_APP_STATE`. Registration atomically captures live history
+and newly available archived entries. Native history mutations update that journal
+in their own transactions, including removal tombstones and explicit clears.
+`DB_RESTORE_XTREAM_USER_DATA` replays the current journal in one transaction so a
+watch or removal cannot be overwritten between replay chunks. This transaction
+contains saved history only; catalog writes keep the row budgets below. The
+renderer acknowledges the journal after deferred state completes, and source
+deletion removes its journal. Explicit backup import resets it before replay.
+
 ### Catalog write batching
 
 Catalog deletes and inserts commit in row-budgeted transactions rather than
@@ -471,6 +497,17 @@ connections are opened unchanged. See
 
 The preload bridge keeps the existing database methods but adds scoped worker
 events.
+
+Preload subscriptions forward renderer payloads without exposing the privileged
+Electron IPC event. Each returned unsubscribe function removes only its own
+listener. The legacy import-progress cleanup removes its registered progress
+listeners while retaining modern `onDbOperationEvent` observers on the shared
+channel, including across repeated cleanup and resubscription.
+
+`apps/electron-backend/src/app/api/main.preload.lifecycle.spec.ts` verifies
+subscription ownership, payload-only callbacks, legacy progress filtering,
+preservation of failed results and IPC rejections, and independent cancellation
+acknowledgement/import settlement, with renderer tracing both on and off.
 
 ### Important preload APIs
 
@@ -958,6 +995,18 @@ regression tests explicitly assert `.run()` is used and `.execute()` is not.
 ## Testing
 
 ### Unit coverage added
+
+`libs/services/src/lib/database-electron.operations.spec.ts` covers concurrent
+renderer operation isolation, cancellation acknowledgement versus completion,
+modern/legacy progress listener cleanup on success and failure, failed-delete
+results, restore payload preservation, and cancellation capability guards.
+
+`apps/electron-backend/src/app/workers/database-worker-operation-lifecycle.spec.ts`
+covers request/operation correlation across concurrent imports, cancellation of
+one operation without cancelling another, progress flush before error events,
+error serialization and subsequent requests, and non-cancellable delete-all.
+These protocol tests mock SQL operations; historical migration, durable
+favorites and packaged-worker tests remain the real SQLite persistence checks.
 
 `apps/electron-backend/src/app/services/database-worker-client.spec.ts`
 covers:

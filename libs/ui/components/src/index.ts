@@ -1,3 +1,5 @@
+export * from './lib/xtream-content-selection/xtream-content-selection.component';
+export * from './lib/import-progress/import-progress.component';
 export * from './lib/channel-list-container/channel-list-container.component';
 export * from './lib/channel-list-container/channel-context-menu/channel-context-menu.component';
 export * from './lib/channel-list-container/channel-details-dialog/channel-details-dialog.component';
@@ -60,3 +62,5 @@ export * from './lib/detail-ui/hero-trailer-backdrop.component';
 export * from './lib/dialog-shell/dialog-shell.component';
 export * from './lib/dialog-shell/dialog-shell.directives';
 export * from './lib/dialog-shell/dialog-size';
+
+export * from './lib/detail-ui/age-rating-chip.component';
