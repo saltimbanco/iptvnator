@@ -70,6 +70,45 @@ The application is a cross-platform, open-source project built with Electron and
 - Docker self-hosting for the PWA + web backend
 - 21 language options, including Portuguese for Portugal and Brazil ([translation files](apps/web/src/assets/i18n/)), light & dark themes, and keyboard shortcuts
 
+## Bulk import and live channel failover
+
+**Bulk import** — the Add playlist dialog loads a whole list of sources at once
+from a `.txt` file of provider details or a `.json` source list:
+
+- Stalker / Ministra, one account per line:
+  `http://host:port/c | 00:1A:79:00:00:01`
+- Xtream Codes, a portal link carrying the account, e.g.
+  `http://host:port/get.php?username=USER&password=PASS&type=m3u_plus`
+  (a host next to labelled `Username:` / `Password:` lines works too)
+
+Each line is detected on its own, so a file can mix both formats. An unusable
+line is not dropped silently: it stays listed with its reason (no portal
+address, no MAC, incomplete details) so it can be fixed or removed before
+importing, and a file with nothing importable says so. Importing **replaces
+the current source list** with the file's rows; each row gets one minute to
+load, and slower or failing rows are skipped and reported. Stalker rows are
+validated against their panel before they are added, and that panel's live
+channel list starts loading in the background for the first open.
+
+**Live channel failover** — opt-in in **Settings → Playback**, desktop app.
+When a live channel does not start, or drops mid-stream, IPTVnator retries it
+three times (10 seconds per attempt). If none of the retries plays, it looks
+for the same channel in your other sources — Xtream and M3U; Stalker sources
+are not searched — and switches to the first one that plays it, in the order
+of your source list, with a notice naming the source it moved to. Picking
+another channel cancels the switch.
+
+It covers the embedded MPV player, the built-in web players (`videojs`,
+`html5`, `artplayer`), and external MPV/VLC for what the app can see there: a
+launch failure, a stream-open error the player reports, or the process exiting
+unexpectedly spends a retry and then a source hop. A stream that opens in an
+external player and then stalls without raising an error is not detected,
+because the external window reports no playback progress back to the app, and
+a hop's progress shows in the app (dock and notice), not in that window.
+
+Details: [bulk import](docs/architecture/m3u-playlist-module.md) and
+[live channel failover](docs/architecture/embedded-inline-playback.md#live-channel-failover-embedded-mpv).
+
 ## Keyboard shortcuts
 
 Press `?` or `Shift+/` in the workspace to open the in-app shortcuts list.

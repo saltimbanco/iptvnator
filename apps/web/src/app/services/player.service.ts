@@ -1,5 +1,5 @@
 import { PLAYBACK_ACTIVITY_EVENTS } from '@iptvnator/services/activity-events';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { DataService } from '@iptvnator/services';
 import {
     ExternalPlayerSession,
@@ -24,6 +24,14 @@ export class PlayerService {
     private lazyDialog = inject(LazyMatDialog);
     private dataService = inject(DataService);
     private settingsStore = inject(SettingsStore);
+    /**
+     * The playback the most recent external launch sent, recorded before the
+     * IPC call so a session update that arrives during it can still be
+     * matched. Live failover replays it after the player reports the stream
+     * unusable, so headers and credentials travel with the retry instead of
+     * being rebuilt from the session snapshot (which has neither).
+     */
+    readonly lastExternalPlayback = signal<ResolvedPortalPlayback | null>(null);
 
     isEmbeddedPlayer(
         player = this.settingsStore.player() ?? VideoPlayer.VideoJs
@@ -128,6 +136,7 @@ export class PlayerService {
                 .catch(() => undefined);
         const ipcEvent = player === 'mpv' ? OPEN_MPV_PLAYER : OPEN_VLC_PLAYER;
 
+        this.lastExternalPlayback.set(playback);
         return await this.dataService.sendIpcEvent<ExternalPlayerSession>(
             ipcEvent,
             {

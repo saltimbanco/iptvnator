@@ -79,7 +79,6 @@ export const PLAYBACK_SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] =
             labelKey: 'SETTINGS.LIVE_CHANNEL_FAILOVER',
             descriptionKey: 'SETTINGS.LIVE_CHANNEL_FAILOVER_DESCRIPTION',
             keywords: ['failover', 'fallback', 'channel', 'source', 'retry'],
-            requires: ['embedded-mpv'],
             fallbackId: 'video-player',
         },
         {

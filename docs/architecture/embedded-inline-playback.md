@@ -146,6 +146,10 @@ playback in the embedded MPV player:
   `playing`. An mpv error, a live EOF, a main-process reconnect (see
   `embedded-mpv-reconnect.ts`) or the attempt timing out restarts the session,
   up to `LIVE_FAILOVER_MAX_RETRIES` (3). Playing restores the full budget.
+- Coverage begins at the first selection, not only after playback started:
+  the attempt watchdog runs for every new playback, so a channel that never
+  reaches `playing` (mpv error, live EOF, reconnect, or the 10 s attempt
+  expiring) takes the same retry-then-hop path as a stream that drops later.
 - After the last retry, `LiveChannelFailoverService`
   (`libs/playback/data-access`) searches the other sources with
   `globalSearchContent` (desktop SQLite: Xtream and M3U live channels),
@@ -162,6 +166,18 @@ playback in the embedded MPV player:
   source found". Picking another channel cancels a hop.
 - The player shows the retry/hop progress in its status overlay and, for the
   native-view engine, in the dock below the video (`failoverLabel`).
+- Scope: every player. The built-in web players (`videojs`, `html5`,
+  `artplayer`) run the same retry budget through `WebPlayerLiveFailover`,
+  driven by their playback diagnostics: the HLS→MPEG-TS live format fallback
+  (`web-player-live-auto-format.ts`) still gets the first try, and once the
+  adapter owns a failure the manual recovery card stays hidden while it
+  retries. Managed external MPV/VLC run `ExternalLiveFailoverService`
+  (`apps/web/src/app/services`) on the main process's session updates and
+  `player-error` events, replaying the exact launch — headers included —
+  through `PlayerService.openExternalPlayback`. External limits: a stream that
+  opens and then stalls without raising an error is not detected (the renderer
+  receives no position feed), and the external window cannot show retry
+  progress, so hops are announced by the in-app notice and dock only.
 - Failover only engages on playback inside a source route
   (`/workspace/{xtreams,playlists,stalker}/:id`).
 
