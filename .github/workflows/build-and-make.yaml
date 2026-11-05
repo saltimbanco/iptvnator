@@ -1070,7 +1070,13 @@ jobs:
         needs:
             - nightly-version
             - build-cross-platform
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        # A fork keeps releases 1:1 with tags: a branch push there would only
+        # recreate the rolling `test-master` draft, a tag-less release nobody
+        # prunes (the nightly channel exists only in 4gray/iptvnator, and
+        # cleanup-pr-draft.yml is disabled in forks and removes PR drafts
+        # only). Tag builds and `test-pr-<n>` drafts still run, so a dispatch
+        # on a branch in a fork uploads run artifacts and nothing else.
+        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && (github.repository == '4gray/iptvnator' || github.event_name == 'pull_request' || github.ref_type == 'tag') }}
         runs-on: ubuntu-latest
         concurrency:
             group: ${{ github.workflow }}-release-${{ github.event.pull_request.number || github.ref }}
@@ -1225,7 +1231,8 @@ jobs:
 
             # Test drafts (PR/master) get a self-describing title plus a context
             # header linking the PR, real head commit, and workflow run. A stable
-            # tag per PR (test-pr-<n>) / branch (test-master) makes the action
+            # tag per PR (test-pr-<n>) / branch (test-master, upstream only — the
+            # job condition skips branch pushes in a fork) makes the action
             # update one rolling draft in place instead of piling up a new draft
             # for every push. PR builds must not use github.sha here: that is the
             # ephemeral merge-commit SHA, which resolves to nothing in the repo.

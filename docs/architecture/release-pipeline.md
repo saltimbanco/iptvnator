@@ -313,10 +313,18 @@ References: [AppImage desktop keys](https://docs.appimage.org/reference/desktop-
 ## Rolling test drafts
 
 Every non-fork PR build publishes its artifacts to a rolling **draft** release
-tagged `test-pr-<n>`; a non-PR, non-tag build (a dispatch on a branch) uses
-`test-<branch>`, the shape master pushes used before the nightly channel took
-over. The tag is stable per PR, so the draft is updated in place and a PR has
-at most one.
+tagged `test-pr-<n>`; a non-PR, non-tag build in `4gray/iptvnator` (a dispatch
+on a branch) uses `test-<branch>`, the shape master pushes used before the
+nightly channel took over. The tag is stable per PR, so the draft is updated in
+place and a PR has at most one.
+
+A fork that runs this workflow skips the release job for branch pushes
+entirely (`github.repository != '4gray/iptvnator'` in the job condition). It has
+no nightly channel, `cleanup-pr-draft.yml` is disabled there, and the draft such
+a push created — `test-master` — carries no tag, so it would make a fork's
+release list disagree with its tags until someone deleted it by hand. Tag
+builds and `test-pr-<n>` drafts still run, which keeps a fork at one release
+per tag; a dispatch on a branch in a fork uploads run artifacts only.
 
 `cleanup-pr-draft.yml` deletes a PR's draft when the PR closes. That event is
 the fast path, not a guarantee: GitHub does not run a `pull_request: closed`
