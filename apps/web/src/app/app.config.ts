@@ -14,7 +14,6 @@ import {
     ApplicationConfig,
     inject,
     importProvidersFrom,
-    provideAppInitializer,
     provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
@@ -43,7 +42,6 @@ import { getInitialLanguage } from './app-language-preference';
 import { storeDevtoolsProviders } from '../environments/store-devtools.providers';
 import { routes } from './app.routes';
 import { ElectronService } from './services/electron.service';
-import { ExternalLiveFailoverService } from './services/external-live-failover.service';
 import { ExternalPlaybackService } from './services/external-playback.service';
 import { PlayerService } from './services/player.service';
 import { provideParentalLockPrompt } from './services/parental-lock-prompt.service';
@@ -163,11 +161,6 @@ export const appConfig: ApplicationConfig = {
             provide: PLAYBACK_ACTIVITY_EVENTS,
             useFactory: activityEventsFactory,
         },
-        // External sessions arrive from the main process; the failover listener
-        // has to exist before the first live channel is launched.
-        provideAppInitializer(() => {
-            inject(ExternalLiveFailoverService);
-        }),
         ...provideSourceSync(),
     ],
 };

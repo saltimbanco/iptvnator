@@ -3,21 +3,21 @@ import {
     effect,
     inject,
     Injectable,
+    Injector,
     untracked,
 } from '@angular/core';
+import type { LiveChannelFailoverService } from '@iptvnator/playback/data-access';
 import {
     LIVE_FAILOVER_ATTEMPT_MS,
     LIVE_FAILOVER_MAX_RETRIES,
-    LiveChannelFailoverService,
-} from '@iptvnator/playback/data-access';
-import type {
-    ElectronBridgePlayerError,
-    ExternalPlayerErrorCode,
-    ExternalPlayerSession,
-    ResolvedPortalPlayback,
+    type ElectronBridgePlayerError,
+    type ExternalPlayerErrorCode,
+    type ExternalPlayerSession,
+    type ResolvedPortalPlayback,
 } from '@iptvnator/shared/interfaces';
 import { ExternalPlaybackService } from './external-playback.service';
 import { PlayerService } from './player.service';
+import { SettingsStore } from './settings-store.service';
 
 /**
  * Failures that mean the stream cannot be played as sent. `previous-closing`
@@ -46,6 +46,10 @@ const FAILED_CODES: ReadonlySet<ExternalPlayerErrorCode> =
  * {@link LiveChannelFailoverService} hops to the same channel in another
  * source.
  *
+ * That service — and the store, database and snackbar graph behind it — is
+ * imported only when a live channel actually fails, so this listener stays
+ * out of the initial bundle. The settings gate is read directly instead.
+ *
  * Deliberate limit: a session that reaches `opened` ends the attempt. Without
  * a position feed in the renderer (only reused MPV and VLC have one, inside
  * the main process) a stream that opens and silently stalls cannot be told
@@ -56,13 +60,18 @@ const FAILED_CODES: ReadonlySet<ExternalPlayerErrorCode> =
 export class ExternalLiveFailoverService {
     private readonly external = inject(ExternalPlaybackService);
     private readonly player = inject(PlayerService);
-    private readonly failover = inject(LiveChannelFailoverService);
+    private readonly settings = inject(SettingsStore);
+    private readonly injector = inject(Injector);
 
     private tracked: ExternalPlayerSession | null = null;
     private playback: ResolvedPortalPlayback | null = null;
     private retries = 0;
     private phase: 'pending' | 'playing' | 'failed' | 'idle' = 'idle';
     private watchdog: ReturnType<typeof setTimeout> | null = null;
+    /** Resolved on the first live failure; null until then. */
+    private failover: LiveChannelFailoverService | null = null;
+    private failoverLoad: Promise<LiveChannelFailoverService | null> | null =
+        null;
 
     constructor() {
         effect(() => {
@@ -86,11 +95,7 @@ export class ExternalLiveFailoverService {
             this.trackLaunch(session);
             return;
         }
-        if (
-            !this.failover.enabled() ||
-            !this.playback ||
-            this.phase === 'idle'
-        ) {
+        if (!this.enabled() || !this.playback || this.phase === 'idle') {
             return;
         }
         if (session.status === 'error' || session.status === 'closed') {
@@ -123,14 +128,15 @@ export class ExternalLiveFailoverService {
             owned.title === this.playback.title;
         this.playback = owned;
         this.tracked = session;
-        if (!this.failover.enabled() || !owned) {
+        if (!this.enabled() || !owned) {
             this.stop();
             return;
         }
         if (!sameStream) {
             this.retries = 0;
         }
-        this.failover.reportLoading(session.title);
+        // Only meaningful once a hop exists, which means the service is loaded.
+        this.failover?.reportLoading(session.title);
         this.phase = 'pending';
         this.startAttempt();
     }
@@ -139,38 +145,69 @@ export class ExternalLiveFailoverService {
         this.clearWatchdog();
         this.phase = 'playing';
         this.retries = 0;
-        this.failover.reportPlaying(session.title);
+        this.failover?.reportPlaying(session.title);
     }
 
     private fail(session: ExternalPlayerSession): void {
         const playback = this.playback;
         this.clearWatchdog();
         this.phase = 'failed';
-        if (!this.failover.enabled() || this.tracked?.id !== session.id) {
+        if (!this.enabled() || this.tracked?.id !== session.id) {
             this.stop();
+            return;
+        }
+        if (!playback) {
+            this.stop();
+            return;
+        }
+        void this.finishFailure(session, playback);
+    }
+
+    private async finishFailure(
+        session: ExternalPlayerSession,
+        playback: ResolvedPortalPlayback
+    ): Promise<void> {
+        const failover = await this.loadFailover();
+        if (
+            !failover ||
+            this.tracked?.id !== session.id ||
+            this.phase !== 'failed'
+        ) {
             return;
         }
         if (
-            !playback ||
-            this.failover.isHopTarget(session.title) ||
+            failover.isHopTarget(session.title) ||
             this.retries >= LIVE_FAILOVER_MAX_RETRIES
         ) {
-            void this.failover.reportFailed(session.title);
             this.stop();
+            void failover.reportFailed(session.title);
             return;
         }
         this.retries += 1;
-        this.failover.reportRetrying(this.retries);
+        failover.reportRetrying(this.retries);
         this.phase = 'pending';
         this.startAttempt();
-        void this.player
-            .openExternalPlayback(playback, session.player)
-            .catch(() => {
-                const tracked = this.tracked;
-                if (tracked) {
-                    this.fail(tracked);
-                }
-            });
+        try {
+            await this.player.openExternalPlayback(playback, session.player);
+        } catch {
+            const tracked = this.tracked;
+            if (tracked) {
+                this.fail(tracked);
+            }
+        }
+    }
+
+    private loadFailover(): Promise<LiveChannelFailoverService | null> {
+        this.failoverLoad ??= import('@iptvnator/playback/data-access')
+            .then(
+                (module) => this.injector.get(module.LiveChannelFailoverService)
+            )
+            .then((failover) => {
+                this.failover = failover;
+                return failover;
+            })
+            .catch(() => null);
+        return this.failoverLoad;
     }
 
     private handlePlayerError(data: ElectronBridgePlayerError): void {
@@ -183,12 +220,16 @@ export class ExternalLiveFailoverService {
             session.status === 'closed' ||
             !data.code ||
             !FAILED_CODES.has(data.code) ||
-            !this.failover.enabled() ||
+            !this.enabled() ||
             !this.playback
         ) {
             return;
         }
         this.fail(session);
+    }
+
+    private enabled(): boolean {
+        return this.settings.liveChannelFailover?.() === true;
     }
 
     private startAttempt(): void {

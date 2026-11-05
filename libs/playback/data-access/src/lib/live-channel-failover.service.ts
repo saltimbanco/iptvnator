@@ -9,7 +9,7 @@ import {
     liveChannelKey,
     liveChannelSearchProbes,
     rankLiveChannelCandidates,
-} from '@iptvnator/playback/util';
+} from '@iptvnator/playback/util/live-channel-match';
 import {
     extractPortalPlaylistId,
     getLiveCollectionPlaylistNavigation,
@@ -18,25 +18,23 @@ import {
 } from '@iptvnator/portal/shared/util';
 import { DatabaseService, SettingsStore, SortService } from '@iptvnator/services';
 import {
+    LIVE_FAILOVER_ARRIVAL_MS,
+    LIVE_FAILOVER_ATTEMPT_MS,
+    LIVE_FAILOVER_FAILURE_MEMORY_MS,
+    LIVE_FAILOVER_MAX_RETRIES,
     isM3uGlobalSearchResult,
     type GlobalSearchResult,
 } from '@iptvnator/shared/interfaces';
 
-/** Reloads of a failing live stream before other sources are tried. */
-export const LIVE_FAILOVER_MAX_RETRIES = 3;
-/** Time one attempt (a reload or a hop) gets to reach `playing`. */
-export const LIVE_FAILOVER_ATTEMPT_MS = 10_000;
-/**
- * Time a hop gets to mount the candidate's player: navigation plus the
- * target source's catalog hydration. Once the player reports loading, the
- * player's own {@link LIVE_FAILOVER_ATTEMPT_MS} takes over.
- */
-export const LIVE_FAILOVER_ARRIVAL_MS = 30_000;
-/**
- * How long a channel that failed in a source is left out of later
- * searches, so two sources failing in turn cannot hop back and forth.
- */
-export const LIVE_FAILOVER_FAILURE_MEMORY_MS = 10 * 60_000;
+// The budget itself lives in the light shared contract package so callers
+// that only need the numbers do not pull this service's graph.
+export {
+    LIVE_FAILOVER_ARRIVAL_MS,
+    LIVE_FAILOVER_ATTEMPT_MS,
+    LIVE_FAILOVER_FAILURE_MEMORY_MS,
+    LIVE_FAILOVER_MAX_RETRIES,
+} from '@iptvnator/shared/interfaces';
+
 const SEARCH_LIMIT = 500;
 const PROVIDERS: readonly PortalProvider[] = ['xtreams', 'playlists', 'stalker'];
 
