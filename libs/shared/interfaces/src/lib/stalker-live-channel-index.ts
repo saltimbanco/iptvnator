@@ -56,8 +56,12 @@ export function parseStalkerLiveChannelIndex(
             continue;
         }
         const row = item as Record<string, unknown>;
-        const id = typeof row.id === 'string' ? row.id.trim() : '';
-        const title = typeof row.title === 'string' ? row.title.trim() : '';
+        const rawId = row['id'];
+        const rawTitle = row['title'];
+        const rawGenreId = row['genreId'];
+        const rawLogo = row['logo'];
+        const id = typeof rawId === 'string' ? rawId.trim() : '';
+        const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
         if (!id || !title) {
             continue;
         }
@@ -65,10 +69,10 @@ export function parseStalkerLiveChannelIndex(
             id,
             title,
             genreId:
-                typeof row.genreId === 'string' && row.genreId.trim() !== ''
-                    ? row.genreId
+                typeof rawGenreId === 'string' && rawGenreId.trim() !== ''
+                    ? rawGenreId
                     : null,
-            logo: typeof row.logo === 'string' && row.logo !== '' ? row.logo : null,
+            logo: typeof rawLogo === 'string' && rawLogo !== '' ? rawLogo : null,
         });
     }
     return entries;
