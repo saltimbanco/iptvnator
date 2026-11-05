@@ -599,7 +599,9 @@ live-only source imported its whole movie and series catalog.
 - **Bulk import** — the add-source dialog's `bulk` method pastes many provider
   handouts (or loads a `.txt`/`.json` file) and imports every recognized
   source at once. Free text runs through `detectProviderImportCandidates`;
-  JSON accepts `{ "sources": [...] }` (or a bare array) of
+  a line naming one MAC and one portal (the `portal | MAC` rows of provider
+  list files) pairs those two, so a file spanning several panels keeps each
+  row's own portal instead of reading as ambiguous; JSON accepts `{ "sources": [...] }` (or a bare array) of
   `{type: 'xtream' | 'stalker' | 'm3u-url', ...connection, title?,
   importLive?, importVod?}` items (`bulkEntriesFromJson`,
   `libs/shared/interfaces`). Each row carries its own title plus Live/VOD
@@ -607,15 +609,23 @@ live-only source imported its whole movie and series catalog.
   (`libs/playlist/import/feature`) first removes every existing source (the
   same deletion as Settings → Remove all), then imports the rows one at a
   time. A portal row is persisted and seeded through
-  `PORTAL_CONTENT_SEEDERS` (the Xtream seeder rejects an unreadable portal or
-  one without live channels); an M3U row is fetched with
+  `PORTAL_CONTENT_SEEDERS`: the Xtream seeder rejects an unreadable portal or
+  one without live channels, and the Stalker one (`StalkerContentSeedService`)
+  proves the row with a single page-1 `get_ordered_list` request — the VOD
+  category list for a VOD-only row — then warms the session's full channel
+  list through `StalkerItvCacheService` without awaiting it, so a slow crawl
+  cannot spend the row's minute; Stalker VOD/series catalogues are paged and
+  are not crawled here. An M3U row is fetched with
   `DataService.fetchPlaylistDefinition` (or parsed, for pasted text) and
   persisted without the per-row navigation of a single add. Each row gets
   `BULK_IMPORT_SOURCE_TIMEOUT_MS` (one minute): a slower row is skipped with
   a "Source too slow" popup, a failing one with an error popup, and a skipped
   row's stored source is deleted again, so only working sources remain. The
   dialog shows per-row progress; the run is root-provided and continues when
-  the dialog is closed.
+  the dialog is closed. A row that cannot be imported stays listed with its
+  reason — no portal address, no MAC address, or missing connection details
+  (`bulkEntryIssue`) — and a file with no usable row says so under the list
+  instead of leaving a disabled Import button unexplained.
 - **Backup/restore** — `PlaylistBackupBaseEntry` carries the same opt-outs
   (absent = no opinion, the merged playlist keeps its scope), and M3U restores
   re-parse through the scope filter.

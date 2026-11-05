@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';
@@ -256,5 +258,77 @@ describe('BulkImportComponent', () => {
         await component.importAll();
 
         expect(runner.run).not.toHaveBeenCalled();
+    });
+
+    it('names why a row cannot be imported', async () => {
+        await pickFile('sources.txt', '00:1A:79:00:00:01');
+
+        const [row] = component.entries();
+        expect(row.valid).toBe(false);
+        expect(component.entryIssueKey(row)).toBe(
+            'HOME.ADD_PLAYLIST.BULK_ROW_NO_PORTAL'
+        );
+    });
+
+    it('labels a portal row that has no MAC address', async () => {
+        await pickFile(
+            'sources.json',
+            JSON.stringify({
+                sources: [
+                    { type: 'stalker', portalUrl: 'http://panel.example/c' },
+                ],
+            })
+        );
+
+        expect(component.entryIssueKey(component.entries()[0])).toBe(
+            'HOME.ADD_PLAYLIST.BULK_ROW_NO_MAC'
+        );
+    });
+
+    it('says a file has nothing to import when no row is usable', async () => {
+        await pickFile(
+            'sources.json',
+            JSON.stringify({ sources: [{ type: 'xtream', title: 'Broken' }] })
+        );
+        fixture.detectChanges();
+
+        expect(component.nothingImportable()).toBe(true);
+        // TranslateModule.forRoot() ships no translations in tests, so the
+        // translate pipe echoes the key the dialog translates at runtime.
+        const notice = fixture.nativeElement.querySelector(
+            '[data-test-id="bulk-nothing-importable"]'
+        );
+        expect(notice.textContent.trim()).toBe(
+            'HOME.ADD_PLAYLIST.BULK_NOTHING_IMPORTABLE'
+        );
+    });
+
+    it('imports every row of a multi-panel portal|MAC list file', async () => {
+        const contents = readFileSync(
+            resolve(__dirname, 'top-stalker.example.txt'),
+            'utf8'
+        );
+
+        await pickFile('top_stalker.txt', contents);
+
+        const rows = component.entries();
+        expect(rows).toHaveLength(9);
+        expect(rows.every((row) => row.valid)).toBe(true);
+        expect(rows.map((row) => row.candidate.portalUrl)).toEqual([
+            'http://panel-a.example/c',
+            'http://panel-a.example/c',
+            'http://panel-a.example/c',
+            'http://panel-b.example/c',
+            'http://panel-c.example:80/c',
+            'http://203.0.113.10/c',
+            'http://203.0.113.10/c',
+            'http://203.0.113.10/c',
+            'http://panel-d.example:80/c',
+        ]);
+
+        await component.importAll();
+
+        expect(runner.run).toHaveBeenCalledTimes(1);
+        expect(runner.run.mock.calls[0][0]).toHaveLength(9);
     });
 });

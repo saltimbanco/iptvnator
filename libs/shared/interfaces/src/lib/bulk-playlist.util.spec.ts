@@ -1,5 +1,6 @@
 import {
     bulkEntriesFromJson,
+    bulkEntryIssue,
     bulkEntryToPlaylist,
     candidatesToBulkEntries,
     dedupeBulkCandidates,
@@ -54,6 +55,34 @@ describe('bulk playlist entries', () => {
                 text: '   ',
             })
         ).toBe(false);
+    });
+
+    it('names why a row cannot be imported', () => {
+        const [complete, macOnly, portalOnly, brokenXtream] =
+            candidatesToBulkEntries([
+                {
+                    kind: 'stalker',
+                    confidence: 'high',
+                    portalUrl: 'http://portal.example/c',
+                    macAddress: '00:11:22:33:44:55',
+                },
+                {
+                    kind: 'stalker',
+                    confidence: 'low',
+                    macAddress: '00:11:22:33:44:55',
+                },
+                {
+                    kind: 'stalker',
+                    confidence: 'low',
+                    portalUrl: 'http://portal.example/c',
+                },
+                { kind: 'xtream', confidence: 'low', username: 'user' },
+            ]);
+
+        expect(bulkEntryIssue(complete)).toBeNull();
+        expect(bulkEntryIssue(macOnly)).toBe('no-portal');
+        expect(bulkEntryIssue(portalOnly)).toBe('no-mac');
+        expect(bulkEntryIssue(brokenXtream)).toBe('missing-details');
     });
 
     it('builds portal playlists carrying a partial scope', () => {

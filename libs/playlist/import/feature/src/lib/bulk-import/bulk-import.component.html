@@ -40,6 +40,15 @@
                 {{ 'HOME.ADD_PLAYLIST.IMPORT_SCOPE_VOD_DISABLED' | translate }}
             </p>
         }
+        @if (nothingImportable()) {
+            <p
+                class="bulk__notice bulk__notice--error"
+                data-test-id="bulk-nothing-importable"
+                role="alert"
+            >
+                {{ 'HOME.ADD_PLAYLIST.BULK_NOTHING_IMPORTABLE' | translate }}
+            </p>
+        }
         <div class="bulk__list" role="list">
             @for (entry of entries(); track entry.id) {
                 <div
@@ -70,12 +79,9 @@
                         >
                             {{ entrySummary(entry) }}
                         </span>
-                        @if (!entry.valid) {
+                        @if (entryIssueKey(entry); as issueKey) {
                             <span class="bulk__invalid">
-                                {{
-                                    'HOME.ADD_PLAYLIST.BULK_ROW_INCOMPLETE'
-                                        | translate
-                                }}
+                                {{ issueKey | translate }}
                             </span>
                         }
                     </div>

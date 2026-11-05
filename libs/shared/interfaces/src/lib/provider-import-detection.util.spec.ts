@@ -838,6 +838,72 @@ describe('detectProviderImportCandidates', () => {
             }
         });
 
+        it('pairs each MAC with the portal on its own line', () => {
+            // Provider list files (and scanner dumps) hand out one account
+            // per line: "portal | MAC", each panel on its own host. The
+            // whole-message ambiguity guard must not drop those portals —
+            // the line itself says which panel owns which MAC.
+            const candidates = detectProviderImportCandidates(
+                [
+                    'http://panel-a.example.com/c | 00:1A:79:AA:AA:AA',
+                    'http://panel-b.example.com/c | 00:1A:79:BB:BB:BB',
+                    'http://panel-c.example.com:80/c | 00:1A:79:CC:CC:CC',
+                ].join('\n')
+            );
+
+            const stalker = only(candidates, 'stalker');
+            expect(
+                stalker.map(({ portalUrl, macAddress }) => ({
+                    portalUrl,
+                    macAddress,
+                }))
+            ).toEqual([
+                {
+                    portalUrl: 'http://panel-a.example.com/c',
+                    macAddress: '00:1A:79:AA:AA:AA',
+                },
+                {
+                    portalUrl: 'http://panel-b.example.com/c',
+                    macAddress: '00:1A:79:BB:BB:BB',
+                },
+                {
+                    portalUrl: 'http://panel-c.example.com:80/c',
+                    macAddress: '00:1A:79:CC:CC:CC',
+                },
+            ]);
+        });
+
+        it('pairs a line-local portal that is not portal-shaped', () => {
+            const candidates = detectProviderImportCandidates(
+                [
+                    'http://panel-a.example.com | 00:1A:79:AA:AA:AA',
+                    'http://panel-b.example.com | 00:1A:79:BB:BB:BB',
+                ].join('\n')
+            );
+
+            const stalker = only(candidates, 'stalker');
+            expect(stalker.map(({ portalUrl }) => portalUrl)).toEqual([
+                'http://panel-a.example.com',
+                'http://panel-b.example.com',
+            ]);
+        });
+
+        it('does not hand a line-paired portal to an unpaired MAC', () => {
+            const candidates = detectProviderImportCandidates(
+                [
+                    'http://panel-a.example.com/c | 00:1A:79:AA:AA:AA',
+                    'http://panel-b.example.com/c | 00:1A:79:BB:BB:BB',
+                    'MAC: 00:1A:79:CC:CC:CC',
+                ].join('\n')
+            );
+
+            const stalker = only(candidates, 'stalker');
+            expect(stalker).toHaveLength(3);
+            expect(stalker[0].portalUrl).toBe('http://panel-a.example.com/c');
+            expect(stalker[1].portalUrl).toBe('http://panel-b.example.com/c');
+            expect(stalker[2].portalUrl).toBeUndefined();
+        });
+
         it('omits the portal when several MACs meet portals on different hosts', () => {
             // Two panels + two MACs in one paste: no deterministic owner for
             // either portal, so the candidates carry the MAC alone instead of

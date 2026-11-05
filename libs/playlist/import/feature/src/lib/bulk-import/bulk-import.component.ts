@@ -14,10 +14,12 @@ import { SettingsStore } from '@iptvnator/services';
 import {
     BulkImportEntry,
     bulkEntriesFromJson,
+    bulkEntryIssue,
     candidatesToBulkEntries,
     dedupeBulkCandidates,
     detectProviderImportCandidates,
     SOURCE_TYPE_ICONS,
+    type BulkImportIssue,
     type ProviderImportKind,
 } from '@iptvnator/shared/interfaces';
 import {
@@ -37,6 +39,12 @@ const KIND_LABEL_KEYS: Record<ProviderImportKind, string> = {
     stalker: 'HOME.ADD_PLAYLIST.METHOD_STALKER_LABEL',
     'm3u-url': 'HOME.ADD_PLAYLIST.METHOD_URL_LABEL',
     'm3u-text': 'HOME.ADD_PLAYLIST.METHOD_TEXT_LABEL',
+};
+
+const ISSUE_LABEL_KEYS: Record<BulkImportIssue, string> = {
+    'no-portal': 'HOME.ADD_PLAYLIST.BULK_ROW_NO_PORTAL',
+    'no-mac': 'HOME.ADD_PLAYLIST.BULK_ROW_NO_MAC',
+    'missing-details': 'HOME.ADD_PLAYLIST.BULK_ROW_MISSING_DETAILS',
 };
 
 const STATUS_LABEL_KEYS: Record<BulkImportRowStatus, string> = {
@@ -86,6 +94,13 @@ export class BulkImportComponent {
         this.entries().filter((entry) => entry.valid)
     );
     readonly hasEntries = computed(() => this.entries().length > 0);
+    /**
+     * A file whose every row is unusable: the Import button is disabled, so
+     * the dialog has to say why instead of looking like a dead button.
+     */
+    readonly nothingImportable = computed(
+        () => this.hasEntries() && this.importableEntries().length === 0
+    );
     /**
      * The global Disable VOD setting: rows show and import live only, and
      * keep their own VOD choice for when the setting is turned off.
@@ -178,6 +193,15 @@ export class BulkImportComponent {
                     .filter(Boolean)
                     .join(' · ');
         }
+    }
+
+    /**
+     * Why a row cannot be imported, as a translation key; null when it can.
+     * The row stays listed either way, so the user sees what the file held.
+     */
+    entryIssueKey(entry: BulkImportEntry): string | null {
+        const issue = bulkEntryIssue(entry);
+        return issue ? ISSUE_LABEL_KEYS[issue] : null;
     }
 
     /**

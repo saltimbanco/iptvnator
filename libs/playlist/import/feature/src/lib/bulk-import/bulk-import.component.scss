@@ -42,6 +42,10 @@
     color: var(--app-muted-color);
 }
 
+.bulk__notice--error {
+    color: var(--mat-sys-error);
+}
+
 .bulk__list {
     display: flex;
     flex-direction: column;

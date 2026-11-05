@@ -81,6 +81,27 @@ export function isImportableCandidate(
 }
 
 /**
+ * Why a preview row cannot be imported. An unusable row stays in the list (the
+ * user must still see what the file contained and be able to remove it), so
+ * the dialog names the gap instead of only graying the row out.
+ */
+export type BulkImportIssue = 'no-portal' | 'no-mac' | 'missing-details';
+
+/** Null for an importable row; the first reason it cannot be imported otherwise. */
+export function bulkEntryIssue(
+    entry: BulkImportEntry
+): BulkImportIssue | null {
+    if (entry.valid) {
+        return null;
+    }
+    const { candidate } = entry;
+    if (candidate.kind !== 'stalker') {
+        return 'missing-details';
+    }
+    return candidate.portalUrl ? 'no-mac' : 'no-portal';
+}
+
+/**
  * One detected link must become ONE bulk row. Detection offers a `get.php`
  * link both as an Xtream portal (ranked high) and as a plain M3U fallback
  * (ranked low) — the single-add flow lets the user pick one, but a bulk file
