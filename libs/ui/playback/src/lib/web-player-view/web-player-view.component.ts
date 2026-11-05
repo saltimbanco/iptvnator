@@ -402,6 +402,7 @@ export class WebPlayerViewComponent implements OnDestroy {
     ): void {
         if (!this.ownsApplication(ownership)) return;
 
+        if (ownership.isLive && event.playing) this.recovery.notifyProgress();
         if (!ownership.isLive && !this.activity.record(this.playback(), event))
             return;
         this.recoverySession.recordTimeUpdate(event, ownership.isLive);

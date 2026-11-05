@@ -124,6 +124,11 @@ export class WebPlayerRecoveryController {
         this.liveFailover?.onStarted();
     }
 
+    /** The engine advanced its position; a live stall timer restarts. */
+    notifyProgress(): void {
+        this.liveFailover?.onProgress();
+    }
+
     handlePlaybackIssue(
         issue: PlaybackDiagnostic | null,
         binding: PlaybackBinding
@@ -211,6 +216,10 @@ export class WebPlayerRecoveryController {
         if (!this.deps.recoverySession.beginRetry()) {
             return;
         }
+        // The user's own Retry restarts the playability test, even when the
+        // automatic retries were already spent: a fresh budget, and every
+        // source is a candidate again.
+        this.liveFailover?.restart(true);
         this.deps.reloadToken.update((value) => value + 1);
     }
 

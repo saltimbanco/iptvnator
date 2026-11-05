@@ -128,7 +128,10 @@ describe('EmbeddedMpvLiveFailover', () => {
         }
         expect(failover.reportFailed).toHaveBeenCalledTimes(1);
 
-        watcher.restart();
+        watcher.restart(true);
+        expect(failover.reportLoading).toHaveBeenLastCalledWith('ERT 1', {
+            forgetFailures: true,
+        });
         setStatus('error');
 
         expect(failover.reportLoading).toHaveBeenCalledTimes(2);

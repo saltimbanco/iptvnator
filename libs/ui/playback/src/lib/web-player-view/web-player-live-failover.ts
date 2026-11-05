@@ -8,6 +8,7 @@ import {
 import {
     LIVE_FAILOVER_ATTEMPT_MS,
     LIVE_FAILOVER_MAX_RETRIES,
+    LIVE_FAILOVER_STALL_MS,
     LiveChannelFailoverService,
 } from '@iptvnator/playback/data-access';
 import type { PlaybackDiagnostic } from '@iptvnator/playback/util';
@@ -46,6 +47,8 @@ export class WebPlayerLiveFailover {
     /** The current attempt's outcome, so each is spent once. */
     private phase: 'pending' | 'playing' | 'failed' | 'idle' = 'idle';
     private watchdog: ReturnType<typeof setTimeout> | null = null;
+    /** Fires when a stream that already played stops making progress. */
+    private stallWatchdog: ReturnType<typeof setTimeout> | null = null;
     private active = false;
     private title = '';
     /** Session key + stream URL of the attempt this budget belongs to. */
@@ -78,13 +81,23 @@ export class WebPlayerLiveFailover {
         inject(DestroyRef).onDestroy(() => this.stop());
     }
 
-    /** A new playback, or the user's own Retry: a fresh retry budget. */
-    restart(): void {
+    /**
+     * A new playback, or the user's own Retry (`manual`): a fresh retry
+     * budget. A manual retry also clears the failover's memory of earlier
+     * failures, so every source is tested again.
+     */
+    restart(manual = false): void {
         if (!this.active) {
             return;
         }
         this.retries = 0;
-        this.deps.failover.reportLoading(this.title);
+        if (manual) {
+            this.deps.failover.reportLoading(this.title, {
+                forgetFailures: true,
+            });
+        } else {
+            this.deps.failover.reportLoading(this.title);
+        }
         this.startAttempt();
     }
 
@@ -113,6 +126,20 @@ export class WebPlayerLiveFailover {
         this.phase = 'playing';
         this.retries = 0;
         this.deps.failover.reportPlaying(this.title);
+        this.armStallWatchdog();
+    }
+
+    /**
+     * The engine advanced its position. A live stream whose position stops
+     * moving is dead even when the engine never reports an error — the web
+     * engines have no socket timeout, so this is what notices a frozen
+     * picture after {@link LIVE_FAILOVER_STALL_MS}.
+     */
+    onProgress(): void {
+        if (!this.active || this.phase !== 'playing') {
+            return;
+        }
+        this.armStallWatchdog();
     }
 
     private fail(): void {
@@ -129,6 +156,16 @@ export class WebPlayerLiveFailover {
         this.deps.failover.reportRetrying(this.retries);
         this.startAttempt();
         this.deps.retry();
+    }
+
+    private armStallWatchdog(): void {
+        this.clearWatchdog();
+        this.stallWatchdog = setTimeout(() => {
+            this.stallWatchdog = null;
+            if (this.phase === 'playing') {
+                this.fail();
+            }
+        }, LIVE_FAILOVER_STALL_MS);
     }
 
     private startAttempt(): void {
@@ -151,6 +188,10 @@ export class WebPlayerLiveFailover {
         if (this.watchdog !== null) {
             clearTimeout(this.watchdog);
             this.watchdog = null;
+        }
+        if (this.stallWatchdog !== null) {
+            clearTimeout(this.stallWatchdog);
+            this.stallWatchdog = null;
         }
     }
 }

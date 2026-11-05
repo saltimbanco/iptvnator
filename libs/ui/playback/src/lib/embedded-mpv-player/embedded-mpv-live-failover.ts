@@ -69,13 +69,23 @@ export class EmbeddedMpvLiveFailover {
         inject(DestroyRef).onDestroy(() => this.stop());
     }
 
-    /** A new playback, or the user's own Retry: a fresh retry budget. */
-    restart(): void {
+    /**
+     * A new playback, or the user's own Retry (`manual`): a fresh retry
+     * budget. A manual retry also clears the failover's memory of earlier
+     * failures, so every source is tested again.
+     */
+    restart(manual = false): void {
         if (!this.active) {
             return;
         }
         this.retries = 0;
-        this.failover.reportLoading(this.deps.playback().title);
+        if (manual) {
+            this.failover.reportLoading(this.deps.playback().title, {
+                forgetFailures: true,
+            });
+        } else {
+            this.failover.reportLoading(this.deps.playback().title);
+        }
         this.startAttempt();
     }
 

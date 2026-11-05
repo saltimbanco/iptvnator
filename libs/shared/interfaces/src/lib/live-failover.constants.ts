@@ -17,6 +17,13 @@ export const LIVE_FAILOVER_ATTEMPT_MS = 10_000;
  */
 export const LIVE_FAILOVER_ARRIVAL_MS = 30_000;
 /**
+ * How long a live stream that has already played may show no progress (a
+ * frozen picture with no new frame, no error event) before it counts as
+ * failed. The built-in web engines never time a dead socket out on their own,
+ * so without this a stalled stream would sit there forever.
+ */
+export const LIVE_FAILOVER_STALL_MS = 10_000;
+/**
  * How long a channel that failed in a source is left out of later
  * searches, so two sources failing in turn cannot hop back and forth.
  */

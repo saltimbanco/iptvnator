@@ -11,6 +11,12 @@ this marker — see `.changes/README.md`.
 
 <!-- next-release -->
 
+# [0.25.4](https://github.com/4gray/iptvnator/compare/v0.25.3...v0.25.4) (2026-11-05)
+
+### Fixes
+
+- **playback** — Live channel failover now runs the whole playability test. A live stream that freezes is treated as failed after ten seconds even when the player reports no error, pressing Retry starts the test again with a fresh budget instead of leaving the player stuck, and Stalker portals' channels are indexed so failover can hop to the same channel on your other Stalker sources.
+
 # [0.25.3](https://github.com/4gray/iptvnator/compare/v0.25.2...v0.25.3) (2026-11-05)
 
 ### Features

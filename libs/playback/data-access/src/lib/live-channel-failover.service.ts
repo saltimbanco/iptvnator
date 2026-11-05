@@ -11,6 +11,7 @@ import {
     rankLiveChannelCandidates,
 } from '@iptvnator/playback/util/live-channel-match';
 import {
+    buildStalkerLiveNavigationTarget,
     extractPortalPlaylistId,
     getLiveCollectionPlaylistNavigation,
     type PortalProvider,
@@ -22,8 +23,12 @@ import {
     LIVE_FAILOVER_ATTEMPT_MS,
     LIVE_FAILOVER_FAILURE_MEMORY_MS,
     LIVE_FAILOVER_MAX_RETRIES,
+    LIVE_FAILOVER_STALL_MS,
     isM3uGlobalSearchResult,
+    parseStalkerLiveChannelIndex,
+    stalkerLiveChannelIndexKey,
     type GlobalSearchResult,
+    type PlaylistMeta,
 } from '@iptvnator/shared/interfaces';
 
 // The budget itself lives in the light shared contract package so callers
@@ -33,6 +38,7 @@ export {
     LIVE_FAILOVER_ATTEMPT_MS,
     LIVE_FAILOVER_FAILURE_MEMORY_MS,
     LIVE_FAILOVER_MAX_RETRIES,
+    LIVE_FAILOVER_STALL_MS,
 } from '@iptvnator/shared/interfaces';
 
 const SEARCH_LIMIT = 500;
@@ -62,6 +68,13 @@ interface Hop {
     channelName: string;
     candidates: HopCandidate[];
     index: number;
+}
+
+/** A candidate with a resolved route, before the source-order ranking. */
+interface RatedCandidate {
+    playlistId: string;
+    title: string;
+    target: WorkspaceNavigationTarget;
 }
 
 /**
@@ -110,11 +123,22 @@ export class LiveChannelFailoverService {
         );
     }
 
-    /** A live playback started loading (not a retry). */
-    reportLoading(title: string): void {
+    /**
+     * A live playback started loading (not a retry). `forgetFailures` marks
+     * the user's own Retry: it asks for the playability test to run again
+     * from the start, so the sources that failed earlier in this session are
+     * candidates again instead of being skipped until the memory expires.
+     */
+    reportLoading(
+        title: string,
+        options: { forgetFailures?: boolean } = {}
+    ): void {
         if (this.isHopTarget(title)) {
             this.clearArrivalTimer();
             return;
+        }
+        if (options.forgetFailures) {
+            this.recentFailures.clear();
         }
         // The user picked something else: whatever was in progress is over.
         this.reset();
@@ -220,37 +244,85 @@ export class LiveChannelFailoverService {
         const sources = this.sortService.sortPlaylists(playlists, options);
         const names = new Map(sources.map((p) => [p._id, p.title]));
         const order = sources.map((playlist) => playlist._id);
+        // Stalker portals have no catalog rows, so their channels come from
+        // the index the ITV cache persisted. Pooled with the catalog hits, so
+        // the user's source order still decides the hop order.
+        const indexed = await this.stalkerCandidates(sources);
         for (const probe of liveChannelSearchProbes(title)) {
-            const results = (await this.search(probe)).filter(
-                (result) => !this.failedRecently(result.playlist_id, result.title)
+            const pool: RatedCandidate[] = indexed.filter(
+                (candidate) =>
+                    !this.failedRecently(candidate.playlistId, candidate.title)
             );
-            const ranked = rankLiveChannelCandidates(
-                title,
-                results.map((result) => ({
-                    playlistId: result.playlist_id,
-                    title: result.title,
-                    result,
-                })),
-                order,
-                failingPlaylistId
-            );
-            const candidates: HopCandidate[] = [];
-            for (const { playlistId, title: channelName, result } of ranked) {
+            for (const result of await this.search(probe)) {
+                if (this.failedRecently(result.playlist_id, result.title)) {
+                    continue;
+                }
                 const target = navigationTarget(result);
                 if (target) {
-                    candidates.push({
-                        playlistId,
-                        channelName,
-                        sourceName: names.get(playlistId) ?? '',
+                    pool.push({
+                        playlistId: result.playlist_id,
+                        title: result.title,
                         target,
                     });
                 }
             }
-            if (candidates.length > 0) {
-                return candidates;
+            const ranked = rankLiveChannelCandidates(
+                title,
+                pool,
+                order,
+                failingPlaylistId
+            );
+            if (ranked.length > 0) {
+                return ranked.map(({ playlistId, title: channelName, target }) => ({
+                    playlistId,
+                    channelName,
+                    sourceName: names.get(playlistId) ?? '',
+                    target,
+                }));
             }
         }
         return [];
+    }
+
+    /**
+     * The indexed live channels of every Stalker source, as hop candidates.
+     * One read per portal: the index is local app state, no portal is called.
+     */
+    private async stalkerCandidates(
+        sources: readonly PlaylistMeta[]
+    ): Promise<RatedCandidate[]> {
+        const portals = sources.filter((playlist) => Boolean(playlist.portalUrl));
+        if (portals.length === 0) {
+            return [];
+        }
+        const candidates: RatedCandidate[] = [];
+        for (const portal of portals) {
+            let raw: string | null = null;
+            try {
+                raw = await this.database.getAppState(
+                    stalkerLiveChannelIndexKey(portal._id)
+                );
+            } catch {
+                continue;
+            }
+            for (const entry of parseStalkerLiveChannelIndex(raw)) {
+                const target = buildStalkerLiveNavigationTarget({
+                    playlistId: portal._id,
+                    itemId: entry.id,
+                    categoryId: entry.genreId,
+                    title: entry.title,
+                    imageUrl: entry.logo,
+                });
+                if (target) {
+                    candidates.push({
+                        playlistId: portal._id,
+                        title: entry.title,
+                        target,
+                    });
+                }
+            }
+        }
+        return candidates;
     }
 
     private async search(probe: string): Promise<GlobalSearchResult[]> {

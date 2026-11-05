@@ -912,7 +912,7 @@ export class EmbeddedMpvPlayerComponent implements OnDestroy {
 
     retry(): void {
         this.controller.retry();
-        this.liveFailover.restart();
+        this.liveFailover.restart(true);
     }
 
     // These helpers run inside the template's reactive context, so the

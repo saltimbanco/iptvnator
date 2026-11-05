@@ -104,11 +104,30 @@ describe('WebPlayerLiveFailover', () => {
         watcher.onIssue(issue);
         watcher.onStarted();
         expect(failover.reportPlaying).toHaveBeenCalledWith('ERT 1');
-        jest.advanceTimersByTime(60_000);
+        // A minute of playing picture: no attempt timeout applies anymore,
+        // and progress keeps the stall watchdog quiet.
+        for (let tick = 0; tick < 12; tick++) {
+            jest.advanceTimersByTime(5_000);
+            watcher.onProgress();
+        }
 
         expect(watcher.onIssue(issue)).toBe(true);
 
         expect(failover.reportRetrying).toHaveBeenLastCalledWith(1);
+    });
+
+    it('fails a live stream that stops moving for ten seconds', () => {
+        watcher.onStarted();
+
+        jest.advanceTimersByTime(9_000);
+        watcher.onProgress();
+        jest.advanceTimersByTime(9_000);
+        expect(retry).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(1_000);
+
+        expect(retry).toHaveBeenCalledTimes(1);
+        expect(failover.reportRetrying).toHaveBeenCalledWith(1);
     });
 
     it('gives a failover candidate a single attempt', () => {
@@ -118,6 +137,21 @@ describe('WebPlayerLiveFailover', () => {
 
         expect(retry).not.toHaveBeenCalled();
         expect(failover.reportFailed).toHaveBeenCalledWith('ERT 1');
+    });
+
+    it('restarts the budget and forgets earlier failures on a manual retry', () => {
+        for (let attempt = 0; attempt < 4; attempt++) {
+            watcher.onIssue(issue);
+        }
+        expect(failover.reportFailed).toHaveBeenCalledWith('ERT 1');
+
+        watcher.restart(true);
+
+        expect(failover.reportLoading).toHaveBeenLastCalledWith('ERT 1', {
+            forgetFailures: true,
+        });
+        expect(watcher.onIssue(issue)).toBe(true);
+        expect(failover.reportRetrying).toHaveBeenLastCalledWith(1);
     });
 
     it('starts a fresh budget for a different stream in the same session', () => {

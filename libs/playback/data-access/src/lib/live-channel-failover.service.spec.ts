@@ -15,7 +15,7 @@ import {
 describe('LiveChannelFailoverService', () => {
     let service: LiveChannelFailoverService;
     let router: { url: string; navigate: jest.Mock };
-    let database: { globalSearchContent: jest.Mock };
+    let database: { globalSearchContent: jest.Mock; getAppState: jest.Mock };
     let snackBar: { open: jest.Mock };
 
     const sources = [
@@ -23,6 +23,11 @@ describe('LiveChannelFailoverService', () => {
         { _id: 'gold', title: 'Gold' },
         { _id: 'list', title: 'List' },
         { _id: 'silver', title: 'Silver' },
+        {
+            _id: 'portal-b',
+            title: 'Portal B',
+            portalUrl: 'http://b.example/stalker_portal/server/load.php',
+        },
     ] as PlaylistMeta[];
 
     function xtream(playlistId: string, title: string, id = 7): GlobalSearchResult {
@@ -78,6 +83,7 @@ describe('LiveChannelFailoverService', () => {
                 xtream('gold', 'GR: ERT 1', 41),
             ]),
         };
+        database.getAppState = jest.fn().mockResolvedValue(null);
         snackBar = { open: jest.fn() };
         TestBed.configureTestingModule({
             imports: [TranslateModule.forRoot()],
@@ -167,6 +173,68 @@ describe('LiveChannelFailoverService', () => {
 
         expect(navigatedTo()[2][0]).toBe('/workspace/xtreams/silver/live');
         expect(service.status()).toMatchObject({ index: 1, total: 1 });
+    });
+
+    it('tests every source again when the user retries by hand', async () => {
+        await service.reportFailed('ERT 1');
+        await service.reportFailed('GR: ERT 1');
+        await service.reportFailed('ERT 1');
+        await service.reportFailed('ERT1 HD');
+        expect(service.status()).toEqual({
+            kind: 'exhausted',
+            channelName: 'ERT 1',
+        });
+
+        // The user's own Retry asks for a fresh playability test: the sources
+        // that failed in this session are candidates again instead of being
+        // skipped by the failure memory.
+        service.reportLoading('ERT 1', { forgetFailures: true });
+        await service.reportFailed('ERT 1');
+
+        expect(service.status()).toMatchObject({ kind: 'hopping' });
+        expect(router.navigate).toHaveBeenCalledTimes(4);
+    });
+
+    it('hops to the same channel on another Stalker portal', async () => {
+        // Stalker has no catalog rows: the only candidate is the channel the
+        // other portal's ITV cache indexed.
+        database.globalSearchContent.mockResolvedValue([]);
+        database.getAppState.mockImplementation(async (key: string) =>
+            key === 'stalker-live-channel-index:portal-b'
+                ? JSON.stringify([
+                      {
+                          id: '901',
+                          title: 'ERT 1 HD',
+                          genreId: '12',
+                          logo: 'http://b.example/ert1.png',
+                      },
+                  ])
+                : null
+        );
+
+        await service.reportFailed('ERT 1');
+
+        expect(database.getAppState).toHaveBeenCalledWith(
+            'stalker-live-channel-index:portal-b'
+        );
+        expect(navigatedTo()).toEqual([
+            [
+                '/workspace/stalker/portal-b/itv',
+                expect.objectContaining({
+                    openStalkerLiveItemId: '901',
+                    openStalkerLivePlaylistId: 'portal-b',
+                    openStalkerLiveCategoryId: '12',
+                    openStalkerLiveTitle: 'ERT 1 HD',
+                }),
+            ],
+        ]);
+        expect(service.status()).toEqual({
+            kind: 'hopping',
+            channelName: 'ERT 1 HD',
+            sourceName: 'Portal B',
+            index: 1,
+            total: 1,
+        });
     });
 
     it('reports when no other source plays the channel', async () => {

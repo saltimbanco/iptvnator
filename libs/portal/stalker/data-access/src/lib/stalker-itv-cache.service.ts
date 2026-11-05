@@ -1,6 +1,10 @@
 import { Injectable, WritableSignal, inject, signal } from '@angular/core';
 import { createLogger } from '@iptvnator/portal/shared/util';
-import { DataService, resetHostConnectivityGuard } from '@iptvnator/services';
+import {
+    DataService,
+    DatabaseService,
+    resetHostConnectivityGuard,
+} from '@iptvnator/services';
 import { PlaylistMeta } from '@iptvnator/shared/interfaces';
 import { StalkerItvChannel } from './models';
 import {
@@ -10,6 +14,7 @@ import {
 import { StalkerPortalRepairService } from './stalker-portal-repair.service';
 import { StalkerSessionService } from './stalker-session.service';
 import { StalkerRequestDeps } from './stores/utils';
+import { persistStalkerLiveChannelIndex } from './stalker-live-channel-index';
 
 export type { StalkerItvLoadProgress };
 
@@ -33,6 +38,7 @@ const ERROR_COOLDOWN_MS = 30_000;
 @Injectable({ providedIn: 'root' })
 export class StalkerItvCacheService {
     private readonly logger = createLogger('StalkerItvCache');
+    private readonly database = inject(DatabaseService);
     private readonly requestDeps: StalkerRequestDeps = {
         dataService: inject(DataService),
         stalkerSession: inject(StalkerSessionService),
@@ -197,6 +203,14 @@ export class StalkerItvCacheService {
                     this.errorCooldownUntil.delete(key);
                     this.patchKeySet(this.readyKeys, key, true);
                     this.versionSignalFor(key).update((version) => version + 1);
+                    // Stalker has no catalog rows to search, so the live
+                    // failover finds this portal's channels by name through
+                    // this persisted index.
+                    void persistStalkerLiveChannelIndex(
+                        this.database,
+                        playlist._id,
+                        outcome
+                    );
                 } else if (outcome === 'error') {
                     this.errorCooldownUntil.set(
                         key,
