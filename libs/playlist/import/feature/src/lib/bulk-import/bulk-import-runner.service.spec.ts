@@ -236,6 +236,36 @@ describe('BulkImportRunnerService', () => {
         expect(playlistsService.addManyPlaylists).not.toHaveBeenCalled();
     });
 
+    it('stores the source a seeder resolved for its row', async () => {
+        seeder.seed.mockImplementation((playlist: Playlist) =>
+            Promise.resolve({
+                ...playlist,
+                portalUrl: 'http://panel.example/portal.php',
+                isFullStalkerPortal: true,
+            })
+        );
+
+        await runner.run(
+            rows({
+                type: 'stalker',
+                title: 'Panel',
+                portalUrl: 'http://panel.example/c',
+                macAddress: '00:1A:79:00:00:01',
+            })
+        );
+
+        const stored = store.dispatch.mock.calls
+            .map(([action]) => action)
+            .filter((action) => action.type === PlaylistActions.addManyPlaylists.type)
+            .flatMap((action) => action.playlists as Playlist[]);
+        expect(stored[0]).toEqual(
+            expect.objectContaining({
+                portalUrl: 'http://panel.example/portal.php',
+                isFullStalkerPortal: true,
+            })
+        );
+    });
+
     it('stores a downloaded M3U list under the title of its row', async () => {
         dataService.fetchPlaylistDefinition.mockResolvedValue({
             _id: 'm3u-1',

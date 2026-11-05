@@ -380,6 +380,31 @@ that work are never probed, let alone rewritten. E2E coverage:
 mock's tolerant `/portal.php`, strict `/server/load.php`, and
 `portal.php`-less `/ministra/*` hosts.
 
+## Bulk Import Runs the Same Discovery
+
+A bulk-import row is built from a provider list file, so it carries the
+coordinates exactly as printed — typically the portal page a reseller hands
+out (`http://panel/c`) with no observed mode. Seeding such a row without
+discovery aims the catalog request at that page: the panel answers HTML
+(or a 301 to the page), the seeder finds no channels and the bulk import
+skips a source that works fine in the Add form, where discovery resolves
+the endpoint first.
+
+`StalkerContentSeedService` therefore runs `StalkerPortalDiscoveryService`
+for every row whose `isFullStalkerPortal` is still undefined, before its
+first catalog call: the probe resolves the real endpoint
+(`portal.php` / `server/load.php`) and the observed mode. The resolved
+`portalUrl`, the mode, and — for a full portal — the token and the watchdog
+cadence are persisted onto the row through `transformPlaylistMeta` (guarded
+by the MAC, so an edit made while the probe ran is never overwritten), and
+the seeder returns that corrected row so the import stores and opens it.
+The seed request then goes to the endpoint discovery proved, handshaked when
+the panel enforces the token. `unreachable` and `auth-rejected` rows reject,
+so the import skips them like any other unreadable source.
+
+Rows that already carry an observed mode (Add form, edit) are used verbatim;
+discovery never runs twice for the same configuration.
+
 ## Main UI Components
 
 - `CategoryContentViewComponent` from `@iptvnator/portal/catalog/feature` (`libs/portal/catalog/feature`)
