@@ -900,7 +900,8 @@ export interface ElectronBridgeApi {
         userAgent?: string | null,
         referer?: string | null,
         scopeUrl?: string | null,
-        credentials?: ElectronBridgeStreamCredentials | null
+        credentials?: ElectronBridgeStreamCredentials | null,
+        origin?: string | null
     ) => Promise<boolean>;
     openInMpv: (
         url: string,
@@ -1230,7 +1231,8 @@ export interface ElectronBridgeApi {
         xtreamId: number,
         playlistId: string,
         contentType?: ElectronBridgePortalContentType,
-        identity?: ContentMetadataPatch
+        identity?: ContentMetadataPatch,
+        categoryId?: number
     ) => Promise<ElectronBridgeXtreamContent | null>;
     dbSetContentMetadataIfMissing: (
         contentId: number,

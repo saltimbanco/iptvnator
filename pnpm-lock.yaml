@@ -48,7 +48,7 @@ overrides:
   uuid@8.3.2: 11.1.1
   yaml@1.10.2: 1.10.3
 
-packageExtensionsChecksum: sha256-6DjYvAdT+Lv/4pu048t+fxYoAtP25Fr1lEoYfZ6HV38=
+packageExtensionsChecksum: sha256-xE4BM53+f1sfyPYy41cNryeznVp6K/qlpeuDAUIwAjg=
 
 patchedDependencies:
   app-builder-lib@26.15.7:
@@ -122,6 +122,9 @@ importers:
       '@ngx-pwa/local-storage':
         specifier: 22.0.0
         version: 22.0.0(@angular/common@22.2.2(@angular/core@22.2.2(@angular/compiler@22.2.2)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2))(@angular/core@22.2.2(@angular/compiler@22.2.2)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2)
+      '@noble/hashes':
+        specifier: 2.3.0
+        version: 2.3.0
       '@yangkghjh/videojs-aspect-ratio-panel':
         specifier: 0.0.1
         version: 0.0.1
@@ -21606,6 +21609,7 @@ snapshots:
 
   videojs-quality-selector-hls@1.1.1:
     dependencies:
+      '@babel/runtime': 7.29.10
       global: 4.4.0
       video.js: 8.24.1
       videojs-contrib-quality-levels: 4.1.0(video.js@8.24.1)

@@ -39,10 +39,8 @@ Electron and PWA paths.
 `RuntimeCapabilitiesService.supportsXtreamSqliteDataSource` proves that the
 complete SQLite-backed Xtream bridge is available. Otherwise it selects
 `PwaXtreamDataSource`. A generic Electron or `window.electron` check is not the
-data-source capability contract. Older favorites/recent branches that still
-probe `window.electron` directly are migration debt, not an alternate runtime
-selection rule; changes in those paths should follow the selected data source
-and explicit capabilities.
+data-source capability contract. Favorites and recent-item operations likewise
+follow the selected data source and explicit capabilities.
 
 Ownership follows the workspace boundaries:
 
@@ -54,6 +52,33 @@ Ownership follows the workspace boundaries:
   discovery/resolution: `libs/portal/shared/data-access`
 - reusable presentation: `libs/portal/shared/ui`
 - pure provider-neutral contracts/helpers: `libs/portal/shared/util`
+
+Catalog writes belong to the runtime loaders behind `getCategories` and
+`getContent`; `IXtreamDataSource` does not expose separate bulk-save methods.
+Electron loaders keep writing through the worker-backed `DatabaseService`;
+PWA loaders normalize API responses into their session caches. Tests load PWA
+catalogs through those same API-backed readers instead of seeding a second
+public write path.
+
+Destructive refresh belongs to `XtreamRefreshFlowService`; the data-source
+contract has no separate clear-and-snapshot entry point. Browser backup tests
+use `PwaXtreamBackupStorage` export/restore to preserve typed collection identity,
+saved snapshots and artwork. Category visibility writes remain owned by the
+category-management flow through `DatabaseService`, with no PWA no-op wrapper.
+Global recent-item collection reads and clears belong to
+`UnifiedRecentDataService`; `withRecentItems` retains playlist-local history and
+played-content metadata work only.
+
+Category initialization starts live, VOD and series reads in parallel, then
+publishes the results together. A failed session waits for every sibling
+category request to settle before releasing its busy hold and cleaning up.
+
+Content initialization runs one sequential import sequence for enabled live,
+VOD and series types, in that order. Each type persists completion before
+publishing rows or starting the next type. Publication retains its distinct
+state fields and renderer performance phase; cancellation and progress callbacks
+remain scoped to their owning session. Empty-catalog reuse and refill semantics
+are unchanged.
 
 Persisted Xtream identity is playlist-scoped and content-type-aware:
 `playlist_id + content.type + xtream_id`. Mixed collection keys likewise
@@ -525,6 +550,30 @@ save work, retaining pending history. Completed warm caches keep their existing
 read path; cold category-import code is loaded only when needed. Failed-import
 cleanup also loads only on the error path, keeping the startup payload bounded.
 
+The native content saver persists `importing` before its first content commit,
+including a first import with no previous marker. Process exit between commits
+therefore leaves an unfinished type for bootstrap cleanup; unfinished rows do
+not qualify as a usable offline catalog. Warm reads do not change completion.
+Both runtimes reject non-array category/content responses, including account
+error objects; only an actual empty array proves a successful empty response.
+Import options carry a renderer-local abort signal through cache reads, provider
+responses and persistence boundaries. Existing session/operation IPC cancellation
+still interrupts active Electron work. Category failure aborts sibling work and
+waits for every request to settle before cleanup and releasing the source hold.
+Phase callbacks belong to their import session and cannot revive a terminated run.
+Browser imports propagate that signal to their HTTP subscriptions, including
+pending target-registration waits; see [PWA request cancellation](./pwa-self-hosted.md#xtream-request-cancellation).
+Only session-owned bootstrap category loads may clear unfinished cache rows;
+ordinary category/detail readers cannot interpret a live `importing` marker as
+abandoned work. Lock-driven category reloads wait until initialization settles.
+Cancelable or session-owned requests do not share promises with independent
+readers, so cancelling an import cannot cancel a concurrent detail recovery.
+When a completed empty type gains content during a sessionless cache refill,
+the data source records completion after persistence. Cancellation or a failed
+completion write leaves its unfinished marker intact. A refill cannot finalize
+a type already marked unfinished by another owner; bootstrap completion stays
+with the import session.
+
 Fresh desktop backup restores separate dormant catalog-dependent history and
 hidden choices from the active import snapshot. Offline restore readiness checks
 only selected catalogs; completed retained caches can also accept their saved
@@ -795,6 +844,18 @@ real browser or a VLC-style client passes. Keep all three request sites using
 the shared constant instead of inlining the string again.
 
 ## Playback URL Formats
+
+Ordinary movie Play/Resume and series episode playback copy the initiating
+playlist's `userAgent`, `referrer` (as descriptor `referer`), and `origin` into
+`ResolvedPortalPlayback`. Inline playback and forced MPV/VLC launches consume
+that same descriptor; episode navigation resolves the headers again for the
+next episode. Missing overrides remain absent so the transport keeps its
+existing defaults. Multi-source alternatives retain their own source's headers.
+An explicit Origin reaches inline Electron requests even when it differs from
+the Referer's origin or no Referer is configured; the scoped bridge retains its
+Referer-derived fallback when no usable Origin override is supplied.
+The playback service specs and `xtream-playback-headers.e2e.ts` cover this
+handoff, including actual Electron media request headers.
 
 When account info includes `user_info.allowed_output_formats`, the current
 Xtream playlist keeps those formats for the active session. The default

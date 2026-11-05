@@ -1,7 +1,13 @@
 import { TvSelect } from '@iptvnator/tv/ui';
 import { TvModel } from './use-tv';
-import { favoritesFor } from './favorites';
-export function PageHeader({ tv }: { tv: TvModel }) {
+import { FavoriteSources, favoritesFor } from './favorites';
+export function PageHeader({
+    tv,
+    cancelOpening,
+}: {
+    tv: TvModel;
+    cancelOpening: () => void;
+}) {
     const view = tv.route.view;
     const title = {
         movies: 'Movies',
@@ -44,19 +50,25 @@ export function PageHeader({ tv }: { tv: TvModel }) {
                     ) : null}
                 </div>
             )}
-            <TvSelect
-                label="Active source"
-                focusKey="source-picker"
-                value={tv.data.activeId}
-                placeholder="No source connected"
-                options={tv.data.sources.map((s) => ({
-                    value: s.id,
-                    label: `${s.name} · ${s.provider.toUpperCase()}`,
-                }))}
-                onChange={(value) => {
-                    void tv.switchSource(value);
-                }}
-            />
+            {view === 'home' ? (
+                <span class="home-scope">All sources</span>
+            ) : view === 'favorites' ? (
+                <FavoriteSources tv={tv} cancel={cancelOpening} />
+            ) : (
+                <TvSelect
+                    label="Active source"
+                    focusKey="source-picker"
+                    value={tv.data.activeId}
+                    placeholder="No source connected"
+                    options={tv.data.sources.map((s) => ({
+                        value: s.id,
+                        label: `${s.name} · ${s.provider.toUpperCase()}`,
+                    }))}
+                    onChange={(value) => {
+                        void tv.switchSource(value);
+                    }}
+                />
+            )}
         </header>
     );
 }

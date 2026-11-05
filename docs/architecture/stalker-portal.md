@@ -218,6 +218,21 @@ show a persistent error with Retry, and do not report zero items. Retry resets t
 host connectivity guard before reloading the same resource. Repeated clicks join
 the reset; a source, category, type, query or page change retires that retry.
 
+**Protocol hashing on LAN HTTP.** The SHA-1 prehash used by `handshake` and
+`get_profile`, and the opt-in MAC-derived SHA-256 device IDs, share
+`hashStalkerProtocolValue()` in shared interfaces. HTTPS/Electron use native
+Web Crypto; when `crypto.subtle` is absent, the helper lazily imports the same
+algorithms from `@noble/hashes`. Both paths return identical uppercase hex.
+An available native digest failure still propagates. This does not alter
+persisted identities, generate IDs automatically, or provide HTTP encryption.
+Prehash generation loads the helper through `loadStalkerProtocolHash()` in
+shared interfaces only when authentication starts. Device-ID derivation loads it
+only after validating a MAC. Eager identity normalization and auth-service
+construction therefore do not load hashing during startup. The helper checks
+`crypto` without `globalThis` to retain the TV client's Chromium 68 support.
+The loader's relative dynamic import uses the emitted `.js` extension so the
+same shared barrel also resolves under the backends' NodeNext configuration.
+
 The playlist-info Edit dialog compares URL, MAC, username/password, serial,
 device IDs and signatures as one connection identity. A metadata-only edit
 does not run discovery; its queued write omits every connection/mode field so
@@ -694,7 +709,7 @@ later empty value as a permanent lockout. Therefore:
   the permanent lockout. The identity toggle is therefore locked while
   `isLoading()` rather than the submission being re-snapshotted: the UI must
   not imply an opt-out that cannot exist;
-- an unusable MAC (or a runtime without WebCrypto) derives nothing rather than
+- an unusable MAC derives nothing rather than
   hashing a typo into a permanent binding;
 - the playlist-info edit dialog offers no derivation. It shows
   `DEVICE_ID_PINNED_WARNING` instead once a device ID has actually reached the
@@ -1593,12 +1608,31 @@ records. Both accept the same closed set: boolean `true`, numeric `1`, or string
 
 - Item is opened under VOD, but already contains episodes.
 - `StalkerSeriesViewComponent` creates a pseudo-season and renders episodes directly.
+- When the raw title carries a season range such as `(1-9 season)` or
+  `S01-S09`, that single flat list has no known season boundaries. Mapped
+  episodes carry `seasonUnknown: true`: season tabs and season-code prefixes
+  are hidden, season-level TMDB requests/overlays are skipped and loading is
+  settled normally. Show-level enrichment still applies. No automatic split
+  is inferred from TMDB. Numeric grouping, episode IDs, commands and activity
+  identities retain their historical values for progress/download matching;
+  the number is an internal coordinate, not a claimed season.
+- Range matching stays local to the lazy Stalker adapter. The shared numeric
+  season-marker helpers are used by title normalization at startup; placing the
+  range parser there also pulls it into the initial bundle.
 
 3. VOD with `is_series=1` (Ministra plugin behavior):
 
 - Treated as series flow from VOD context.
 - Seasons are fetched lazily.
 - Episodes are fetched on season select.
+- Lazy VOD season and episode lists collect all `get_ordered_list` pages
+  sequentially through `executeStalkerRequest`, then sort the complete list.
+  Provider IDs are deduplicated; declared totals/pages or the server page size
+  determine completion. Legacy array replies without paging metadata stay
+  single-response lists. Empty early pages, malformed replies, repeated pages
+  and the 1000-page safety bound fail the load rather than publish a partial
+  list. Navigation retires the collection before another page or state write;
+  an HTTP request already in flight may still finish. Other seasons stay lazy.
 - The season resource depends on the VOD item id and series mode, so a TMDB
   metadata patch does not reload seasons or discard loaded episodes. Pending
   episode requests belong to the exact loading season VM; replies from an old

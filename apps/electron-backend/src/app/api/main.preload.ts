@@ -546,14 +546,16 @@ const electronApi: ElectronBridgeApi = {
         credentials?: {
             authorization?: string | null;
             cookie?: string | null;
-        } | null
+        } | null,
+        origin?: string | null
     ) =>
         ipcRenderer.invoke(
             'set-user-agent',
             userAgent,
             referer,
             scopeUrl,
-            credentials
+            credentials,
+            origin
         ),
     openInMpv: (
         url: string,
@@ -1067,14 +1069,19 @@ const electronApi: ElectronBridgeApi = {
         xtreamId: number,
         playlistId: string,
         contentType?: 'live' | 'movie' | 'series',
-        identity?: ContentMetadataPatch
+        identity?: ContentMetadataPatch,
+        categoryId?: number
     ) =>
         ipcRenderer.invoke(
             'DB_GET_CONTENT_BY_XTREAM_ID',
             xtreamId,
             playlistId,
             contentType,
-            ...(identity ? [identity] : [])
+            ...(categoryId !== undefined
+                ? [identity, categoryId]
+                : identity
+                  ? [identity]
+                  : [])
         ),
     dbSetContentMetadataIfMissing: (
         contentId: number,

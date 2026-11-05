@@ -82,7 +82,7 @@ TypeScript 6 migration settings preserve compiler defaults and per-project outpu
 `ignoreDeprecations: "6.0"` temporarily supports legacy Node test configs and
 `baseUrl`, rather than changing the whole workspace to browser resolution.
 
-Two third-party packages need scoped compatibility bridges in
+Third-party packages need scoped compatibility bridges in
 `pnpm-workspace.yaml`:
 
 - `nx-electron@22.0.0` still declares Nx 22 peers. Its existing package-layout
@@ -97,6 +97,10 @@ Two third-party packages need scoped compatibility bridges in
   `iptvnator` v1 database, retains the `_id` key path, and checks reload
   persistence. The shared interfaces package declares the same library version.
   Remove the allowance when upstream includes the installed Angular version.
+- `videojs-quality-selector-hls@1.1.1` imports Babel runtime helpers from its
+  CommonJS entry but lists `@babel/runtime` only as a development dependency.
+  A package extension supplies the existing Babel 7 runtime. Remove it when
+  upstream declares that runtime dependency; player-import unit tests cover it.
 
 Jest uses root Babel 7 while Angular build retains its own Babel 8. The website
 uses Astro 7 with the root TypeScript 6; no Astro-specific compiler package
@@ -386,8 +390,8 @@ entries: `@iptvnator/ui/components/window-controls`,
 `@iptvnator/ui/components/confirm-dialog`,
 `@iptvnator/playlist/shared/ui/stalker-connection-editor`,
 `@iptvnator/playlist/shared/util/playlist-file-import` (the barrel would add
-`PlaylistContextFacade`) and `@iptvnator/pipes/date-format` (the barrel would
-add `SafePipe`; the eager EPG progress panel uses it too), like the existing
+`PlaylistContextFacade`) and `@iptvnator/pipes/date-format` (also used by the
+eager EPG progress panel), like the existing
 `@iptvnator/ui/epg/progress-panel`, and loads anything used only on demand
 through a local file it imports dynamically (the Stalker connection editor,
 the release-notes dialog, the external-player info dialog, the parental-lock
@@ -405,8 +409,13 @@ though tree shaking would drop it from a single bundle. The eager Xtream
 data layer and root shell therefore import `@iptvnator/portal/shared/util/logger`
 and `@iptvnator/portal/shared/util/tokens` (the portal DI tokens), not the
 `@iptvnator/portal/shared/util` barrel, whose navigation, keyboard-shortcut
-and download helpers (about 45 KB) belong to the lazy portal routes. A
-type-only import of a barrel uses `import type`, so it can never keep the
+and download helpers (about 45 KB) belong to the lazy portal routes.
+Packaged renderer reload recovery uses the pure
+`@iptvnator/portal/shared/util/collection-view-state` entry, which keeps its
+validator separate from other navigation code; the navigation barrel
+re-exports the same API for route consumers. Recovery itself loads only for
+an actual restore request, never on ordinary startup.
+A type-only import of a barrel uses `import type`, so it can never keep the
 barrel reachable. `renderer.initialBytes` in
 [performance journeys](performance-journeys.md) guards the result; to see why a
 module is eager, build with `pnpm nx build web --stats-json` and follow the

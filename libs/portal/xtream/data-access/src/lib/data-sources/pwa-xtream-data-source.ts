@@ -31,7 +31,6 @@ import {
     XTREAM_CONTENT_TYPES,
     IXtreamDataSource,
     XtreamCollectionRef,
-    ProgressCallback,
     XtreamOperationOptions,
     XtreamCategoryFromDb,
     XtreamContentItem,
@@ -332,6 +331,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
         type: CategoryType,
         options?: XtreamOperationOptions
     ): Promise<XtreamCategory[]> {
+        options?.signal?.throwIfAborted();
         const cacheKey = `${playlistId}-${type}-categories`;
 
         // Check in-memory cache first
@@ -348,8 +348,10 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
         options?.onPhaseChange?.('loading-categories');
         const categories = await this.apiService.getCategories(
             credentials,
-            type
+            type,
+            ...(options?.signal ? [{ signal: options.signal }] as const : [])
         );
+        options?.signal?.throwIfAborted();
 
         // Cache in memory
         this.categoryCache.set(cacheKey, categories);
@@ -472,26 +474,6 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
         return [];
     }
 
-    async saveCategories(
-        playlistId: string,
-        categories: XtreamCategory[],
-        type: DbCategoryType
-    ): Promise<void> {
-        // In PWA mode, we just cache in memory
-        const cacheKey = `${playlistId}-${type}-categories`;
-        this.categoryCache.set(cacheKey, categories);
-    }
-
-    async updateCategoryVisibility(
-        categoryIds: number[],
-        hidden: boolean
-    ): Promise<void> {
-        void categoryIds;
-        void hidden;
-        // Category visibility is not supported in PWA mode
-        this.logger.warn('Category visibility not supported in PWA mode');
-    }
-
     // =========================================================================
     // Content/Stream Operations (API + in-memory cache)
     // =========================================================================
@@ -537,10 +519,16 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
                   ? 'loading-movies'
                   : 'loading-series'
         );
+        options?.signal?.throwIfAborted();
         const content = await this.normalizeContentItems(
-            await this.apiService.getStreams(credentials, type),
+            await this.apiService.getStreams(
+                credentials,
+                type,
+                ...(options?.signal ? [{ signal: options.signal }] as const : [])
+            ),
             type
         );
+        options?.signal?.throwIfAborted();
 
         // Report total and progress (PWA doesn't have incremental save, so report all at once)
         if (onTotal) {
@@ -563,33 +551,6 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
         void playlistId;
         void type;
         return [];
-    }
-
-    async saveContent(
-        playlistId: string,
-        streams:
-            | XtreamLiveStream[]
-            | XtreamVodStream[]
-            | XtreamSerieItem[]
-            | XtreamContentItem[],
-        type: 'live' | 'movie' | 'series',
-        onProgress?: ProgressCallback,
-        options?: XtreamOperationOptions
-    ): Promise<number> {
-        void options;
-        // In PWA mode, we just cache normalized API items in memory.
-        const cacheKey = `${playlistId}-${type}-content`;
-        const normalizedStreams = await this.normalizeContentItems(
-            streams,
-            type
-        );
-        this.contentCache.set(cacheKey, normalizedStreams);
-
-        if (onProgress) {
-            onProgress(normalizedStreams.length);
-        }
-
-        return normalizedStreams.length;
     }
 
     private async normalizeContentItems(
@@ -1188,25 +1149,6 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     // Cleanup Operations
     // =========================================================================
 
-    async clearPlaylistContent(
-        playlistId: string
-    ): Promise<XtreamPendingRestoreState> {
-        // Resolve only unambiguous legacy references before producing typed backup data.
-        await this.getFavorites(playlistId);
-        await this.getRecentItems(playlistId);
-        const { snapshotPwaPendingState } = await import('./pwa-pending-state');
-        const playbackPositions =
-            await this.getAllPlaybackPositions(playlistId);
-        const state = snapshotPwaPendingState(
-            this.collectionStorage,
-            playlistId,
-            playbackPositions,
-            (ids) => this.getCollectionItemsById(playlistId, ids)
-        );
-        this.clearCacheForPlaylist(playlistId);
-        return state;
-    }
-
     async restoreUserData(
         playlistId: string,
         restoreState: XtreamPendingRestoreState,
@@ -1251,14 +1193,6 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
             }
         });
         contentKeysToDelete.forEach((key) => this.contentCache.delete(key));
-    }
-
-    /**
-     * Clear all in-memory caches
-     */
-    clearAllCaches(): void {
-        this.categoryCache.clear();
-        this.contentCache.clear();
     }
 }
 

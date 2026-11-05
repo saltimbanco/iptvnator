@@ -137,13 +137,6 @@ export interface XtreamCategoryFromDb {
 }
 
 /**
- * Recently viewed item with playlist info
- */
-export interface RecentlyViewedItem extends XtreamContentItem {
-    viewed_at: string;
-}
-
-/**
  * Database category type mapping (differs from API type)
  */
 export type DbCategoryType = 'live' | 'movies' | 'series';
@@ -163,20 +156,13 @@ export function mapCategoryTypeToDbType(type: CategoryType): DbCategoryType {
 }
 
 /**
- * Maps StreamType to DbCategoryType for content storage
- */
-export function mapStreamTypeToDbType(
-    type: StreamType
-): 'live' | 'movie' | 'series' {
-    return type;
-}
-
-/**
  * Progress callback for bulk operations
  */
 export type ProgressCallback = (count: number) => void;
 
 export interface XtreamOperationOptions {
+    /** Renderer-local cancellation; never serialized across IPC. */
+    signal?: AbortSignal;
     operationId?: string;
     sessionId?: string;
     onEvent?: (event: DbOperationEvent) => void;
@@ -269,23 +255,6 @@ export interface IXtreamDataSource {
         type: DbCategoryType
     ): Promise<XtreamCategoryFromDb[]>;
 
-    /**
-     * Save categories in bulk
-     */
-    saveCategories(
-        playlistId: string,
-        categories: XtreamCategory[],
-        type: DbCategoryType
-    ): Promise<void>;
-
-    /**
-     * Update category visibility
-     */
-    updateCategoryVisibility(
-        categoryIds: number[],
-        hidden: boolean
-    ): Promise<void>;
-
     // =========================================================================
     // Content/Stream Operations
     // =========================================================================
@@ -325,21 +294,6 @@ export interface IXtreamDataSource {
         playlistId: string,
         type: StreamType
     ): Promise<XtreamContentItem[]>;
-
-    /**
-     * Save content in bulk
-     */
-    saveContent(
-        playlistId: string,
-        streams:
-            | XtreamLiveStream[]
-            | XtreamVodStream[]
-            | XtreamSerieItem[]
-            | XtreamContentItem[],
-        type: 'live' | 'movie' | 'series',
-        onProgress?: ProgressCallback,
-        options?: XtreamOperationOptions
-    ): Promise<number>;
 
     // =========================================================================
     // Search Operations
@@ -435,7 +389,9 @@ export interface IXtreamDataSource {
         xtreamId: number,
         playlistId: string,
         contentType?: 'live' | 'movie' | 'series',
-        identity?: ContentMetadataPatch
+        identity?: ContentMetadataPatch,
+        /** SQLite-only local category restriction when verifying route context. */
+        categoryId?: number
     ): Promise<XtreamContentItem | null>;
 
     /**
@@ -532,14 +488,6 @@ export interface IXtreamDataSource {
      * cannot bleed into the new session (relevant for the PWA implementation).
      */
     clearSessionCache(playlistId: string): void;
-
-    /**
-     * Clear all content and categories for a playlist (for refresh)
-     * Returns user data (favorites, recently viewed) for restoration
-     */
-    clearPlaylistContent(
-        playlistId: string
-    ): Promise<XtreamPendingRestoreState>;
 
     /**
      * Restore user data after refresh
