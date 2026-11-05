@@ -25,6 +25,12 @@ this marker — see `.changes/README.md`.
 
 ### Fixes
 
+- **stalker** — Bulk import resolves a Stalker portal's API endpoint before
+  it validates the source, exactly like adding the portal by hand. A list
+  row such as `http://panel/c` names the portal page, not its API, so every
+  row of such a file was reported as failed or too slow even though the
+  source works in the Add form. The resolved address and the observed mode
+  are stored, so the source keeps working after a restart.
 - **playlist** — Bulk import now tells you why a row cannot be imported — no portal address, no MAC address, or missing connection details — instead of the same generic "Incomplete" note on every row, and a file with no usable row says so under the list rather than leaving the Import button silently disabled. ([dab07fd](https://github.com/4gray/iptvnator/commit/dab07fdcd989f1a901d12afe9c0b813789d290b5))
 - **electron** — Desktop downloads accept only media files and recover from stalled connections without blocking the queue. Remote-control startup errors are handled, slow network folders keep file actions responsive, and playback/database recovery no longer lets old processes interrupt newer sessions. ([#2079](https://github.com/4gray/iptvnator/pull/2079))
 - **i18n** — Hungarian localization improvements clarify TMDB matching, playlist and EPG options, watched-movie filters, server setup, and shared viewing activity. Labels and messages now use consistent formal wording and more precise explanations. ([#2096](https://github.com/4gray/iptvnator/pull/2096))

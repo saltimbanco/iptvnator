@@ -205,13 +205,17 @@ export class BulkImportRunnerService {
         attempt: RowAttempt
     ): Promise<Playlist> {
         if (isDirectBulkPlaylistEntry(row)) {
-            const playlist = bulkEntryToPlaylist(row);
+            let playlist = bulkEntryToPlaylist(row);
             if (!playlist) {
                 throw new Error('Incomplete portal row');
             }
             await this.persist(playlist, attempt);
             for (const seeder of this.seeders) {
-                await seeder.seed(playlist);
+                // A seeder may have to resolve the coordinates a list file
+                // printed into the ones the portal answers on (Stalker
+                // endpoint discovery) and hands the corrected row back;
+                // that is the row this import stores and opens.
+                playlist = (await seeder.seed(playlist)) ?? playlist;
             }
             return playlist;
         }
