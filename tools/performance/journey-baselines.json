@@ -3,13 +3,13 @@
     "journeys": {
         "launch": {
             "renderer.initialBytes": {
-                "value": 1196205,
+                "value": 1216584,
                 "unit": "bytes",
                 "slack": 4096,
                 "updatedAt": "2026-10-14",
                 "evidencePr": 1939,
                 "measuredWith": "pnpm nx build web && pnpm run perf:initial-bytes",
-                "note": "No Angular Material module is in the initial bundle since #1939: services created with the app open toasts through LazySnackBar and dialogs through LazyMatDialog, so a new eager MatSnackBar or MatDialog import brings back Material's button, ripple and the CDK a11y chunks (about 110 KB). The CDK overlay stays initial through the FullscreenOverlayContainer provider in app.config.ts. Self-hosted server storage (#1903) keeps only what must run before the first route on the startup path (the /v1/instance probe and remembered server, the connection status, the token bound to its instance, the playlist storage backend); the storage code itself loads by dynamic import in server mode only."
+                "note": "Raised from 1,196,205 by 20,379 bytes for the live channel failover and import scope work. The same tree first measured 1,465,751 because the Stalker live index warm-up and the Stalker content seeder were on the startup path; both are now loaded lazily (initial bytes 1,216,584, main chunk 276.9 kB)."
             },
             "renderer.ipcCallsToFirstCard": {
                 "value": 15,

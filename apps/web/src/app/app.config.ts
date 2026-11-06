@@ -31,7 +31,6 @@ import {
     PORTAL_PLAYER,
 } from '@iptvnator/portal/shared/util/tokens';
 import { STALKER_PLAYLIST_CONNECTION_EDITOR } from '@iptvnator/playlist/shared/ui/stalker-connection-editor';
-import { provideStalkerContentSeeder } from '@iptvnator/portal/stalker/data-access';
 import { provideXtreamDataSource } from '@iptvnator/portal/xtream/data-access';
 import {
     provideParentalLockPlaylistCleanup,
@@ -156,7 +155,6 @@ export const appConfig: ApplicationConfig = {
         ...provideParentalLockPrompt(),
         provideParentalLockPlaylistCleanup(),
         ...provideXtreamDataSource(activityDataSourceFactory),
-        ...provideStalkerContentSeeder(),
         {
             provide: PLAYBACK_ACTIVITY_EVENTS,
             useFactory: activityEventsFactory,

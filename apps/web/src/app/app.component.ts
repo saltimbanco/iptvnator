@@ -6,6 +6,7 @@ import {
     OnInit,
     signal,
     ChangeDetectionStrategy,
+    EnvironmentInjector,
 } from '@angular/core';
 import { LazySnackBar } from '@iptvnator/services/lazy-snack-bar';
 import { Router, RouterOutlet } from '@angular/router';
@@ -47,7 +48,6 @@ import { SettingsService } from './services/settings.service';
 import { ParentalLockEnforcementService } from './services/parental-lock-enforcement.service';
 import { PlaybackKeepAwakeService } from './services/playback-keep-awake.service';
 import { PlaylistOpenRequestService } from './services/playlist-open-request.service';
-import { StalkerLiveIndexWarmupService } from './services/stalker-live-index-warmup.service';
 import { AppUpdateNotificationPanelComponent } from './app-update-notification-panel.component';
 import { AppStartupStatusComponent } from './app-startup-status.component';
 import { syncDocumentLanguage } from './services/document-language';
@@ -91,9 +91,7 @@ export class AppComponent implements OnInit {
         ParentalLockEnforcementService
     );
     private playlistOpenRequests = inject(PlaylistOpenRequestService);
-    private readonly stalkerLiveIndexWarmup = inject(
-        StalkerLiveIndexWarmupService
-    );
+    private readonly injector = inject(EnvironmentInjector);
     private runtime = inject(RuntimeCapabilitiesService);
     private readonly workspaceShellActions = inject(WORKSPACE_SHELL_ACTIONS);
     private readonly contextDrawer = inject(WorkspaceShellContextDrawerService);
@@ -129,7 +127,13 @@ export class AppComponent implements OnInit {
         // Build each Stalker portal's live channel index once, so a live
         // failover can hop to another portal after a restart without the
         // user opening that portal first.
-        this.stalkerLiveIndexWarmup.start();
+        // The warm-up crawls Stalker portals through their data layer, which
+        // is a large graph; importing it here keeps it off the startup path
+        // and starts it as soon as the chunk arrives.
+        void import('./services/stalker-live-index-warmup.service').then(
+            ({ StalkerLiveIndexWarmupService }) =>
+                this.injector.get(StalkerLiveIndexWarmupService).start()
+        );
 
         effect(() => {
             const size = this.settingsStore.coverSize?.() ?? 'medium';

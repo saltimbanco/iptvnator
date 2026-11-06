@@ -36,6 +36,7 @@ import {
     RadioOptionDirective,
 } from '@iptvnator/ui/components/radio-group';
 import { PlaylistType } from '@iptvnator/playlist/shared/ui';
+import { provideStalkerContentSeeder } from '@iptvnator/portal/stalker/data-access';
 import { PlaylistActions } from '@iptvnator/m3u-state';
 import { EpgPreferencesService } from '@iptvnator/services';
 import { storedImportScopeFlags } from '@iptvnator/shared/interfaces';
@@ -80,6 +81,11 @@ import {
     styleUrl: './add-playlist-dialog.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
     encapsulation: ViewEncapsulation.None,
+    // Registered here, not at bootstrap: the seeder is only reachable from
+    // the bulk import inside this lazily opened dialog, and providing it in
+    // the root injector pulled the whole Stalker data-access graph into the
+    // initial bundle.
+    providers: [...provideStalkerContentSeeder()],
 })
 export class AddPlaylistDialogComponent {
     private readonly injector = inject(Injector);
