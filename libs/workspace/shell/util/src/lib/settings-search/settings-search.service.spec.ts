@@ -157,6 +157,7 @@ describe('SettingsSearchService', () => {
         // Embedded MPV rows wait for the support probe.
         expect(entries).not.toContain('embedded-mpv-extra-options');
         expect(entries).not.toContain('embedded-mpv-frame-copy');
+        expect(entries).toContain('live-channel-failover');
         // Connecting a server is available before any connection exists.
         expect(entries).toContain('source-server');
         expect(entries.length).toBe(SETTINGS_SEARCH_ENTRIES.length - 4);
@@ -169,9 +170,7 @@ describe('SettingsSearchService', () => {
             'server'
         );
         expect(service.visibleEntries().map(({ id }) => id)).toEqual(
-            expect.arrayContaining([
-                'source-server',
-            ])
+            expect.arrayContaining(['source-server'])
         );
     });
 
@@ -208,6 +207,7 @@ describe('SettingsSearchService', () => {
 
             expect(entries).toContain('embedded-mpv-extra-options');
             expect(entries).toContain('embedded-mpv-auto-reconnect');
+            expect(entries).toContain('live-channel-failover');
             // Frame copy is not available on this machine, so the row the
             // settings page never renders must not be offered either.
             expect(entries).not.toContain('embedded-mpv-frame-copy');
