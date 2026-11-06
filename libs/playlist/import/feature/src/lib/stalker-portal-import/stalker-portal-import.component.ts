@@ -52,20 +52,10 @@ import {
     type StalkerImportFeedback,
     toStalkerImportFeedback,
     toStalkerPlaylistIdentityFields,
+    StalkerSettledIdentity,
 } from './stalker-import-identity';
 import { RevealDetailsDirective } from '@iptvnator/ui/components/reveal-details';
 import { provideFormFieldDefaults } from '@iptvnator/ui/components/form-field-defaults';
-
-/**
- * A MAC and the device IDs that belong to exactly it. Kept together because
- * the portal binds the pair permanently on first use — a MAC carrying another
- * address's IDs is a device conflict nobody can undo.
- */
-interface StalkerSettledIdentity {
-    macAddress: string;
-    deviceId1: string;
-    deviceId2: string;
-}
 
 @Component({
     imports: [

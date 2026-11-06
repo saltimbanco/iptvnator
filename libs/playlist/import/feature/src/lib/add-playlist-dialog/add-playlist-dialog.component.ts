@@ -38,11 +38,7 @@ import {
 import { PlaylistType } from '@iptvnator/playlist/shared/ui';
 import { PlaylistActions } from '@iptvnator/m3u-state';
 import { EpgPreferencesService } from '@iptvnator/services';
-import {
-    ProviderImportCandidate,
-    SOURCE_TYPE_ICONS,
-    storedImportScopeFlags,
-} from '@iptvnator/shared/interfaces';
+import { storedImportScopeFlags } from '@iptvnator/shared/interfaces';
 import { AutoImportComponent } from '../auto-import/auto-import.component';
 import { BulkImportComponent } from '../bulk-import/bulk-import.component';
 import { FileUploadComponent } from '../file-upload/file-upload.component';
@@ -53,29 +49,11 @@ import { UrlXtreamSuggestion } from '../url-upload/url-xtream-suggestion';
 import { XtreamCodeImportComponent } from '../xtream-code-import/xtream-code-import.component';
 import { createUrlPlaylistImport } from './url-playlist-import';
 import { createImportDrafts } from './import-drafts';
-
-/**
- * Flat 7-method option model — each entry IS a method, no nesting. `auto`
- * detects a single source from pasted provider text, `bulk` imports many at
- * once.
- */
-export interface PlaylistMethodOption {
-    value: PlaylistType;
-    icon: string;
-    labelKey: string;
-    subKey: string;
-}
-
-/** The import form a picked auto-detect candidate prefills. */
-const METHOD_BY_CANDIDATE_KIND: Record<
-    ProviderImportCandidate['kind'],
-    PlaylistType
-> = {
-    xtream: 'xtream',
-    stalker: 'stalker',
-    'm3u-url': 'url',
-    'm3u-text': 'text',
-};
+import {
+    METHOD_BY_CANDIDATE_KIND,
+    PLAYLIST_METHOD_OPTIONS,
+    PlaylistMethodOption,
+} from './playlist-method-options';
 
 @Component({
     imports: [
@@ -154,56 +132,7 @@ export class AddPlaylistDialogComponent {
      */
     readonly autoDetectText = signal('');
 
-    // Order matches the v0.22 mockup left-to-right: URL first (Most common),
-    // then File, Xtream credentials, Stalker portal, raw text paste. Each
-    // entry stands on its own — no nested subtypes. Labels are short and
-    // sentence-cased; the "Add via …" / "Add Xtreme Code" wording from the
-    // old tab labels is redundant inside a dialog already titled "Add
-    // playlist".
-    readonly methodOptions: PlaylistMethodOption[] = [
-        {
-            value: 'url',
-            icon: SOURCE_TYPE_ICONS['m3u-url'],
-            labelKey: 'HOME.ADD_PLAYLIST.METHOD_URL_LABEL',
-            subKey: 'HOME.ADD_PLAYLIST.METHOD_URL_SUB',
-        },
-        {
-            value: 'file',
-            icon: SOURCE_TYPE_ICONS['m3u-local'],
-            labelKey: 'HOME.ADD_PLAYLIST.METHOD_FILE_LABEL',
-            subKey: 'HOME.ADD_PLAYLIST.METHOD_FILE_SUB',
-        },
-        {
-            value: 'xtream',
-            icon: SOURCE_TYPE_ICONS.xtream,
-            labelKey: 'HOME.ADD_PLAYLIST.METHOD_XTREAM_LABEL',
-            subKey: 'HOME.ADD_PLAYLIST.METHOD_XTREAM_SUB',
-        },
-        {
-            value: 'stalker',
-            icon: SOURCE_TYPE_ICONS.stalker,
-            labelKey: 'HOME.ADD_PLAYLIST.METHOD_STALKER_LABEL',
-            subKey: 'HOME.ADD_PLAYLIST.METHOD_STALKER_SUB',
-        },
-        {
-            value: 'text',
-            icon: SOURCE_TYPE_ICONS['m3u-text'],
-            labelKey: 'HOME.ADD_PLAYLIST.METHOD_TEXT_LABEL',
-            subKey: 'HOME.ADD_PLAYLIST.METHOD_TEXT_SUB',
-        },
-        {
-            value: 'auto',
-            icon: 'auto_awesome',
-            labelKey: 'HOME.ADD_PLAYLIST.METHOD_AUTO_LABEL',
-            subKey: 'HOME.ADD_PLAYLIST.METHOD_AUTO_SUB',
-        },
-        {
-            value: 'bulk',
-            icon: 'library_add',
-            labelKey: 'HOME.ADD_PLAYLIST.METHOD_BULK_LABEL',
-            subKey: 'HOME.ADD_PLAYLIST.METHOD_BULK_SUB',
-        },
-    ];
+    readonly methodOptions: PlaylistMethodOption[] = PLAYLIST_METHOD_OPTIONS;
 
     /**
      * Backwards-compatible alias. The template's @switch and the action

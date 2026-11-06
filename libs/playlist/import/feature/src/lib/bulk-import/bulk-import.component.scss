@@ -95,7 +95,7 @@
 
     &:focus {
         outline: none;
-        border-bottom-color: var(--app-selection-color);
+        border-bottom-color: var(--app-focus-ring);
     }
 }
 

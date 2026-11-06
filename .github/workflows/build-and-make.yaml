@@ -109,7 +109,7 @@ jobs:
                       embedded_mpv_arch: x64
                       embedded_mpv_build_runtime: false
 
-        steps: &electron-build-steps
+        steps:
             - name: Checkout code
               uses: actions/checkout@v7
 
