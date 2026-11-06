@@ -1,0 +1,77 @@
+// Global on purpose (ViewEncapsulation.None): the overlay is rendered beside
+// the engine inside `.web-player-view`, whose own stylesheet it does not own.
+// Every selector is prefixed with `live-failover-status`.
+
+.live-failover-status-host {
+    // Never take layout space beside the engine.
+    display: contents;
+}
+
+// Top-centre, clear of the channel panel's left edge and of the shared
+// controls at the bottom. Pointer-transparent: the overlay never swallows a
+// click meant for the video.
+.live-failover-status {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: calc(100% - 96px);
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 999px;
+    color: #e7ecf3;
+    background: rgba(12, 16, 23, 0.78);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(18px) saturate(1.3);
+    font-size: 0.85rem;
+    line-height: 1.3;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.live-failover-status__pulse {
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--app-focus-ring, #6ea8fe);
+    animation: live-failover-status-pulse 1.4s ease-in-out infinite;
+}
+
+.live-failover-status__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@keyframes live-failover-status-pulse {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: scale(0.85);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@container (max-width: 560px) {
+    .live-failover-status {
+        top: 8px;
+        max-width: calc(100% - 32px);
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live-failover-status__pulse {
+        animation: none;
+        opacity: 1;
+    }
+}

@@ -78,6 +78,23 @@ async function getMpvProperty(
     });
 }
 
+/**
+ * The player's own clock and pause bit, for the live stall monitor. An
+ * external live launch carries no `contentInfo`, so the position feed above
+ * never starts and this is the only sign that the picture still moves.
+ */
+export async function readMpvPlaybackSignal(
+    socketPath: string
+): Promise<{ positionSeconds: number | null; paused: boolean }> {
+    const position = await getMpvProperty(socketPath, 'time-pos');
+    const pause = await getMpvProperty(socketPath, 'pause');
+    return {
+        positionSeconds: typeof position === 'number' ? position : null,
+        // mpv answers `pause` with a JSON boolean.
+        paused: Number(pause) === 1,
+    };
+}
+
 export function stopPositionPolling(sessionId?: string): void {
     if (sessionId !== undefined && sessionId !== positionPollingSessionId)
         return;

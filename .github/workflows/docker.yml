@@ -1,20 +1,9 @@
 name: docker-build
 
+# Disabled in this fork: publishing the image is upstream's job (4gray/iptvnator),
+# and the automatic push/tag runs had no Docker Hub credentials here, so every
+# release turned red on a build that could never publish. Manual dispatch only.
 on:
-    pull_request:
-        paths:
-            - '.github/workflows/docker.yml'
-            - 'apps/web/**'
-            - 'apps/web-backend/**'
-            - 'docker/**'
-            - 'libs/**'
-            - 'package.json'
-            - 'pnpm-lock.yaml'
-    push:
-        branches:
-            - master
-        tags:
-            - 'v*'
     workflow_dispatch:
         inputs:
             push:

@@ -1,3 +1,8 @@
+<!-- Live failover progress over the engine. The host is a display:
+     contents sibling of every player, so this needs no layout of its
+     own; `enabled` is false for an engine that paints above the DOM. -->
+<app-live-failover-status [enabled]="enabled()" />
+
 @if (active()) {
     @if (state.open()) {
         <!-- Swallows the click that dismisses the panel so the player's

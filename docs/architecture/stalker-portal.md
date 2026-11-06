@@ -1517,6 +1517,16 @@ list:
   transient failure (network, or a page that failed both attempts) is retried
   later but throttled by a per-portal cooldown (`ERROR_COOLDOWN_MS`, 30s) so a
   deterministically-failing page can't trigger an unbounded re-crawl loop.
+- Startup warm-up: `StalkerLiveIndexWarmupService`
+  (`apps/web/src/app/services/stalker-live-index-warmup.service.ts`) loads the
+  full list of each portal that has no persisted failover index yet, one
+  portal at a time and only while Settings → Live channel failover is on.
+  That index is what
+  [Live Channel Failover](./embedded-inline-playback.md#live-channel-failover-embedded-mpv)
+  reads to hop to another Stalker source; without the warm-up a portal was
+  invisible to failover until the user opened it once after a restart.
+  A portal that is opened is still crawled on demand, and an existing index
+  is never re-crawled at startup.
 - Per-portal reactivity: the "cache ready / refreshed" trigger is a
   **per-portal** version signal (`versionFor(playlist)`), not one global
   counter, and the content resource reads it **only for ITV**. This is

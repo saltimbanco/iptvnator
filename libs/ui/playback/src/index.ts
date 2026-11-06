@@ -7,6 +7,7 @@ export * from './lib/external-player-info-dialog/external-player-info-dialog.com
 export * from './lib/fullscreen-channel-panel';
 export * from './lib/fullscreen-episode-panel';
 export * from './lib/html-video-player/html-video-player.component';
+export * from './lib/live-failover-status';
 export * from '@iptvnator/playback/util';
 export * from './lib/player-controls';
 export * from './lib/portal-inline-player/portal-inline-player.component';

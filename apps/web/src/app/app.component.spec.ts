@@ -41,6 +41,7 @@ import { AppComponent } from './app.component';
 import { AppDateLocaleService } from './app-date-locales';
 import { ElectronServiceStub } from './services/electron.service.stub';
 import { SettingsService } from './services/settings.service';
+import { StalkerLiveIndexWarmupService } from './services/stalker-live-index-warmup.service';
 
 /** Writable double for the bridge's read-only capability getters. */
 type EpgBridgeStub = {
@@ -114,6 +115,11 @@ describe('AppComponent', () => {
                     initialize: jest.fn().mockResolvedValue(undefined),
                 }),
                 MockProvider(ParentalLockEnforcementService, {
+                    start: jest.fn(),
+                }),
+                // Reads the store, SQLite and the Stalker portal cache, all
+                // out of scope for the shell's own startup behaviour.
+                MockProvider(StalkerLiveIndexWarmupService, {
                     start: jest.fn(),
                 }),
                 {

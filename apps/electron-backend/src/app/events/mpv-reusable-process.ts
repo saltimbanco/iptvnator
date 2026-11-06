@@ -11,6 +11,11 @@ import {
     traceExternalPlayer,
 } from './external-player-runtime';
 import { sendMpvCommand } from './mpv-ipc-command';
+import { readMpvPlaybackSignal } from './mpv-position-polling';
+import {
+    startExternalLiveStallMonitor,
+    stopExternalLiveStallMonitor,
+} from './external-live-stall-monitor';
 
 /**
  * The per-file start of a reuse load: the requested offset, else zero. A
@@ -241,6 +246,7 @@ export class MpvReusableProcess {
             this.processSessionIds.set(reusedProcess, session.id);
             if (reusedProcessSessionId) {
                 options.stopPositionPolling(reusedProcessSessionId);
+                stopExternalLiveStallMonitor(reusedProcessSessionId);
             }
         };
 
@@ -267,6 +273,13 @@ export class MpvReusableProcess {
                 );
             } else {
                 options.stopPositionPolling(session.id);
+                // Live content: watch mpv's own clock, which is the only
+                // signal a reused process gives for a frozen picture.
+                startExternalLiveStallMonitor({
+                    player: 'MPV',
+                    sessionId: session.id,
+                    sample: () => readMpvPlaybackSignal(reusedSocketPath),
+                });
             }
             return externalPlayerSessions.markOpened(session.id) ?? session;
         } catch (error) {

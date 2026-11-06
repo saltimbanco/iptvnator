@@ -44,9 +44,14 @@ import {
 } from './mpv-reusable-process';
 import { attachMpvOutputHandlers } from './mpv-output-errors';
 import {
+    readMpvPlaybackSignal,
     startPositionPolling,
     stopPositionPolling,
 } from './mpv-position-polling';
+import {
+    startExternalLiveStallMonitor,
+    stopExternalLiveStallMonitor,
+} from './external-live-stall-monitor';
 
 export interface OpenExternalPlayerRequest {
     url: string;
@@ -88,6 +93,7 @@ export function setMpvReuseInstance(reuseInstance: boolean): void {
  */
 export function shutdownMpvSession(): void {
     mpvLaunchQueue.cancelAll();
+    stopExternalLiveStallMonitor();
     reusableMpvProcess.stopStored(
         'kill reused mpv process on app shutdown',
         stopPositionPolling
@@ -380,8 +386,20 @@ async function launchMpvPlayer(
                 }
             });
 
-            if (useMpvSocketBridge && contentInfo && socketPath) {
-                startPositionPolling(socketPath, contentInfo, session.id);
+            if (useMpvSocketBridge && socketPath) {
+                if (contentInfo) {
+                    startPositionPolling(socketPath, contentInfo, session.id);
+                } else {
+                    // Live: the position feed above never starts without
+                    // contentInfo, so mpv's own clock is watched instead and
+                    // a frozen picture is reported as a timeout.
+                    const liveSocketPath = socketPath;
+                    startExternalLiveStallMonitor({
+                        player: 'MPV',
+                        sessionId: session.id,
+                        sample: () => readMpvPlaybackSignal(liveSocketPath),
+                    });
+                }
             }
 
             startConfirmationTimer = setTimeout(() => {

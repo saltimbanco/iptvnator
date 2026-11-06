@@ -15,6 +15,8 @@ import {
     sendVlcRcCommand,
     sendVlcRcCommands,
 } from './vlc-rc';
+import { startExternalLiveStallMonitor } from './external-live-stall-monitor';
+import { readVlcPlaybackSignal } from './vlc-playback-signal';
 
 export interface VlcReuseAttemptState {
     contentMutated: boolean;
@@ -216,6 +218,14 @@ export class VlcReusableProcess {
                 );
             } else {
                 options.stopPositionPolling();
+                // Live content: VLC's RC clock is the only signal that the
+                // picture still moves, so a frozen stream is reported from
+                // here exactly like a failed one.
+                startExternalLiveStallMonitor({
+                    player: 'VLC',
+                    sessionId: session.id,
+                    sample: () => readVlcPlaybackSignal(reusedRcPort),
+                });
             }
             return externalPlayerSessions.markOpened(session.id) ?? session;
         } catch (error) {

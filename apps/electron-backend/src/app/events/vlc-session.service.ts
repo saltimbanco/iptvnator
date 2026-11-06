@@ -33,6 +33,11 @@ import {
 } from './external-player-runtime';
 import { externalPlayerProcessTeardownGate } from './external-player-process';
 import { getVlcPlaybackSnapshot, getVlcPlaybackState } from './vlc-rc';
+import { readVlcPlaybackSignal } from './vlc-playback-signal';
+import {
+    startExternalLiveStallMonitor,
+    stopExternalLiveStallMonitor,
+} from './external-live-stall-monitor';
 export {
     buildVlcEnqueueCommands,
     parseVlcRcNumericResponse,
@@ -162,6 +167,7 @@ export function setVlcReuseInstance(reuseInstance: boolean): void {
  * playing after quit.
  */
 export function shutdownVlcSession(): void {
+    stopExternalLiveStallMonitor();
     const sessionId = reusableVlcProcess.currentSessionId();
     reusableVlcProcess.stopStored(
         'kill reused vlc process on app shutdown',
@@ -513,6 +519,16 @@ export async function openVlcPlayer({
                         }
                     );
                 }
+                if (!isRetry && rcPort > 0 && !contentInfo) {
+                    // Live: there is no position feed without contentInfo,
+                    // so VLC's RC clock is watched and a frozen picture is
+                    // reported as a stalled stream.
+                    startExternalLiveStallMonitor({
+                        player: 'VLC',
+                        sessionId: session.id,
+                        sample: () => readVlcPlaybackSignal(rcPort),
+                    });
+                }
 
                 if (proc.stdout) {
                     proc.stdout.on('data', (data) => {
@@ -552,6 +568,7 @@ export async function openVlcPlayer({
                         return;
                     }
                     if (!isRetry && rcPort > 0) {
+                        stopExternalLiveStallMonitor(session.id);
                         traceExternalPlayer(
                             'retry vlc without rc interface after start error'
                         );
@@ -582,6 +599,7 @@ export async function openVlcPlayer({
                     );
                     reusableVlcProcess.clear(proc);
                     stopVlcPositionPolling(processSessionId);
+                    stopExternalLiveStallMonitor(processSessionId);
 
                     if (
                         !closeRequested &&

@@ -47,6 +47,7 @@ import { SettingsService } from './services/settings.service';
 import { ParentalLockEnforcementService } from './services/parental-lock-enforcement.service';
 import { PlaybackKeepAwakeService } from './services/playback-keep-awake.service';
 import { PlaylistOpenRequestService } from './services/playlist-open-request.service';
+import { StalkerLiveIndexWarmupService } from './services/stalker-live-index-warmup.service';
 import { AppUpdateNotificationPanelComponent } from './app-update-notification-panel.component';
 import { AppStartupStatusComponent } from './app-startup-status.component';
 import { syncDocumentLanguage } from './services/document-language';
@@ -90,6 +91,9 @@ export class AppComponent implements OnInit {
         ParentalLockEnforcementService
     );
     private playlistOpenRequests = inject(PlaylistOpenRequestService);
+    private readonly stalkerLiveIndexWarmup = inject(
+        StalkerLiveIndexWarmupService
+    );
     private runtime = inject(RuntimeCapabilitiesService);
     private readonly workspaceShellActions = inject(WORKSPACE_SHELL_ACTIONS);
     private readonly contextDrawer = inject(WorkspaceShellContextDrawerService);
@@ -121,6 +125,11 @@ export class AppComponent implements OnInit {
         // in-memory catalogs in step with lock/unlock (issue #285).
         void this.parentalLock.initialize();
         this.parentalLockEnforcement.start();
+
+        // Build each Stalker portal's live channel index once, so a live
+        // failover can hop to another portal after a restart without the
+        // user opening that portal first.
+        this.stalkerLiveIndexWarmup.start();
 
         effect(() => {
             const size = this.settingsStore.coverSize?.() ?? 'medium';
@@ -166,7 +175,9 @@ export class AppComponent implements OnInit {
                     // Settings are stored in IndexedDB and loaded by the settings store
                     // Only specific Electron settings (MPV/VLC paths) are sent when changed in settings component
 
-                    const resolvedLang = normalizeAppLanguage(settings.language);
+                    const resolvedLang = normalizeAppLanguage(
+                        settings.language
+                    );
                     // The switch re-renders every date with the new locale;
                     // its data is a lazy chunk that must be registered first.
                     void this.dateLocales.use(resolvedLang);

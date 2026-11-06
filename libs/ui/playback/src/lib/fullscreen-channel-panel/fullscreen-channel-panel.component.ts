@@ -19,6 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { ControlsFullscreen } from '../player-controls/controls-fullscreen';
+import { LiveFailoverStatusComponent } from '../live-failover-status';
 import { FullscreenChannelPanelState } from './fullscreen-channel-panel-state';
 import {
     FULLSCREEN_CHANNEL_PANEL,
@@ -74,6 +75,7 @@ function targetsEditable(event: KeyboardEvent): boolean {
     templateUrl: './fullscreen-channel-panel.component.html',
     styleUrl: './fullscreen-channel-panel.component.scss',
     imports: [
+        LiveFailoverStatusComponent,
         MatButtonModule,
         MatIconModule,
         MatTooltipModule,

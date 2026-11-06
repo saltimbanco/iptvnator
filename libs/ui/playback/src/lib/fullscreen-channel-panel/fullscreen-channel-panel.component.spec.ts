@@ -306,10 +306,14 @@ describe('FullscreenChannelPanelComponent', () => {
             ).children
         );
         expect(children.map((child) => child.tagName.toLowerCase())).toEqual([
+            'app-live-failover-status',
             'div',
             'aside',
         ]);
-        expect(children[0]).toBe(hotZone());
+        // The failover overlay is mounted here too, and draws nothing while
+        // no playability test is running.
+        expect(children[0].querySelector('.live-failover-status')).toBeNull();
+        expect(children[1]).toBe(hotZone());
         expect(hotZone()?.textContent?.trim()).toBe('');
         expect(hotZone()?.children.length).toBe(1);
         expect(hotZone()?.firstElementChild).toBe(edgeHint());

@@ -174,10 +174,18 @@ playback in the embedded MPV player:
   retries. Managed external MPV/VLC run `ExternalLiveFailoverService`
   (`apps/web/src/app/services`) on the main process's session updates and
   `player-error` events, replaying the exact launch — headers included —
-  through `PlayerService.openExternalPlayback`. External limits: a stream that
-  opens and then stalls without raising an error is not detected (the renderer
-  receives no position feed), and the external window cannot show retry
-  progress, so hops are announced by the in-app notice and dock only.
+  through `PlayerService.openExternalPlayback`. A live launch carries no
+  content info, so no position feed reaches the renderer; the stall is
+  detected where the player's own clock is readable instead.
+  `ExternalLiveStallMonitor`
+  (`apps/electron-backend/src/app/events/external-live-stall-monitor.ts`)
+  samples MPV's IPC socket or VLC's RC port every 5 s and reports a clock
+  that has not moved for `LIVE_FAILOVER_STALL_MS` (10 s) through the ordinary
+  `player-error` path as `timed-out`, which the renderer already turns into a
+  retry and a hop. A paused player is never a failure, and a launch without a
+  control channel (a one-shot VLC process, i.e. instance reuse off) cannot be
+  watched, so its stalls stay undetected. The external window cannot show
+  retry progress, so hops are announced by the in-app notice and dock only.
 - Failover only engages on playback inside a source route
   (`/workspace/{xtreams,playlists,stalker}/:id`).
 
@@ -574,11 +582,11 @@ Every detail host therefore keeps these rules:
 
 Owner keys and queueing are provider contracts:
 
-| Host | Contract |
-| --- | --- |
-| Xtream series | [Forced external launches from detail pages](./xtream-portal-compatibility.md#forced-external-launches-from-detail-pages) |
-| Xtream movie | [Menu launch and reset follow the primary button](./vod-multi-source.md#menu-launch-and-reset-follow-the-primary-button) |
-| Stalker series and movies | [Forced External Launches](./stalker-portal.md#forced-external-launches) |
+| Host                      | Contract                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Xtream series             | [Forced external launches from detail pages](./xtream-portal-compatibility.md#forced-external-launches-from-detail-pages) |
+| Xtream movie              | [Menu launch and reset follow the primary button](./vod-multi-source.md#menu-launch-and-reset-follow-the-primary-button)  |
+| Stalker series and movies | [Forced External Launches](./stalker-portal.md#forced-external-launches)                                                  |
 
 ## Series Quick Start CTA
 
