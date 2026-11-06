@@ -5,8 +5,15 @@ import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { TranslateModule } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { DatabaseService, SettingsStore, SortService } from '@iptvnator/services';
-import type { GlobalSearchResult, PlaylistMeta } from '@iptvnator/shared/interfaces';
+import {
+    DatabaseService,
+    SettingsStore,
+    SortService,
+} from '@iptvnator/services';
+import type {
+    GlobalSearchResult,
+    PlaylistMeta,
+} from '@iptvnator/shared/interfaces';
 import {
     LIVE_FAILOVER_ARRIVAL_MS,
     LiveChannelFailoverService,
@@ -30,7 +37,11 @@ describe('LiveChannelFailoverService', () => {
         },
     ] as PlaylistMeta[];
 
-    function xtream(playlistId: string, title: string, id = 7): GlobalSearchResult {
+    function xtream(
+        playlistId: string,
+        title: string,
+        id = 7
+    ): GlobalSearchResult {
         return {
             source_type: 'xtream',
             content_type: 'live',
@@ -75,15 +86,17 @@ describe('LiveChannelFailoverService', () => {
             }),
         };
         database = {
-            globalSearchContent: jest.fn().mockResolvedValue([
-                xtream('silver', 'ERT1 HD', 31),
-                m3u('list', 'ERT 1'),
-                xtream('failing', 'ERT 1', 1),
-                xtream('gold', 'ERT Sports 1', 40),
-                xtream('gold', 'GR: ERT 1', 41),
-            ]),
+            getAppState: jest.fn().mockResolvedValue(null),
+            globalSearchContent: jest
+                .fn()
+                .mockResolvedValue([
+                    xtream('silver', 'ERT1 HD', 31),
+                    m3u('list', 'ERT 1'),
+                    xtream('failing', 'ERT 1', 1),
+                    xtream('gold', 'ERT Sports 1', 40),
+                    xtream('gold', 'GR: ERT 1', 41),
+                ]),
         };
-        database.getAppState = jest.fn().mockResolvedValue(null);
         snackBar = { open: jest.fn() };
         TestBed.configureTestingModule({
             imports: [TranslateModule.forRoot()],
