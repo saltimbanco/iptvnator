@@ -50,7 +50,21 @@ export interface SourceServerRequest {
         | 'activity-context'
         | 'activity-list'
         | 'activity-read'
-        | 'activity-apply';
+        | 'activity-apply'
+        | 'history-read'
+        | 'history-apply'
+        | 'favorites-context'
+        | 'favorites-list'
+        | 'favorites-read'
+        | 'favorites-apply';
+    favorite?: {
+        address: import('./favorites-sync/favorites-sync.contract').FavoriteAddress;
+        operation?: import('./favorites-sync/favorites-sync.contract').FavoriteOperation;
+    };
+    history?: {
+        scope: import('./history-sync/history.contract').HistoryScope;
+        operation: import('./history-sync/history.contract').HistoryOperation;
+    };
     cursor?: string;
     activity?: {
         address: import('./activity-sync/activity-sync.contract').ActivityAddress;

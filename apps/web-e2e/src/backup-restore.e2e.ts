@@ -350,11 +350,14 @@ for (const theme of ['light', 'dark']) {
             browserName,
         }, testInfo) => {
             // Set real preferences through the settings controls, then use the shipped translations.
-            await page.goto('/workspace/settings/general');
+            await page.goto('/workspace/settings/appearance');
             await page
                 .locator(
                     `[data-test-id="select-theme"] [data-test-id="${theme.toUpperCase()}_THEME"]`
                 )
+                .click();
+            await page
+                .locator('[data-test-id="settings-section-general"]')
                 .click();
             await page.locator('[data-test-id="select-language"]').click();
             await page
@@ -442,6 +445,54 @@ for (const theme of ['light', 'dark']) {
         });
     }
 }
+
+test('@persistence @settings @pwa a partial restore preserves distinct sources with the same exported ID', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const original = Storage.prototype.setItem;
+        let failOnce = true;
+        Storage.prototype.setItem = function (key, value) {
+            if (key === 'xtream-favorites' && failOnce) {
+                failOnce = false;
+                throw new DOMException(
+                    'Synthetic quota failure',
+                    'QuotaExceededError'
+                );
+            }
+            return original.call(this, key, value);
+        };
+    });
+    const template = archive.playlists[2];
+    const titles = ['Synthetic restore A', 'Synthetic restore B'];
+    await importJson(page, {
+        ...archive,
+        playlists: titles.map((title, index) => ({
+            ...template,
+            exportedId: 'shared-synthetic-id',
+            title,
+            connection: {
+                ...template.connection,
+                username: `synthetic-${index}`,
+            },
+        })),
+    });
+    await expect(result(page)).toContainText('1 imported');
+    await expect(result(page)).toContainText('1 failed');
+    await page.reload();
+    await expect(page.locator('#backup')).toBeVisible();
+    const exported = await exportJson(page);
+    expect(
+        exported.playlists.map((entry: { title: string }) => entry.title).sort()
+    ).toEqual(titles);
+    expect(
+        new Set(
+            exported.playlists.map(
+                (entry: { exportedId: string }) => entry.exportedId
+            )
+        ).size
+    ).toBe(2);
+});
 
 test('@critical @persistence @settings @pwa a quota failure reports partial restore and remains retryable', async ({
     page,

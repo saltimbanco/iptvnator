@@ -1446,6 +1446,19 @@ abort signals are
 never serialized across IPC. Keep that boundary when adding browser transport
 behavior rather than increasing the initial-byte baseline.
 
+Playlist history transformations and Xtream recent-item operations likewise load
+on first history access or action. Keep their data writes inside the existing
+playlist queue and capture source/profile ownership before loading write helpers.
+Full M3U/Stalker source reads and inventories with history await the archive
+helper; Xtream initialization awaits its recent-item helper before exposing the
+source. A loaded view must retain first-write/clear/remove behavior if the UI
+host goes offline without a service worker.
+
+The global notification panel uses the same `shouldEnableServiceWorker()`
+contract as registration to load the PWA card. Its coordinator, translation
+rendering and Material button stay in that deferred browser chunk; Electron
+does not load them at boot. Recovery controls persist independently of temporary snack-bars.
+
 The bundler keeps each module in one chunk, so one eager import of any
 export carries the module's whole code: providing
 `MAT_FORM_FIELD_DEFAULT_OPTIONS` in `app.config.ts` alone put the 54 KB

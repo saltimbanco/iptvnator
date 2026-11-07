@@ -278,6 +278,12 @@ If no fingerprint matches:
 - reuse `exportedId` only when it is unused
 - otherwise generate a new UUID
 
+Reserve the ID returned by storage as soon as the playlist write succeeds,
+including before any follow-up write for a remapped ID. A later
+user-state or parental-lock restore can fail after that write; subsequent
+entries with a different source fingerprint must not reuse its ID and overwrite
+the saved playlist. A write that fails before persistence leaves the ID unused.
+
 ## Xtream Restore Contract
 
 Xtream restore is type-aware end to end. The app no longer stores plain
@@ -410,6 +416,12 @@ Older builds ignore `collectionItems`; the manifest version stays `1`.
 
 ## Current UX
 
+The Android TV/Fire TV shell has no Blob-to-document save bridge. The settings
+facade's `supportsExport` capability reads the `tv-shell` marker installed before
+bootstrap; both the export control and its programmatic action are gated on it.
+This runtime offers backup import only, without claiming that a backup was saved.
+Desktop native save and ordinary browser downloads retain their existing paths.
+
 The settings page now exports/imports “playlist backups” instead of the old
 raw JSON application dump.
 
@@ -446,3 +458,36 @@ Regression coverage: `playlist-backup.service.validation.spec.ts`,
 `settings-backup.facade.spec.ts`, browser `backup-restore.e2e.ts`, and Electron
 `backup-roundtrip.e2e.ts`. Browser tests use isolated contexts and fictional
 archives; Electron tests use their own temporary data root.
+
+## Optional shared favorites in exports
+
+The Settings export action supplies a separate favorites projector when the
+selected profile has used favorites sync. It exports the durable visible copy,
+including shared removals and unresolved snapshot-only Xtream memberships, without
+reading/uploading the NAS as part of export. Original raw archives remain retained
+for explicit favorites preview/import. Archive restore updates local legacy data;
+it does not implicitly authorize per-item NAS writes. Use the independent
+favorites preview/import action to publish restored local memberships.
+After a successful entry restore, Settings reconciles matching retained local
+favorite choices against the restored memberships. An older opted-out removal
+cannot hide a restored item from preview. Omitted choices, server revisions and
+queued operations remain intact; restoration itself sends no favorites writes.
+
+## Optional shared history in backups
+
+Settings also overlays the durable history sidecar when this profile has used
+history synchronization. Export includes removals and local choices, including
+unresolved typed Xtream entries, without a server request or the 100-row browse
+limit. Unrelated pre-enable local history remains included. M3U and Stalker use
+the same history projection as their collections.
+Xtream identity-conflict markers survive export and restore. Export also marks
+contradictory archived/shared TMDB or year hints before merging, so a backup
+round trip cannot make a rejected provider identity available again.
+
+Restore replaces the local history copy for previously verified sources and
+rebuilds its explicit-import archive. It preserves shared revisions and existing
+queued server operations; it creates no new uploads or consent. Each target's
+captured profile, incarnation and consent guard delayed restore work. The client
+can renew after unrelated source changes without invalidating that target.
+Sources without a history context retain the existing raw archive restore.
+The manifest stays version 1.

@@ -751,6 +751,12 @@ export interface ElectronBridgeApi {
     onAppMenuAction: (
         callback: (action: ElectronBridgeAppMenuAction) => void
     ) => () => void;
+    historyLocalRequest?: (
+        request: import('./history-sync/history.contract').HistoryLocalRequest
+    ) => Promise<unknown>;
+    favoritesLocalRequest?: (
+        request: import('./favorites-sync/favorites-sync.contract').FavoriteLocalRequest
+    ) => Promise<unknown>;
     activityLocalRequest?: (
         request: import('./activity-sync/activity-sync.wire').ActivityLocalRequest
     ) => Promise<unknown>;
@@ -996,6 +1002,10 @@ export interface ElectronBridgeApi {
     updateSettings: (settings: Partial<Settings>) => Promise<void>;
     getAiSettings: () => Promise<ElectronBridgeAiSettings>;
     setMpvPlayerPath: (mpvPlayerPath: string) => Promise<void>;
+    getExternalPlayerAvailability?: (paths?: {
+        mpv?: string;
+        vlc?: string;
+    }) => Promise<{ mpv: boolean | null; vlc: boolean | null }>;
     setVlcPlayerPath: (vlcPlayerPath: string) => Promise<void>;
     /**
      * The portal's JSON, the `{ stalkerAuthFailure }` marker, or a
@@ -1232,7 +1242,8 @@ export interface ElectronBridgeApi {
         playlistId: string,
         contentType?: ElectronBridgePortalContentType,
         identity?: ContentMetadataPatch,
-        categoryId?: number
+        categoryId?: number,
+        excludeLocked?: boolean
     ) => Promise<ElectronBridgeXtreamContent | null>;
     dbSetContentMetadataIfMissing: (
         contentId: number,

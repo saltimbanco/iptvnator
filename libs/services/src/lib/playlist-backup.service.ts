@@ -79,6 +79,10 @@ export class PlaylistBackupError extends Error {
 }
 
 type PlaylistPortalType = 'm3u' | 'xtream' | 'stalker';
+export type BackupFavoriteRestorer = (
+    sourceId: string,
+    entry: PlaylistBackupEntry
+) => Promise<void>;
 
 @Injectable({
     providedIn: 'root',
@@ -101,7 +105,11 @@ export class PlaylistBackupService {
     private backupImportTail?: Promise<void>;
 
     async exportBackup(
-        projectPositions?: BackupPositionProjector
+        projectPositions?: BackupPositionProjector,
+        projectFavorites?: (
+            playlist: Playlist,
+            entry: PlaylistBackupEntry
+        ) => Promise<PlaylistBackupEntry>
     ): Promise<PlaylistBackupExportPayload> {
         // Locks are written only when present, and an absent field means
         // "no opinion" on restore — so an export must never run against an
@@ -120,9 +128,15 @@ export class PlaylistBackupService {
         );
         const settings = this.buildSettingsPayload();
         const playlistEntries = await Promise.all(
-            playlists.map((playlist) =>
-                this.buildPlaylistEntry(playlist, projectPositions)
-            )
+            playlists.map(async (playlist) => {
+                const entry = await this.buildPlaylistEntry(
+                    playlist,
+                    projectPositions
+                );
+                return projectFavorites
+                    ? projectFavorites(playlist, entry)
+                    : entry;
+            })
         );
         const exportedAt = new Date().toISOString();
         const manifest: PlaylistBackupManifestV1 = {
@@ -144,9 +158,12 @@ export class PlaylistBackupService {
         };
     }
 
-    importBackup(json: string): Promise<PlaylistBackupImportSummary> {
+    importBackup(
+        json: string,
+        restoreFavorites?: BackupFavoriteRestorer
+    ): Promise<PlaylistBackupImportSummary> {
         const importResult = (this.backupImportTail ?? Promise.resolve()).then(
-            () => this.executeImportBackup(json)
+            () => this.executeImportBackup(json, restoreFavorites)
         );
         this.backupImportTail = importResult.then(
             () => undefined,
@@ -156,7 +173,8 @@ export class PlaylistBackupService {
     }
 
     private async executeImportBackup(
-        json: string
+        json: string,
+        restoreFavorites?: BackupFavoriteRestorer
     ): Promise<PlaylistBackupImportSummary> {
         const manifest = this.parseManifest(json);
         // A backup carrying lock lists REPLACES the matching playlists'
@@ -235,6 +253,8 @@ export class PlaylistBackupService {
                 const saved = await firstValueFrom(
                     this.playlistsService.restorePlaylist(nextPlaylist)
                 );
+                // A later restore failure must not make a persisted ID reusable.
+                existingIds.add(saved._id);
                 if (saved._id !== targetId) {
                     targetId = saved._id;
                     isMerge = true;
@@ -273,6 +293,8 @@ export class PlaylistBackupService {
                         );
                 }
 
+                await restoreFavorites?.(targetId, entry);
+
                 // Last: a failed Xtream restore above must leave the
                 // playlist's previous locks in place rather than commit the
                 // backup's (possibly smaller) lock set for a failed merge.
@@ -283,7 +305,6 @@ export class PlaylistBackupService {
                 } else {
                     summary.imported += 1;
                 }
-                existingIds.add(targetId);
             } catch (error) {
                 summary.failed += 1;
                 summary.errors.push(

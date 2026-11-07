@@ -1,4 +1,8 @@
 import {
+    favoriteReferenceKey,
+    stalkerFavoriteReference,
+} from '@iptvnator/shared/interfaces/favorites-sync';
+import {
     GlobalFavoriteItem as DbGlobalFavoriteItem,
     GlobalRecentlyAddedItem as DbGlobalRecentlyAddedItem,
     GlobalRecentItem as DbGlobalRecentItem,
@@ -36,7 +40,7 @@ export function normalizeActivityType(value: string): PortalActivityType {
  * provider fabricated all collapse to the same thing: absent fields, and a
  * caller that falls back to the display title.
  */
-function readContentTmdbIdentity(item: {
+export function readContentTmdbIdentity(item: {
     tmdb_id?: number | null;
     release_year?: number | null;
     original_title?: string | null;
@@ -126,7 +130,20 @@ export function buildStalkerFavoriteItems(
 
             const mapped = favorites.map((item, index) => {
                 const raw = (item ?? {}) as Record<string, unknown>;
-                const id = extractStalkerItemId(raw, playlist._id, index);
+                const providerId = extractStalkerItemId(
+                    raw,
+                    playlist._id,
+                    index
+                );
+                const reference =
+                    raw['favoriteContentType'] &&
+                    item &&
+                    typeof item === 'object'
+                        ? stalkerFavoriteReference(item)
+                        : null;
+                const id = reference
+                    ? favoriteReferenceKey(reference)
+                    : providerId;
 
                 return {
                     id,
@@ -136,7 +153,7 @@ export function buildStalkerFavoriteItems(
                     playlist_name: playlist.title || defaultPlaylistName,
                     added_at: normalizeStalkerDate(raw['added_at']),
                     category_id: String(raw['category_id'] ?? ''),
-                    xtream_id: id,
+                    xtream_id: providerId,
                     poster_url: extractStalkerItemPoster(raw),
                     // Same source as the recent-items mapper: Stalker keeps
                     // the enriched backdrop inside the stored entry.

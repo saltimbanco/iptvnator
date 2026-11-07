@@ -39,6 +39,16 @@ The Docker entrypoint rewrites `assets/app-config.js` at container startup.
 `ngsw-config.json` explicitly excludes this file from Angular service worker
 asset hashing so a runtime rewrite does not break cache validation.
 
+## Player-loading rollback
+
+Player engines normally load after the first route settles or when playback needs
+them. To restore eager loading in Electron, PWA or the Android shell, set
+`localStorage.setItem('iptvnator.eagerPlayerLoading', '1')` in that runtime's
+developer console and reload. Bootstrap then waits for the player route and all
+web engines before rendering Angular. Remove the key and reload to restore the
+default. Blocked storage leaves the default enabled. This temporary rollback is
+introduced for 0.25 and must be removed by 0.27 (within two releases).
+
 ## Service Worker Build
 
 Use the PWA build configuration for browser deployments:
@@ -75,6 +85,40 @@ service worker outputs while changing build options, run:
 pnpm nx reset
 pnpm nx build web --configuration=pwa --skip-nx-cache
 ```
+
+## Application updates and offline recovery
+
+The global update panel loads `PwaUpdateService` once per enabled browser app lifetime. It
+announces only `VERSION_READY` as ready, offers Retry after installation or
+check failures, and rechecks once when the browser returns online. A manifest
+fetch failure resolves false without a version event, so Retry is restored in
+that case; a successful `NO_NEW_VERSION_DETECTED` clears an obsolete failure
+notice while preserving pending reloads. Refresh is
+explicit, warns that playback stops, and retains the browser's unsaved-settings
+beforeunload confirmation. Later check or candidate failures retain an already
+pending Refresh action. The deferred card uses the desktop notification's layout
+and remains reachable after a cancelled reload or a settings-save toast.
+Unrecoverable cache errors request a reload without claiming a new version is
+ready. Notifications use the normal translation pipeline;
+the English fallback dictionary is prefetched with the app shell so a first
+offline reload retains readable recovery controls. Electron does not start
+these subscriptions.
+
+Angular service worker 22.2.2 is pinned with
+`patches/@angular__service-worker@22.2.2.patch`. A failed candidate download
+previously moved the driver to `EXISTING_CLIENTS_ONLY`, making a subsequent
+offline navigation return an empty 504 even though the installed version was
+healthy. The patch retains the previous driver state after a failed candidate;
+it does not change candidate hash verification, initial installation or the
+degradation of a corrupt installed version. Retire it when an upstream worker
+passes the same regressions without the patch.
+
+`pnpm nx run web-e2e:test-service-worker` exercises the installed Driver methods.
+`pnpm nx run web-e2e:pwa-updates` builds the production PWA and uses its real
+worker, with isolated HTTP fixtures for manifest/candidate 503 and hash mismatch,
+offline reload, successful retry, persisted sources/theme and unsaved-settings
+cancellation.
+The normal dev-server E2E suite is not a substitute for this worker check.
 
 ## Xtream request cancellation
 
@@ -965,7 +1009,7 @@ and Stalker live channels show their provider's programme guide.
 Connecting a source server synchronizes sources only. Settings → Server offers
 an independent, disabled-by-default consent for progress and watched marks.
 The UI explains that the server holds **one shared household activity**: anyone
-with access sees and changes the same activity. Favorites, history and EPG stay
+with access sees and changes the same activity. Favorites and Recently Viewed each have an independent opt-in. EPG stays
 local. There are no per-person accounts or cross-provider content matching.
 
 Enabling receives server activity and uploads new actions. It never scans and
@@ -1212,3 +1256,293 @@ Web development and PWA use `baseHref="/"`; packaged Electron frontend uses
 `baseHref="./"` so file URLs resolve. In `apps/web/project.json`, `production`
 is the Electron frontend build, `pwa` is the web build, and `development` uses
 the index base. Do not ship the Electron frontend build as a PWA deployment.
+
+
+## Favorites synchronization
+
+Settings → Server provides an independent, disabled-by-default favorites consent.
+Connecting a server or enabling progress does not read/upload favorites. One shared
+library belongs to the server; there are no personal accounts or cross-provider
+matches. Membership is scoped by instance, source ID, persisted source incarnation
+and a typed portable reference. Collection order remains device-local; Recently
+Viewed has its own independent consent below.
+
+`favorites-v1` advertises authenticated, uncached `/v1/favorites` routes matching
+the activity transport shape: source context, paginated source items, one-address
+read and per-item operations. The verified instance header is mandatory. Per-item
+revisions and idempotency receipts commit with state in SQLite. Removed memberships
+remain stored as negative states; retrying an acknowledged old add returns its
+original receipt and cannot resurrect a later removal. Stale same-item edits
+require an explicit choice; independent keys do not replace a collection map.
+Legacy playlist and user-state writes cannot erase the new membership tables.
+
+M3U v1 references contain the SHA-256 digest of the exact URL bytes. Duplicate
+URLs retain one membership. SubtleCrypto is used where available, with a byte-identical
+SHA-256 fallback for HTTP LAN origins; IDs use the shared HTTP-compatible UUID helper.
+Clients resolve legacy IDs only through their local
+catalog; title and tvg-id never establish identity. Raw stream URLs stay in local
+catalogs, outside the favorites wire reference. Changed URLs and ambiguous legacy
+IDs remain unresolved rather than matching by title. Xtream references carry the
+provider ID and normalized live/movie/series kind, never a SQLite row ID. Stalker
+also preserves radio and regular/embedded/lazy series origins. Allowlisted display
+snapshots contain title, optional metadata and embedded episode numbers, without
+cmd, media URLs, credentials, session tokens or full provider objects. Display
+snapshots do not bypass known catalog identity conflicts.
+Local display titles replace control characters with spaces and are capped at
+512 characters when creating a shared snapshot; the retained archive is unchanged.
+Incoming wire snapshots still use strict validation.
+Playlist membership actions capture source incarnation, profile and consent before
+projection or URL hashing. Verify an uncached source context before preparing its
+first synchronized action. Recheck before each shared/local write, archive save,
+order update and final publication; enabling sync never authorizes an earlier
+local action. Playlist and Xtream adapters share this ownership guard.
+M3U projections reuse one URL/hash index per source revision, update timestamp,
+count and incarnation, including cloned payloads read from storage. Unversioned
+legacy rows also require the same catalog array. Concurrent reads share one build;
+failed builds are retried and a new version replaces the old index.
+Server favorite authorization reads payload-free source metadata. Text-M3U sources
+read the full payload only to establish a missing lifecycle context; source writes
+retire changed identities inside their existing transaction, including A → B → A.
+
+First enable receives server state without uploading the older local archive.
+For matching keys, shared state projects over local favorites; local-only entries
+stay local. Explicit preview/import reports source and unresolved counts. Import
+uses conditional per-item adds and presents existing server choices as conflicts.
+Absence from a local archive is never a remove operation.
+
+Projection and intent commit together in a separate instance-scoped IndexedDB
+store or the Electron database worker. SQLite uses fixed `DB_FAVORITES_LOCAL`
+read/list/pending/CAS operations; renderer CAS retries recheck consent and source
+ownership. IndexedDB uses readwrite transactions and does not require Web Locks.
+Offline intents survive restart. Profiles and source incarnations never inherit
+old pending work. The source lifecycle shared with activity now covers M3U too;
+activity itself remains limited to its existing supported provider types.
+Batch refresh receives every source's context and memberships before flushing the
+global outbox, so a retired intent for a later source cannot block its discovery.
+Source projection invalidates persisted and live favorite contexts before a
+changed connection becomes locally writable, even while favorites sync is off.
+Metadata-only edits retain the context. Runtime and cross-tab retirement notices
+invalidate memory without rewriting another tab's context cache; old durable
+records remain retained. An unverified replacement uses ordinary local favorites
+until its new context is verified.
+Notices identify the retired incarnation, so delayed delivery cannot remove an
+already verified replacement. A retirement also expires the old runtime client's
+in-flight work. Only a client with current ownership can restore a verified context to the cache;
+observers preserve those links, including a reverified unchanged incarnation.
+Retirement follows the guarded merge: rejected stale writes and reuse of a
+sibling's completed projection do not invalidate its valid context. Repeated
+identical imports already queued in the current consent generation are no-ops;
+their first delivery cannot conflict with a duplicate from the same import.
+Network failures and HTTP 5xx can queue edits against a previously verified source
+context. Without that context, or after a rejected access/source request, no edit
+is queued; consent, profile and source ownership fences still apply.
+Independent overlapping offline edits can share the verified context. Starting
+another request does not retire it; a newer accepted context or explicit forget
+still fences older fallback attempts.
+The browser transport retains known 401/403, incompatible-discovery and instance
+refusals for the selected connection until successful instance verification. An
+unchecked retry or malformed access-error body cannot turn that refusal into an
+offline edit; a genuine network outage remains eligible for the verified-context queue.
+Normal `SourceSyncService.refresh()` discovery uses that same verifier, including
+HTTP-200 identity/incompatibility failures. The request refusal gate runs before
+choosing browser fetch or Electron IPC, so neither transport bypasses a recorded rejection.
+Native IPC refusal codes and HTTP access/identity responses retain the same gate;
+ordinary transport outages still allow cached-context offline edits.
+Malformed successful discovery and HTTP client-error discovery responses are
+incompatibility/refusal evidence too; network failures and HTTP 5xx remain outages.
+The small playlist mutation bridge is available with the initial application;
+portal favorite reads load their companion removal logic before publishing data.
+On HTTP, prepare the SHA-256 fallback before enabling sync or projecting the
+retained library, so a first offline edit does not depend on a new script fetch.
+
+Global collection ordering accepts an old Stalker provider-ID key only when it
+identifies exactly one current item. Exact typed keys take precedence. Reading
+does not rewrite saved ordering; ambiguous IDs do not transfer a position to another kind.
+
+Opt-out stops delivery and remote application, retaining the durable local
+projection and server state. Subsequent local edits remain local. Re-enable uses
+a fresh consent generation: earlier queued changes need an explicit Send or Keep
+local choice. Keeping an intent local preserves its local membership without
+sending it to the server. Late responses cannot acknowledge a newer generation
+or overwrite a local action made after opt-out. Settings exposes queue, conflict,
+incompatible and storage/network failure states independently of progress sync.
+
+The narrow entries are `@iptvnator/shared/interfaces/favorites-sync`,
+`@iptvnator/shared/database/favorites-sync`, `@iptvnator/services/favorites-sync`
+and the lightweight `@iptvnator/services/favorites-events` composition token.
+Existing source documents remain the retained local archive; only explicit
+favorites APIs enqueue membership changes. Catalog refresh and source edits do
+not infer favorites operations from whole documents.
+
+Favorite Retry and reconnect refresh the source lifecycle first, restoring the
+anonymous instance verification revoked by a transport outage before reading or
+sending favorite payloads. Backup export projects the durable visible favorite
+copy; restoring an archive stays local until explicit favorites preview/import.
+Stalker embedded snapshots keep VOD routing and episode arrays, regular snapshots
+keep the series route, and lazy snapshots keep the VOD origin plus series marker.
+
+Open favorite detail controls and collections re-read the durable projection on
+renderer invalidation; a server update therefore changes the active heart without
+navigation. Stalker removals carry the content kind and series origin, and live
+controls acknowledge membership only after local persistence. Xtream collection
+ordering remains in device-local app state (browser storage in PWA), outside the
+shared membership protocol. Browser global and playlist ordering use the existing
+profile-bound `USER_DATA_STORAGE`; server profiles never read or overwrite another
+profile's order. The unscoped standalone order is retained without being adopted
+by a server profile. Native ordering keeps its existing profile-scoped app state.
+Unified Stalker collection reads warm the existing playlist-favorites action
+module before publishing rows, so a first offline removal needs no late script
+request on HTTP/LAN clients without service-worker caching.
+
+Background collection refreshes use the page's guarded content-type selection.
+Receiving the first movie or series on an empty favorites page selects its type
+even when the single-type toggle is hidden; an open inline detail retains its tab.
+Delivery failures retain durable intents and report network/authentication errors
+even when context and list reads succeed. Stalker live refreshes discard results
+superseded by another read or an acknowledged local membership change.
+
+Favorite completion updates in the Stalker store and unified M3U collection
+are UI-only metadata actions:
+the membership/archive owner has already persisted the write. Projected shared
+favorites must never be written back into the retained source archive. After
+opt-out, a newly added source without a verified favorites context keeps using
+ordinary local favorite storage and makes no favorites requests. Recent Stalker
+rows keep their own UIDs; collection checks normalize typed favorite membership
+without changing recent history or ordering. Xtream status and removal honor the
+requested identity hints against the retained favorite, including provider ID reuse.
+
+The HTTP SHA-256 fallback is a static dependency of the favorites code, so the
+first offline favorite action does not depend on fetching an additional chunk.
+Stalker bulk clear/reorder retains unresolved local values outside the selected
+typed memberships.
+
+Conflict cards show the item title (or typed identity), source, and separate local
+and server membership values before either resolution action. Native Xtream
+hearts use the data source's explicit portable-favorites capability when a
+received favorite has no local catalog row; ordinary local SQL IDs retain their
+existing meaning. Received Stalker commands are resolved locally as described
+in the [Stalker contract](stalker-portal.md#optional-shared-favorites).
+
+Open Xtream live lists reload their complete typed favorite map on shared
+invalidation and local mark changes, canceling older loads and disposing the
+listener with the list. Dashboard cards for received Xtream snapshots without
+local SQL/favorite row IDs use kind plus provider ID as their stable fallback;
+existing local IDs retain their previous card identities.
+
+Local ordering applies even when the shared library has no membership entries.
+Polling advances a recorded conflict to the newest known server revision before
+showing or resolving either choice. Sparse Xtream additions retain known TMDB
+identity hints even without a local catalog row. Dashboard M3U/Stalker removals
+use explicit membership APIs and publish metadata with `persist: false`; the M3U
+favorite cache is invalidated after a successful removal.
+
+Both applied and conflict receipts are compared with the newest locally known
+server revision. Replaying an older persisted conflict receipt cannot roll back
+a later polling result; either conflict choice starts from that newest copy.
+
+Xtream backup projection overlays shared identity and conflict metadata on
+existing typed archive entries too, preserving local order and timestamps.
+The same identity-compatibility helper guards both visible projection and export.
+
+
+## Recently Viewed synchronization
+
+Settings → Server → Recently viewed enables `history-v1` separately from sources,
+favorites and progress/watched. All clients of an instance share one history
+within each shared source; there are no household accounts or cross-provider
+matches. Connecting or enabling another domain does not authorize history reads
+or uploads. Initial enable reads shared history and retains the original local
+archive. Older local rows enter the queue only through explicit preview/import.
+
+`HistorySyncClient` owns a source-scoped projection and ordered outbox. The browser
+uses a separate `iptvnator-history-v1:<instance>` IndexedDB database; Electron uses
+fixed `DB_HISTORY_LOCAL` read/CAS operations in the database worker. State and
+intent commit together. Native CAS captures its expected bytes before invoking
+a mutator, so in-place changes cannot cause a permanent retry conflict. Source
+incarnations reuse the delivered favorites/source lifecycle contract; a source
+retirement invalidates its offline context and pending playback confirmations.
+Verified in-flight writes check that source's retirement epoch; retiring an
+unrelated source does not discard or park its confirmed playback. Runtime renewal
+still prevents stale context lists from overwriting a retirement.
+Source/profile changes fence delayed requests and storage retries. IndexedDB
+transaction ordering and worker CAS provide correctness without Web Locks.
+
+`GET /v1/history/sources/:id` returns the verified scope and current history.
+`POST /v1/history/operations` accepts a confirmed touch, a removal or an explicit
+source clear, with a stable operation/device ID and observed revision. Authentication,
+instance identity and current source incarnation are checked before writes.
+Server state and the immutable receipt decision commit in one SQLite transaction.
+Exact retries never repeat a touch; another body under the same ID is rejected.
+Receipt responses include the latest state, and clients never replace a newer
+polled base with an older acknowledgement. Receipts retain decisions and revisions,
+not a complete historical snapshot for every watch.
+
+A monotonic source revision assigns acceptance order. A persisted instance-wide
+server clock supplies UI timestamps and orders touches across sources even within
+one millisecond or after clock rollback. Clock, state and receipt changes commit
+together; existing source timestamps seed a missing clock once. Pending
+commands project optimistically above the known server base; local-only choices
+retain their recorded viewing times as that base advances. A newer shared watch
+of the same item can advance its time; removals and clears cannot. Removal
+revisions and a source clear barrier prevent obsolete offline touches from
+recreating deleted history. A same-device predecessor permits an intentional
+remove-then-watch queue; only a same-item removal or a source clear can advance
+its observed barrier. Unrelated or rejected predecessors cannot grant a fresh
+revision.
+Rejected stale watches remain local and can be explicitly previewed/imported.
+No absence-based deletion, automatic pruning or receipt TTL is introduced.
+The native Xtream browsing cap remains 100; archival storage is retained.
+
+History continues to use `PlaybackHistoryGate`: confirmed inline progress or the
+existing external launch confirmation records a start. Downloaded progress,
+watched marks, opening a detail view and provider link resolution never manufacture
+history. Xtream collections retain their existing parent-series history; Stalker
+keeps regular, embedded and lazy series modes. Portable references reuse favorites:
+exact M3U URL hashes and typed provider IDs, with safe display hints. Stream URLs,
+commands, session tokens, credentials and artwork URLs are not sent as history
+metadata. M3U rows resolve only through URL membership in that shared source.
+
+Raw playlist/SQLite history remains the device archive. Projection overlays only
+known shared keys, so a remote clear cannot erase unrelated pre-enable local rows.
+An explicit clear on this device also hides its local archive. Local touches,
+removals and clears remain available for explicit import, preserving local order.
+The existing current-tab clear continues removing exactly its displayed rows;
+it does not silently clear other content types or sources.
+
+Disable persists new consent before asynchronous work and stops delivery/remote
+application. Delivery rechecks consent and source/profile ownership after reading
+the pending queue and immediately before sending. Existing sidecars remain
+readable; new local actions cannot be replaced by late acknowledgements. A new
+enable never replays the prior consent's
+queue automatically: settings offer send or keep-local. A keep-local choice affects
+only earlier-consent work, preserving authorized current queues in this and other
+sources. Unsent successors lose references to predecessors kept local.
+Disabled/new sources with no verified history context retain ordinary local persistence. Preview captures
+instance, consent and source incarnation, rechecking each imported action. Import
+is explicit and places imported rows above shared history in their prior order.
+Import sorts rows across all selected sources and awaits each receipt before
+submitting the next row, preserving global order with server acceptance times.
+Before queuing any imported row, it requires earlier-consent queues in every
+selected source to be resolved through send or keep-local.
+Delivery failure stops the import with the failed row queued; raw archives remain
+available for a new preview and retry.
+Playlist archive transformations and Xtream recent-item operations load on first
+use. Their write queues and source/profile guards remain in the owning services.
+Source/history readiness warms those helpers before user actions, so a later UI
+host outage cannot cancel the first local history edit. M3U/Stalker collection
+reads project the latest sidecar state directly; they do not wait for an
+asynchronous inventory metadata reload after the history event.
+
+Global collections and Dashboard use the same history projection in both runtimes;
+explicit native reads/deletes do not bypass it. Completion notifications update
+UI metadata with `persist: false`, preserving the raw archive. Native import
+preview and projection read all archived rows before applying the browsing limit.
+Projection filters locked categories first; archival import stays complete.
+History refresh first reuses the source service to verify transport after startup
+or an outage. Verified contexts are persisted in canonical source-ID order, so
+unchanged polling cannot trigger reciprocal storage-event refreshes between tabs
+with different context insertion orders. History invalidation reuses the
+collection page's guarded reload, retaining nested detail/player ownership.
+Mixed-runtime tests are in `history-sync.e2e.ts` and `history-provider-sync.e2e.ts`
+under the isolated source-sync Playwright configuration. Protocol, real multi-tab
+IDB, native CAS and populated historical SQLite schemas have focused regressions.

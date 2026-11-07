@@ -485,12 +485,20 @@ three nested levels, their affordances and persistence are specified in
 `iptvnator-ui-guidelines.md` ("Collapsible Live Sidebar").
 
 A category click in a LIVE section (Xtream `live`, Stalker `itv` and `radio`)
-changes only the selected category: the live layouts gate their player on the
-store's selected item, so the handler must not clear it — the channel the user
+changes only the selected category: the live layouts keep playback separate
+from the browsed category, so the handler must not clear it — the channel the user
 is watching keeps playing while the sidebar re-filters (Xtream: #936; Stalker:
 `onStalkerCategoryClicked` returns before `clearSelectedItem()`). VOD and
 series category clicks do drop the open detail (`setSelectedItem(null)` /
 `clearSelectedItem()`) because they navigate to a list route.
+
+Xtream `/live` and `/live/:categoryId` share one URL-matched route definition.
+Changing or clearing a category from a deep link (including Recently Added)
+keeps the live layout and embedded player mounted, rather than reopening the
+channel. The matcher retains `categoryId` for existing consumers; the parental
+guard checks category changes and allows the category-less root without a PIN.
+Shell category-route detection reads consumed URL segments and parameters,
+not a literal route configuration path.
 
 The channel header offers **Show playing channel** when browsing excludes the
 active channel. It returns to that category and focuses the row without
@@ -536,6 +544,27 @@ Search is shell-owned and route-aware:
     cancels any pending debounce, so the Enter key committing a trimmed term
     cannot be overwritten a moment later by the untrimmed keystroke still
     waiting behind it.
+11. Xtream and Stalker category scopes can be cleared by clicking anywhere on
+    the header scope chip or by clicking the selected sidebar category again.
+    Both actions merge the current input into the destination URL, including
+    text still waiting for the search debounce, and return to all items in the
+    current section. Scope-only navigation uses transient router `info` to keep
+    raw whitespace, newer keystrokes and the pending debounce. URL writes wait
+    for that navigation to settle so a debounce cannot supersede it. Debounce
+    completion also reconciles `q` when the input returns to the already applied
+    term; `q` stays trimmed and history remains authoritative. During live playback the
+    all-channel sidebar stays available after clearing an empty search, without
+    remounting the player.
+    Clearing an empty input removes `q` while preserving other
+    query parameters. The clear control and action are limited to Xtream
+    `live`/`vod`/`series` and Stalker `itv`/`radio`/`vod`/`series`; retained
+    category state must not make collection or advanced-search scopes
+    dismissible. Both entry points share the provider-state reset and
+    navigation action. Live playback remains selected; VOD and series details
+    close when returning to the list. The category name and close icon form
+    one button with a neutral hover and keyboard-focus highlight that remains
+    visible in both themes; hovering the search field does not highlight it.
+    The all-items scope stays non-interactive.
 
 Rail navigation is also shell-owned:
 
@@ -1066,6 +1095,28 @@ Known caveats:
 2. Double-click-to-maximize on drag regions is handled natively by
    Electron/Chromium; on Linux the exact behavior depends on the window
    manager.
+
+## Update restart and unsaved settings
+
+Both the About action and the global update notification install through
+`AppUpdateInstallService`. Registered settings guards first run the existing
+Save/Discard/Cancel decision; cancellation or a failed save sends no install
+IPC and keeps protection armed. Concurrent install intents share one decision.
+Cancelling an install never sends an unscoped cancellation for an unseen native close.
+The same unload-guard decision also owns competing native close/reload requests.
+After approval only DOM unload protection is suspended; the main-process guard
+stays armed until install IPC atomically clears pending closes and prepares the
+updater's close bypass. Failed installation restores DOM protection and revisits
+close requests received while waiting. The global notification retains download
+errors with an announced
+message and a Check again action instead of disappearing. A retry keeps the
+known release while checking and on failure; a new verdict replaces it, and
+changing channels still clears the previous channel's release. A no-update
+verdict is not retained as an available update during another check.
+
+Regression coverage: `app-update-recovery.e2e.ts` uses the real Electron
+renderer/preload/IPC with a disposable updater fixture (no package installation),
+checks both install entry points and verifies saved settings after restart.
 
 ## Maintenance Guidance
 

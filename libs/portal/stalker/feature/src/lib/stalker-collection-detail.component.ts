@@ -36,6 +36,8 @@ import {
     normalizeStalkerEntityId,
     StalkerSelectedVodItem,
     StalkerStore,
+    StalkerCollectionMetadataService,
+    mergeStalkerDisplayInfo,
 } from '@iptvnator/portal/stalker/data-access';
 import type { PlaybackFallbackRequest } from '@iptvnator/ui/playback';
 import {
@@ -48,6 +50,7 @@ import { StalkerInlineDetailComponent } from './stalker-inline-detail/stalker-in
 import { STALKER_SERIES_RESUME_TARGET } from './stalker-series-view/stalker-series-resume';
 import {
     resolveStalkerCollectionDetailMode,
+    stalkerCollectionPreparationKey,
     resolveStalkerCollectionItem,
     resolveStalkerCollectionSelectedCategory,
     StalkerDetailCategory,
@@ -137,6 +140,7 @@ export class StalkerCollectionDetailComponent implements ViewInPortalHandoff {
     private readonly playlistsService = inject(PlaylistsService);
     private readonly router = inject(Router);
     private readonly stalkerStore = inject(StalkerStore);
+    private readonly metadata = inject(StalkerCollectionMetadataService);
     readonly externalPlayback = inject(PORTAL_EXTERNAL_PLAYBACK);
     private readonly playbackPositions = inject(PORTAL_PLAYBACK_POSITIONS);
     private readonly portalPlayer = inject(PORTAL_PLAYER);
@@ -193,6 +197,7 @@ export class StalkerCollectionDetailComponent implements ViewInPortalHandoff {
     );
 
     private initRequestId = 0;
+    private preparedIdentity: string | null = null;
     private currentPlaybackOwnerKey = '';
 
     constructor() {
@@ -210,6 +215,7 @@ export class StalkerCollectionDetailComponent implements ViewInPortalHandoff {
 
         effect(() => {
             const item = this.item();
+            this.metadata.revision();
             const playbackOwnerKey = this.playbackSessionKey();
             untracked(() => {
                 if (playbackOwnerKey !== this.currentPlaybackOwnerKey) {
@@ -338,12 +344,25 @@ export class StalkerCollectionDetailComponent implements ViewInPortalHandoff {
             return;
         }
 
+        const identity = stalkerCollectionPreparationKey(item, playlist);
+        const stalkerItem = this.metadata.item(
+            playlist,
+            resolveStalkerCollectionItem(item)
+        );
+        if (identity === this.preparedIdentity && this.itemDetails()) {
+            const current = this.itemDetails()!;
+            const enriched = mergeStalkerDisplayInfo(current, stalkerItem);
+            if (enriched !== current)
+                this.stalkerStore.setSelectedItem(enriched);
+            return;
+        }
+        if (this.preparedIdentity) this.closeInlinePlayer();
         await this.stalkerStore.setCurrentPlaylist(playlist);
         if (requestId !== this.initRequestId) {
             return;
         }
 
-        const stalkerItem = resolveStalkerCollectionItem(item);
+        this.preparedIdentity = identity;
         const detailMode = resolveStalkerCollectionDetailMode(
             item,
             stalkerItem
@@ -413,6 +432,7 @@ export class StalkerCollectionDetailComponent implements ViewInPortalHandoff {
     }
 
     private clearLocalDetailState(): void {
+        this.preparedIdentity = null;
         const cleared = clearStalkerDetailViewState();
         this.itemDetails.set(cleared.itemDetails);
         this.vodDetailsItem.set(cleared.vodDetailsItem);

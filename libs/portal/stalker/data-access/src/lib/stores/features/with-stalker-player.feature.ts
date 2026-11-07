@@ -1,4 +1,8 @@
-import { inject } from '@angular/core';
+import { captureHistoryOwner } from '@iptvnator/services/history-events';
+import { sourceConnection } from '@iptvnator/services/source-sync/connection';
+import { stalkerSessionFingerprint } from '@iptvnator/shared/interfaces/stalker-session';
+import { StalkerFavoritePlaybackResolver } from '../../stalker-favorite-playback.service';
+import { inject, Injector } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { signalStoreFeature, withMethods } from '@ngrx/signals';
 import { Store } from '@ngrx/store';
@@ -104,60 +108,45 @@ export function withStalkerPlayer() {
                                 {
                                     recentlyViewed:
                                         updatedPlaylist?.recentlyViewed,
-                                }
+                                },
+                                false
                             );
                         });
                 };
 
-                const buildRecentlyViewedItem = (
-                    item: StalkerPlayableItem,
-                    cmd?: string,
-                    cover?: string,
-                    title?: string
-                ): StalkerRecentlyViewedItem =>
-                    buildStalkerRecentlyViewedPayload(
-                        {
-                            ...item,
-                            cmd,
-                            cover,
-                            title,
-                        },
-                        storeState.selectedContentType()
-                    );
-
-                /**
-                 * Resolving a link is not watching it: the write waits until
-                 * the player (inline ≥2 s of progress, or a launched MPV/VLC)
-                 * confirms `streamUrl`. The item and its portal are captured
-                 * now, so switching portal or section meanwhile cannot
-                 * misfile it.
-                 */
-                const recordRecentlyViewed = (
-                    streamUrl: string,
-                    item: StalkerPlayableItem | null | undefined,
-                    cmd?: string,
-                    cover?: string,
-                    title?: string
-                ): void => {
+                // Capture source ownership before link resolution can outlive a portal edit or switch.
+                const captureRecentlyViewed = () => {
                     const playlistId = storeState.currentPlaylist()?._id;
-                    if (!item || !playlistId) {
-                        return;
-                    }
-
-                    const recentItem = buildRecentlyViewedItem(
-                        item,
-                        cmd,
-                        cover,
-                        title
+                    const contentType = storeState.selectedContentType();
+                    const current = captureHistoryOwner(
+                        sourceConnection()?.instanceId,
+                        playlistId ?? '',
+                        () => sourceConnection()?.instanceId
                     );
-                    historyGate.defer({ streamUrls: [streamUrl] }, () =>
-                        persistRecentlyViewed(playlistId, {
-                            ...recentItem,
-                            added_at: Date.now(),
-                        })
-                    );
+                    return (
+                        streamUrl: string,
+                        item: StalkerPlayableItem | null | undefined,
+                        cmd?: string,
+                        cover?: string,
+                        title?: string
+                    ): void => {
+                        if (!item || !playlistId || !current()) return;
+                        const recentItem = buildStalkerRecentlyViewedPayload(
+                            { ...item, cmd, cover, title },
+                            contentType
+                        );
+                        historyGate.defer(
+                            { sourceId: playlistId, streamUrls: [streamUrl] },
+                            () =>
+                                persistRecentlyViewed(playlistId, {
+                                    ...recentItem,
+                                    added_at: Date.now(),
+                                })
+                        );
+                    };
                 };
 
+                const injector = inject(Injector);
                 const resolveVodPlaybackInternal = async (
                     cmd?: string,
                     title?: string,
@@ -166,15 +155,30 @@ export function withStalkerPlayer() {
                     episodeId?: number,
                     startTime?: number
                 ): Promise<ResolvedPortalPlayback> => {
-                    const item = storeState.selectedItem() as
+                    let item = storeState.selectedItem() as
                         StalkerPlayableItem | null | undefined;
-                    let cmdToUse = cmd ?? item?.cmd;
-
-                    if (!cmdToUse) {
-                        throw new Error('nothing_to_play');
-                    }
-
                     const playlist = storeState.currentPlaylist();
+                    const recordRecent = captureRecentlyViewed();
+                    if (!cmd && !item?.cmd && item?.id && playlist) {
+                        item = (await injector
+                            .get(StalkerFavoritePlaybackResolver)
+                            .resolve(playlist, {
+                                ...item,
+                                favoriteContentType:
+                                    storeState.selectedContentType() as
+                                        'vod' | 'series' | 'itv' | 'radio',
+                            })) as StalkerPlayableItem;
+                        if (
+                            storeState.currentPlaylist()?._id !==
+                                playlist._id ||
+                            stalkerSessionFingerprint(
+                                storeState.currentPlaylist()!
+                            ) !== stalkerSessionFingerprint(playlist)
+                        )
+                            throw new Error('nothing_to_play');
+                    }
+                    let cmdToUse = cmd || item?.cmd;
+                    if (!cmdToUse) throw new Error('nothing_to_play');
                     if (!playlist?.portalUrl || !playlist.macAddress) {
                         throw new Error('nothing_to_play');
                     }
@@ -206,13 +210,7 @@ export function withStalkerPlayer() {
                         }
                     );
 
-                    recordRecentlyViewed(
-                        streamUrl,
-                        item,
-                        cmd,
-                        thumbnail,
-                        title
-                    );
+                    recordRecent(streamUrl, item, cmd, thumbnail, title);
 
                     const isEpisode =
                         episodeNum !== undefined || episodeId !== undefined;
@@ -269,6 +267,24 @@ export function withStalkerPlayer() {
                     item: StalkerPlayableItem
                 ): Promise<ResolvedPortalPlayback> => {
                     const playlist = storeState.currentPlaylist();
+                    const recordRecent = captureRecentlyViewed();
+                    if (!item.cmd && playlist) {
+                        item = (await injector
+                            .get(StalkerFavoritePlaybackResolver)
+                            .resolve(playlist, {
+                                ...item,
+                                favoriteContentType: 'itv' as
+                                    'vod' | 'series' | 'itv' | 'radio',
+                            })) as StalkerPlayableItem;
+                        if (
+                            storeState.currentPlaylist()?._id !==
+                                playlist._id ||
+                            stalkerSessionFingerprint(
+                                storeState.currentPlaylist()!
+                            ) !== stalkerSessionFingerprint(playlist)
+                        )
+                            throw new Error('nothing_to_play');
+                    }
                     if (
                         !playlist?.portalUrl ||
                         !playlist.macAddress ||
@@ -301,7 +317,7 @@ export function withStalkerPlayer() {
                     );
                     const portalOrigin = getStalkerPortalOrigin(playlist);
 
-                    recordRecentlyViewed(
+                    recordRecent(
                         streamUrl,
                         item,
                         item.cmd,
@@ -332,6 +348,24 @@ export function withStalkerPlayer() {
                     item: StalkerPlayableItem
                 ): Promise<ResolvedPortalPlayback> => {
                     const playlist = storeState.currentPlaylist();
+                    const recordRecent = captureRecentlyViewed();
+                    if (!item.cmd && playlist) {
+                        item = (await injector
+                            .get(StalkerFavoritePlaybackResolver)
+                            .resolve(playlist, {
+                                ...item,
+                                favoriteContentType: 'radio' as
+                                    'vod' | 'series' | 'itv' | 'radio',
+                            })) as StalkerPlayableItem;
+                        if (
+                            storeState.currentPlaylist()?._id !==
+                                playlist._id ||
+                            stalkerSessionFingerprint(
+                                storeState.currentPlaylist()!
+                            ) !== stalkerSessionFingerprint(playlist)
+                        )
+                            throw new Error('nothing_to_play');
+                    }
                     if (
                         !playlist?.portalUrl ||
                         !playlist.macAddress ||
@@ -367,7 +401,7 @@ export function withStalkerPlayer() {
                         }
                     );
 
-                    recordRecentlyViewed(
+                    recordRecent(
                         streamUrl,
                         item,
                         item.cmd,

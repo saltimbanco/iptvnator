@@ -1,3 +1,7 @@
+import { HISTORY_PLAYLIST_BRIDGE } from '@iptvnator/services/history-events';
+import { historyPlaylistBridgeFactory } from './services/history-sync.providers';
+import { FAVORITES_PLAYLIST_BRIDGE } from '@iptvnator/services/favorites-events';
+import { favoritesPlaylistBridgeFactory } from './services/favorites-sync.providers';
 import { PLAYBACK_ACTIVITY_EVENTS } from '@iptvnator/services/activity-events';
 import {
     HttpClient,
@@ -154,6 +158,14 @@ export const appConfig: ApplicationConfig = {
         ...provideWorkspaceShellActions(),
         ...provideParentalLockPrompt(),
         provideParentalLockPlaylistCleanup(),
+        {
+            provide: HISTORY_PLAYLIST_BRIDGE,
+            useFactory: historyPlaylistBridgeFactory,
+        },
+        {
+            provide: FAVORITES_PLAYLIST_BRIDGE,
+            useFactory: favoritesPlaylistBridgeFactory,
+        },
         ...provideXtreamDataSource(activityDataSourceFactory),
         {
             provide: PLAYBACK_ACTIVITY_EVENTS,

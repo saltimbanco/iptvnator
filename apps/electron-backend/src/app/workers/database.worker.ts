@@ -1,3 +1,7 @@
+import { historyLocalOperation } from '../database/operations/history-local.operations';
+import type { HistoryLocalRequest } from '@iptvnator/shared/interfaces/history-sync';
+import type { FavoriteLocalRequest } from '@iptvnator/shared/interfaces/favorites-sync';
+import { favoriteLocalOperation } from '../database/operations/favorites-local.operations';
 import type { ActivityLocalRequest } from '@iptvnator/shared/interfaces/activity-sync';
 import { activityLocalOperation } from '../database/operations/activity-local.operations';
 import { getWorkerSqlite } from './database.worker-connection';
@@ -435,6 +439,16 @@ async function executeRequest(
     const db = await getWorkerDatabase();
 
     switch (message.operation) {
+        case 'DB_HISTORY_LOCAL':
+            return historyLocalOperation(
+                getWorkerSqlite(),
+                message.payload as HistoryLocalRequest
+            );
+        case 'DB_FAVORITES_LOCAL':
+            return favoriteLocalOperation(
+                getWorkerSqlite(),
+                message.payload as FavoriteLocalRequest
+            );
         case 'DB_ACTIVITY_LOCAL':
             return activityLocalOperation(
                 getWorkerSqlite(),
@@ -630,6 +644,7 @@ async function executeRequest(
                 contentType?: 'live' | 'movie' | 'series';
                 identity?: ContentMetadataPatch;
                 categoryId?: number;
+                excludeLocked?: boolean;
             };
             return getContentByXtreamId(
                 db,
@@ -637,7 +652,8 @@ async function executeRequest(
                 payload.playlistId,
                 payload.contentType,
                 payload.identity,
-                payload.categoryId
+                payload.categoryId,
+                payload.excludeLocked === true
             );
         }
 

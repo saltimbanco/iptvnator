@@ -32,7 +32,7 @@ using its result as evidence. Docker validation can use
 | EPG data access                    | `pnpm nx test epg-data-access`      |
 | Workspace shell utilities          | `pnpm nx test workspace-shell-util` |
 | Shared SQLite schema/connection    | `pnpm nx test database`             |
-| TV runtime, providers and local storage | `pnpm nx test tv` and `pnpm nx e2e tv-e2e` |
+| TV runtime, providers, local storage and LG/Tizen package inputs | `corepack pnpm nx test tv`, `corepack pnpm nx run tv:verify-build` and `corepack pnpm nx e2e tv-e2e`; Samsung hardware/signing: [Tizen acceptance](../development/tv-tizen-validation.md) |
 | Packaging metadata                 | `pnpm nx test packaging`            |
 
 `typecheck:spec` (`tools/typecheck/spec-typecheck.mjs`) runs `tsc --noEmit`
@@ -102,6 +102,13 @@ Tier A entry has no test target. CI runs Tier A with coverage (uploaded to
 Codecov) and each Tier B/C project's `validationCommand` (falling back to
 `nx test`) without coverage; projects with an `e2e` target are skipped there
 because the E2E workflow already runs them on every PR that touches app code.
+Coverage commands resolve the Nx project graph once per invocation so inferred
+Jest targets remain classified even when `project.json` has no explicit `test`.
+Project-local Jest configs and the existing workspace-root Angular ESM
+config keep separate source-glob roots, with coverage reports written to the
+same workspace output paths and JUnit classnames relative to the repository.
+Migrated Jest commands keep the workspace working directory for subprocess and
+file-based test contracts, independently of the Jest config's root directory.
 Docs-only changes (Markdown, `docs/`, `.plans/`, `.codex/`, `.claude/`) and
 `apps/website/**` changes skip the E2E workflow via `paths-ignore` — for those
 PRs no E2E validation runs in CI, which is intentional: they cannot affect app
@@ -327,6 +334,12 @@ For local investigation only, Chromium browser V8 coverage can be explored with:
 ```bash
 pnpm run coverage:e2e:v8:web
 ```
+
+Production PWA update checks use `pnpm nx run web-e2e:pwa-updates`; its
+`web:build-pwa` dependency builds the matching service-worker output first.
+`pnpm nx run web-e2e:test-service-worker` validates the pinned worker behavior
+without a browser. Both are required after changes to update recovery or its
+Angular worker patch; ordinary dev-server browser flows do not exercise it.
 
 ## I18n
 

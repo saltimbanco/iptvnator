@@ -42,6 +42,21 @@ function route(request: SourceServerRequest): { path: string; method: string } {
             return { path: `/v1/sources/${id}`, method: 'DELETE' };
         case 'clear':
             return { path: '/v1/sources', method: 'DELETE' };
+        case 'history-read':
+            return { path: `/v1/history/sources/${id}`, method: 'GET' };
+        case 'history-apply':
+            return { path: '/v1/history/operations', method: 'POST' };
+        case 'favorites-context':
+            return { path: `/v1/favorites/sources/${id}`, method: 'GET' };
+        case 'favorites-list':
+            return {
+                path: `/v1/favorites/sources/${id}/items${request.cursor ? '?cursor=' + encodeURIComponent(request.cursor) : ''}`,
+                method: 'GET',
+            };
+        case 'favorites-read':
+            return { path: '/v1/favorites/read', method: 'POST' };
+        case 'favorites-apply':
+            return { path: '/v1/favorites/operations', method: 'POST' };
         case 'activity-context':
             return { path: `/v1/activity/sources/${id}`, method: 'GET' };
         case 'activity-list':
@@ -84,7 +99,10 @@ export async function sourceServerRequest(
                     ...(token && request.operation !== 'instance'
                         ? { Authorization: `Bearer ${token}` }
                         : {}),
-                    ...((request.activity ?? request.source)
+                    ...((request.history ??
+                    request.favorite ??
+                    request.activity ??
+                    request.source)
                         ? { 'Content-Type': 'application/json' }
                         : {}),
                     ...(request.operation === 'create'
@@ -98,7 +116,11 @@ export async function sourceServerRequest(
                           }
                         : {}),
                 },
-                data: request.activity ?? request.source,
+                data:
+                    request.history ??
+                    request.favorite ??
+                    request.activity ??
+                    request.source,
             },
             {
                 allowPrivateNetworks: true,

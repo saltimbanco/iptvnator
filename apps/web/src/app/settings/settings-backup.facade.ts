@@ -1,3 +1,7 @@
+import { historyProfileUsed } from '../services/history-consent';
+import { loadHistoryRuntime } from '../services/history-sync.providers';
+import { favoritesProfileUsed } from '../services/favorites-consent';
+import { loadFavoritesRuntime } from '../services/favorites-sync.providers';
 import { activityEnabled } from '../services/activity-consent';
 import { loadActivityRuntime } from '../services/activity-sync.providers';
 import {
@@ -38,6 +42,9 @@ export class SettingsBackupFacade {
     private readonly destroyRef = inject(DestroyRef);
 
     readonly isExportingData = signal(false);
+    /** The shell marker is set before bootstrap; Android has no download/save bridge yet. */
+    readonly supportsExport =
+        !document.documentElement.classList.contains('tv-shell');
     readonly isImportingData = signal(false);
     private readonly isChoosingFile = signal(false);
     readonly isBusy = computed(
@@ -50,7 +57,7 @@ export class SettingsBackupFacade {
     readonly importFailed = signal(false);
 
     async exportData(waitForUiFeedbackFrame: () => Promise<void>) {
-        if (this.isBusy()) {
+        if (!this.supportsExport || this.isBusy()) {
             return;
         }
 
@@ -63,7 +70,19 @@ export class SettingsBackupFacade {
                         ? (
                               await loadActivityRuntime(this.environment)
                           ).exportPositions(sourceId, local)
-                        : local
+                        : local,
+                async (playlist, entry) => {
+                    const favorites = favoritesProfileUsed()
+                        ? await (
+                              await loadFavoritesRuntime(this.environment)
+                          ).exportFavorites(playlist, entry)
+                        : entry;
+                    return historyProfileUsed()
+                        ? (
+                              await loadHistoryRuntime(this.environment)
+                          ).exportHistory(playlist, favorites)
+                        : favorites;
+                }
             );
 
             if (this.runtime.supportsDesktopFileSave && window.electron) {
@@ -136,8 +155,22 @@ export class SettingsBackupFacade {
             this.importFailed.set(false);
 
             try {
+                const restoreFavorites = favoritesProfileUsed()
+                    ? (
+                          await loadFavoritesRuntime(this.environment)
+                      ).backupRestorer()
+                    : undefined;
+                const restoreHistory = historyProfileUsed()
+                    ? (
+                          await loadHistoryRuntime(this.environment)
+                      ).backupRestorer()
+                    : undefined;
                 const summary = await this.playlistBackupService.importBackup(
-                    await file.text()
+                    await file.text(),
+                    async (sourceId, entry) => {
+                        await restoreFavorites?.(sourceId, entry);
+                        await restoreHistory?.(sourceId, entry);
+                    }
                 );
                 this.injector
                     .get(XtreamStore, null)

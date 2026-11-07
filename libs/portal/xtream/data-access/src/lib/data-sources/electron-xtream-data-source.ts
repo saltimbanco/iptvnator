@@ -531,8 +531,13 @@ export class ElectronXtreamDataSource implements IXtreamDataSource {
     // Recently Viewed Operations
     // =========================================================================
 
-    async getRecentItems(playlistId: string): Promise<XtreamContentItem[]> {
-        return this.dbService.getRecentItems(playlistId);
+    async getRecentItems(
+        playlistId: string,
+        options?: { all: true }
+    ): Promise<XtreamContentItem[]> {
+        return options?.all
+            ? this.dbService.getRecentItemsOrThrow(playlistId)
+            : this.dbService.getRecentItems(playlistId);
     }
 
     async addRecentItem(
@@ -570,15 +575,17 @@ export class ElectronXtreamDataSource implements IXtreamDataSource {
         playlistId: string,
         contentType?: 'live' | 'movie' | 'series',
         identity?: ContentMetadataPatch,
-        categoryId?: number
+        categoryId?: number,
+        excludeLocked?: boolean
     ): Promise<XtreamContentItem | null> {
-        if (categoryId !== undefined) {
+        if (categoryId !== undefined || excludeLocked) {
             return this.dbService.getContentByXtreamId(
                 xtreamId,
                 playlistId,
                 contentType,
                 identity,
-                categoryId
+                categoryId,
+                ...(excludeLocked ? [true] : [])
             );
         }
         return this.dbService.getContentByXtreamId(

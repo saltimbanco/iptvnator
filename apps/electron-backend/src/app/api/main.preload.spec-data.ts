@@ -65,6 +65,22 @@ const vodSourcePin = {
 
 export const dbPreloadCases: PreloadInvokeCase[] = [
     {
+        method: 'historyLocalRequest',
+        args: [{ instanceId: 'history-test-instance', operation: 'read' }],
+        channel: 'DB_HISTORY_LOCAL',
+        forwardedArgs: [
+            { instanceId: 'history-test-instance', operation: 'read' },
+        ],
+    },
+    {
+        method: 'favoritesLocalRequest',
+        args: [{ instanceId: 'favorites-test-instance', operation: 'pending' }],
+        channel: 'DB_FAVORITES_LOCAL',
+        forwardedArgs: [
+            { instanceId: 'favorites-test-instance', operation: 'pending' },
+        ],
+    },
+    {
         method: 'activityLocalRequest',
         args: [{ instanceId: 'activity-test-instance', operation: 'pending' }],
         channel: 'DB_ACTIVITY_LOCAL',
@@ -367,6 +383,12 @@ export const dbPreloadCases: PreloadInvokeCase[] = [
         args: [42, playlistId, 'movie', undefined, 8],
         channel: 'DB_GET_CONTENT_BY_XTREAM_ID',
         forwardedArgs: [42, playlistId, 'movie', undefined, 8],
+    },
+    {
+        method: 'dbGetContentByXtreamId',
+        args: [42, playlistId, 'movie', undefined, undefined, true],
+        channel: 'DB_GET_CONTENT_BY_XTREAM_ID',
+        forwardedArgs: [42, playlistId, 'movie', undefined, undefined, true],
     },
     {
         method: 'dbSetContentMetadataIfMissing',

@@ -40,7 +40,6 @@ import {
 
 import {
     CollectionKey,
-    cachedContentIdentity,
     type CollectionIdentity,
     collectionRefIdentity,
     collectionKey,
@@ -349,7 +348,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
         const categories = await this.apiService.getCategories(
             credentials,
             type,
-            ...(options?.signal ? [{ signal: options.signal }] as const : [])
+            ...(options?.signal ? ([{ signal: options.signal }] as const) : [])
         );
         options?.signal?.throwIfAborted();
 
@@ -524,7 +523,9 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
             await this.apiService.getStreams(
                 credentials,
                 type,
-                ...(options?.signal ? [{ signal: options.signal }] as const : [])
+                ...(options?.signal
+                    ? ([{ signal: options.signal }] as const)
+                    : [])
             ),
             type
         );
@@ -606,12 +607,17 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     // Favorites Operations (user data storage)
     // =========================================================================
 
-    async getFavorites(playlistId: string): Promise<XtreamContentItem[]> {
+    async getFavorites(
+        playlistId: string,
+        hydrate = true
+    ): Promise<XtreamContentItem[]> {
         await this.userDataRead();
-        await this.getCollectionItemsWithHydration(
-            playlistId,
-            this.collectionStorage.getFavoritesFromStorage()[playlistId] || []
-        );
+        if (hydrate)
+            await this.getCollectionItemsWithHydration(
+                playlistId,
+                this.collectionStorage.getFavoritesFromStorage()[playlistId] ||
+                    []
+            );
         return this.collectionStorage.getLocalFavorites(playlistId);
     }
 
@@ -926,15 +932,8 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
         }
 
         const { removePwaRecentItem } = await import('./pwa-recent-write');
-        removePwaRecentItem(
-            this.collectionStorage,
-            playlistId,
-            (ids) =>
-                this.getMatchingCollectionKeys(
-                    playlistId,
-                    ids,
-                    normalizedContentId
-                )
+        removePwaRecentItem(this.collectionStorage, playlistId, (ids) =>
+            this.getMatchingCollectionKeys(playlistId, ids, normalizedContentId)
         );
     }
 
@@ -1073,27 +1072,43 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     async getContentByXtreamId(
         xtreamId: number,
         playlistId: string,
-        contentType?: 'live' | 'movie' | 'series'
+        contentType?: 'live' | 'movie' | 'series',
+        identity?: ContentMetadataPatch,
+        _categoryId?: number,
+        excludeLocked = false
     ): Promise<XtreamContentItem | null> {
-        const types = contentType
-            ? [contentType]
-            : (['live', 'movie', 'series'] as const);
-
-        for (const type of types) {
-            const cacheKey = `${playlistId}-${type}-content`;
-            const content = this.contentCache.get(cacheKey) || [];
-
-            const found = content.find((item) => {
-                const itemXtreamId = cachedContentIdentity(item, type);
-                return itemXtreamId === xtreamId;
-            });
-
-            if (found) {
-                return found as XtreamContentItem;
-            }
-        }
-
-        return null;
+        if (
+            !this.contentCache.size ||
+            (excludeLocked && this.parentalLock.withholdsEverything?.())
+        )
+            return null;
+        // Non-empty caches have already loaded this module through catalog normalization.
+        const { findPwaCachedContent } = await import('./pwa-content-metadata');
+        return findPwaCachedContent(
+            this.contentCache,
+            playlistId,
+            xtreamId,
+            contentType ? [contentType] : ['live', 'movie', 'series'],
+            identity,
+            excludeLocked
+                ? (item) => {
+                      if (
+                          this.parentalLock.active() &&
+                          !canonicalCategoryId(item.category_id)
+                      )
+                          return false;
+                      const kind =
+                          contentType ??
+                          (item.type === 'live' || item.type === 'series'
+                              ? item.type
+                              : 'movie');
+                      return (
+                          this.withoutLockedContent(playlistId, kind, [item])
+                              .length > 0
+                      );
+                  }
+                : undefined
+        );
     }
 
     /** Enrich the current catalog and compatible snapshots, or independent cold Recent data. */
@@ -1137,12 +1152,7 @@ export class PwaXtreamDataSource implements IXtreamDataSource {
     ): Promise<void> {
         const { enrichPwaCatalogCache } =
             await import('./pwa-content-metadata');
-        enrichPwaCatalogCache(
-            this.contentCache,
-            playlistId,
-            key,
-            patch
-        );
+        enrichPwaCatalogCache(this.contentCache, playlistId, key, patch);
     }
 
     // =========================================================================

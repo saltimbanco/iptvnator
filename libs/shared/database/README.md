@@ -47,6 +47,30 @@ database worker through the fixed `DB_ACTIVITY_LOCAL` IPC. NAS routes use a
 separate server store and persisted source incarnations. See the
 [self-hosted activity contract](../../../docs/architecture/pwa-self-hosted.md#viewing-activity-synchronization).
 
+## Favorites-sync storage
+
+`@iptvnator/shared/database/favorites-sync` provides separate additive local
+projection/outbox tables and server state/receipt tables. Constructors preserve
+all historical favorites, catalogs, playlists, history and activity tables.
+Membership changes and local sync intent commit together; server removals retain
+a persistent revision. Electron uses the worker-only `DB_FAVORITES_LOCAL` CAS
+bridge. The owning runtime verifies instance, consent and source incarnation.
+See [the favorites contract](../../../docs/architecture/pwa-self-hosted.md#favorites-synchronization).
+
+## History-sync storage
+
+`@iptvnator/shared/database/history-sync` owns additive source-scoped local/server
+history tables and durable operation receipts. It does not migrate, delete or
+upload legacy recently-viewed rows. Local projection/outbox updates share a
+transaction; native renderer writes use `DB_HISTORY_LOCAL` compare-and-swap.
+Server touches, removals and clears persist with their receipt decision.
+Server acceptance time uses a persisted per-instance clock in the same transaction
+as state and receipts. Its first write seeds from pre-clock source states; normal
+writes read only the instance clock, preserving cross-source order on restart or
+clock rollback without scanning all histories for every operation.
+Historical schema tests preserve populated 0.19–0.24 tables through rollback and reopening.
+See [Recently Viewed sync](../../../docs/architecture/pwa-self-hosted.md#recently-viewed-synchronization).
+
 ## Database Location
 
 The SQLite database is stored at `<data root>/databases/iptvnator.db`. The data

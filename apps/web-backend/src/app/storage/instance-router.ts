@@ -1,3 +1,4 @@
+import { HISTORY_SYNC_CAPABILITY } from '@iptvnator/shared/interfaces/history-sync';
 import { Router } from 'express';
 import {
     SERVER_STORAGE_API_VERSION,
@@ -7,6 +8,7 @@ import {
 } from '@iptvnator/shared/interfaces';
 import type { ServerStorage } from './server-storage';
 import { StorageRequestError } from './storage-route-errors';
+import { FAVORITES_SYNC_CAPABILITY } from '@iptvnator/shared/interfaces/favorites-sync';
 import { ACTIVITY_SYNC_CAPABILITY } from '@iptvnator/shared/interfaces/activity-sync';
 
 export function createInstanceRouter(deps: {
@@ -22,6 +24,8 @@ export function createInstanceRouter(deps: {
                       capabilities: [
                           SOURCE_SYNC_CAPABILITY,
                           ACTIVITY_SYNC_CAPABILITY,
+                          FAVORITES_SYNC_CAPABILITY,
+                          HISTORY_SYNC_CAPABILITY,
                       ],
                   }
                 : {}),

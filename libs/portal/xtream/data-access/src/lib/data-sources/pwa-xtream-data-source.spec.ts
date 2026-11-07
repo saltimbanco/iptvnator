@@ -72,6 +72,111 @@ describe('PwaXtreamDataSource', () => {
         localStorage.clear();
     });
 
+    it('filters locked duplicate identities for history without changing PIN lookups', async () => {
+        apiService.getStreams.mockResolvedValue([
+            { stream_id: 42, name: 'Synthetic locked', category_id: '7' },
+            { stream_id: 42, name: 'Synthetic allowed', category_id: '8' },
+            { stream_id: 43, name: 'Synthetic unknown ownership' },
+        ]);
+        await dataSource.getContent('source', credentials, 'movie');
+        parentalLock.active.mockReturnValue(true);
+        parentalLock.lockedXtreamIds.mockReturnValue([7]);
+        expect(
+            await dataSource.getContentByXtreamId(42, 'source', 'movie')
+        ).toMatchObject({ title: 'Synthetic locked' });
+        expect(
+            await dataSource.getContentByXtreamId(
+                42,
+                'source',
+                'movie',
+                undefined,
+                undefined,
+                true
+            )
+        ).toMatchObject({ title: 'Synthetic allowed' });
+        expect(
+            await dataSource.getContentByXtreamId(
+                43,
+                'source',
+                'movie',
+                undefined,
+                undefined,
+                true
+            )
+        ).toBeNull();
+        parentalLock.withholdsEverything.mockReturnValue(true);
+        expect(
+            await dataSource.getContentByXtreamId(
+                42,
+                'source',
+                'movie',
+                undefined,
+                undefined,
+                true
+            )
+        ).toBeNull();
+    });
+    it.each(['live', 'movie', 'series'] as const)(
+        'resolves cached %s duplicates using metadata hints without provider I/O',
+        async (kind) => {
+            apiService.getStreams.mockResolvedValue([
+                {
+                    stream_id: 42,
+                    series_id: 42,
+                    name: 'Synthetic incompatible',
+                    tmdb_id: 100,
+                    release_year: 2021,
+                },
+                {
+                    stream_id: 42,
+                    series_id: 42,
+                    name: 'Synthetic partial',
+                    tmdb_id: 200,
+                },
+                {
+                    stream_id: 42,
+                    series_id: 42,
+                    name: 'Synthetic confirmed',
+                    tmdb_id: 200,
+                    release_year: 2024,
+                },
+            ]);
+            await dataSource.getContent('synthetic-source', credentials, kind);
+            apiService.getStreams.mockClear();
+            expect(
+                await dataSource.getContentByXtreamId(
+                    42,
+                    'synthetic-source',
+                    kind,
+                    { tmdbId: 200, releaseYear: 2024 }
+                )
+            ).toMatchObject({ title: 'Synthetic confirmed' });
+            expect(
+                await dataSource.getContentByXtreamId(
+                    42,
+                    'synthetic-source',
+                    kind,
+                    { tmdbId: 200, releaseYear: 2025 }
+                )
+            ).toMatchObject({ title: 'Synthetic partial' });
+            expect(
+                await dataSource.getContentByXtreamId(
+                    42,
+                    'synthetic-source',
+                    kind,
+                    { tmdbId: 999 }
+                )
+            ).toBeNull();
+            expect(
+                await dataSource.getContentByXtreamId(
+                    42,
+                    'synthetic-source',
+                    kind
+                )
+            ).toMatchObject({ title: 'Synthetic incompatible' });
+            expect(apiService.getStreams).not.toHaveBeenCalled();
+        }
+    );
     it.each(['favorites', 'recent'] as const)(
         'uses the playlist User-Agent when hydrating %s',
         async (collection) => {

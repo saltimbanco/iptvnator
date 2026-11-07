@@ -395,7 +395,9 @@ catalog replay, rather than another client's source-definition update.
 Electron category/content cache reads and imports honor the selection. Ordinary
 catalog search and recently-added SQL exclude disabled types; collection and
 identity reads deliberately do not. Disabling a type retains its cached rows so
-Favorites/history remain playable, with a disabled-type indication. It does not
+Favorites/history remain playable, with a disabled-type indication. Portable
+favorites preserve that indication in global and playlist collections on SQLite
+clients; PWA clients retain their all-catalog behavior. Disabling a type does not
 delete playback positions or offline files. Saved metadata includes the selection
 in startup projections without parsing large M3U payloads, and backups preserve
 it, including an explicit empty array.
@@ -684,6 +686,9 @@ certificate, HTTP authorization, and redirected-destination failures cannot
 trigger a downgrade. Aggregate and nested cause errors require positive
 evidence from every address; mixed failures, cycles and truncated error trees
 fail closed. TLS verification diagnostics include incomplete certificate chains.
+On Android, the embedded backend can confirm an initial direct HTTPS refusal
+with a TCP-only check before the HTTPS request. It requires the platform's
+`ECONNREFUSED` errno for every resolved address and sends no credentials.
 A response from an earlier account-action variant also
 prevents downgrade. HTTP failures (including panels returning 500 for unsupported actions)
 still try the remaining account actions on the same candidate.
@@ -1115,7 +1120,13 @@ catalog plus bounded per-selection scroll snapshots for detail/tab
 round-trips; the shared `InfiniteScrollDirective`
 (`libs/portal/shared/ui`) measures container overflow to auto-fill tall
 viewports (terminating on lack of container growth, not on a load count)
-and fires `loadMore` near the bottom. The search layout routes its results
+and fires `loadMore` near the bottom. It reads scroll outside Angular's event
+binding (no change-detection pass per scroll frame) and emits a scroll-triggered
+load in a task after the frame, cancelled on reset, on destroy or by a
+fill-check load, so a synchronous append never lands in the frame of the key
+press that crossed the threshold. Poster surfaces (the catalog grid, the Xtream
+and Stalker search results) ask two rows ahead (`infiniteThresholdPx` /
+`nearEndThresholdPx` 640); other lists keep 240 px. The search layout routes its results
 container through the same directive (`nearEnd*` inputs). Stalker feeds the
 same contract from server-paged appends: portal pages accumulate into one
 deduplicated list, `hasMoreContent` derives from accumulated length vs
@@ -1177,3 +1188,102 @@ dates, and falls back to `last_modified` for series without a usable `added`
 value. It does not infer addition time from release dates or IDs. TV applies
 this timestamp before client pagination; see [TV application](tv-application.md).
 The Angular selection store's sort behavior is unchanged.
+
+
+## Optional shared favorites
+
+The [self-hosted favorites opt-in](pwa-self-hosted.md#favorites-synchronization)
+projects typed provider membership through the selected data source in both
+runtimes. Collection references can carry a portable `providerId` alongside the
+existing local row ID, including removal of a retained row with no catalog link.
+The shared snapshot cannot turn a known TMDB/year conflict into a playable catalog
+row. Global collections and dashboard use the same projection when this profile
+has used favorites sync. Recently Viewed has a separate optional history sidecar;
+collection order stays local.
+Native collection actions select storage with `supportsPortableFavorites(playlistId)`
+for each source. After opt-out, a new/restored source without a verified favorites
+context keeps ordinary SQLite behavior, including favorite-ID removal of unlinked
+rows. Bulk removal shares the single-item path; mixed collection reordering updates
+only native source positions while retaining the complete local collection order.
+Received PWA references resolve through the needed typed catalogs before their
+collection cards become playable. Reuse the data source's cache and visibility
+filtering, share concurrent loads, index requested rows once per typed catalog,
+and keep snapshots unavailable on provider
+failure so a later read can retry. Re-read membership after catalog loading and
+discard results from retired source incarnations. Membership writes stay cache-only.
+SQLite lookups retain saved/requested TMDB and provider-year hints when selecting
+between duplicate rows; a compatible row does not erase an explicit identity conflict.
+Shared SQLite projections request category-lock filtering; ordinary identity
+lookups used by the PIN guard remain unfiltered. While locked, unresolved category
+ownership is withheld too. Unreadable lock state or a lock version change during
+projection returns no rows. Single-item hearts and edits project only their target,
+without catalog lookups for other memberships. A playlist-only portable reorder
+replaces its existing global-order slots and preserves other sources' positions.
+Capture source incarnation, profile and consent before reading either archive or
+catalog. Recheck ownership before publishing a projection and before committing
+a membership action, including lookups after a native projection has completed.
+Action/status paths call `getFavorites(playlistId, false)` to read the PWA archive
+without hydrating older unresolved entries. Ordinary collection reads retain
+hydration by default; reference/snapshot conversion stays in the shared provider
+reference adapters used by preview and backup.
+PWA cache-only identity lookup also applies TMDB/year hints, preferring fully
+confirmed duplicates over compatible rows with missing metadata and rejecting
+contradictions. Without hints, the previous first-row/type order is retained.
+Received PWA favorites use the same preference when hydrating a catalog: a row
+confirming every saved identity field wins over an earlier compatible sparse row.
+The pure lookup lives in the existing metadata module: an empty content cache
+returns immediately, and populated caches have already loaded that module during
+normalization, so membership actions never fetch a new lookup chunk.
+
+
+## Optional shared viewing history
+
+The [history opt-in](pwa-self-hosted.md#recently-viewed-synchronization) uses typed
+provider IDs captured by the confirmed playback writer. SQLite row IDs remain
+local. Received history without a native catalog row has a null row ID; collection
+actions resolve a typed provider identity instead of treating its provider ID as
+a SQLite row ID. Display-only keys never become native favorite targets.
+Native favorite lookups retain the received TMDB/year selector.
+An unresolved native lookup rejects the favorite action, preserving its unsaved UI state.
+Both data-source and global/Dashboard consumers read the sidecar overlay;
+remove/batch/current-tab clear use that same path on Electron and PWA. Series
+history keeps the existing parent-series row. Remote progress does not create it.
+Known catalog identity conflicts and parental locks remain enforced when resolving
+received entries; history metadata never supplies playback URLs.
+An incompatible archived row does not prevent an identity-aware catalog lookup.
+A replacement must confirm the received identity; missing, sparse or conflicting
+matches retain the conflict, and explicit snapshot rejection remains enforced.
+The data source's
+`supportsPortableHistory(playlistId)` permits confirmed provider-only starts on
+verified history sources, including native playback without a SQLite content row.
+Ordinary native sources still require that row; metadata backfill remains row-only.
+The series detail menu can hide portable history without a native catalog row,
+using the typed provider ID and the same source/profile ownership fence.
+The active recent-items cache reloads on shared-history invalidation, keeping an
+open series menu's Hide action current. Reloads discard retired source/profile
+results, and the store removes its listener when destroyed.
+Both active-store and late-confirmation writers recheck source ownership after
+asynchronous lookups. Shared native Dashboard rows retain TMDB, year and original
+title hints. Cold PWA history reuses the favorites typed-catalog loader and
+rechecks history and locks before publication; membership writes remain cache-only.
+PWA cache lookups honor the existing `excludeLocked` collection flag, filtering
+candidate duplicates before identity selection and withholding unknown category
+ownership. Default lookups remain unfiltered for the PIN guard.
+
+History uses the existing uncapped native archive read through the data source
+before applying sidecar removals and the final 100-row browsing limit. Locked
+collections read all native categories and filter only locked ones, preserving
+hidden-but-unlocked history. Unknown category ownership stays withheld; a
+full import preview retains the complete archive. Sparse received rows keep
+saved TMDB/year hints and title; unconfirmed catalog presentation cannot replace
+that protected snapshot. Fully confirming rows may refresh its presentation.
+
+The shared-history browsing cap also counts eligible rows after lock and identity
+filtering. Locked newer entries cannot hide older unlocked ones. PWA hydration
+checks every represented content kind before projection; tombstones are applied
+to the complete local archive even when 100 eligible shared rows are already found.
+
+History projections, explicit-import previews and backup overlays normalize
+legacy SQLite UTC timestamps through the shared date normalizer before comparing
+them with ISO timestamps. The merged browsing cap therefore preserves genuinely
+newer archived entries outside UTC; local Stalker archive/import uses the same rule.

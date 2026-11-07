@@ -278,6 +278,14 @@ same with and without profiling. `DB_GLOBAL_SEARCH` is deliberately not
 instrumented: it interleaves queries and ranking across sources, so these
 single-query phases would be misleading.
 
+### Shared history sidecar
+
+`DB_HISTORY_LOCAL` is a fixed read/compare-and-swap request, verified against the
+selected instance in main and validated again in the worker. Its additive history
+sidecar stores the projection, local-only choices and pending operations together.
+It does not write the legacy recently-viewed table or its recovery journal.
+Expected serialized bytes are captured before invoking renderer mutation logic.
+
 ### Cache history recovery
 
 The internal `xtream-history-recovery:` keys in `app_state` register Xtream cache
@@ -723,6 +731,10 @@ The lookup also accepts an optional local `categoryId` restriction, independent
 of TMDB/year evidence. Cold detail Back uses it to verify route membership before
 recovering another category; duplicate typed provider IDs retain their original
 category context. Omitting the selector preserves existing lookup behavior.
+The optional `excludeLocked` flag is forwarded through the same IPC chain for
+shared-favorite projection. It applies the worker's category-lock condition before
+choosing a duplicate. Omitted flags preserve raw lookups used by the PIN guard.
+The renderer also rejects unreadable or changed lock state around these reads.
 
 `DB_RESTORE_XTREAM_FAVORITES` materializes pending/backup snapshots without an
 online catalog. Inserts and their replay receipt share one synchronous worker
@@ -1189,3 +1201,15 @@ When adding another heavy SQLite operation:
 6. Reuse existing preload/service APIs where possible instead of creating a new
    renderer-facing contract.
 7. Re-run the worker unit test and at least one Electron runtime smoke.
+
+
+### Optional favorites projection
+
+`DB_FAVORITES_LOCAL` follows the fixed local CAS protocol used by activity, with
+independent favorite record types and tables. The main handler verifies the
+selected source-server instance before dispatch; only the worker opens SQLite.
+Projection and pending membership operations commit in one synchronous SQLite
+transaction. Renderer retries preserve sibling-window changes and recheck the
+captured consent/source ownership. No callback, SQL or media address crosses this
+bridge. The worker bundler explicitly maps the favorites secondary entries before
+the parent interface/database aliases.
