@@ -155,13 +155,14 @@ describe('SettingsSearchService', () => {
         expect(entries).toContain('remote-control-port');
         expect(entries).toContain('mpv-player-path');
         expect(entries).not.toContain('vod-auto-failover');
+        // Live failover works in every player, so it needs no probe.
+        expect(entries).toContain('live-channel-failover');
         // Embedded MPV rows wait for the support probe.
         expect(entries).not.toContain('embedded-mpv-extra-options');
         expect(entries).not.toContain('embedded-mpv-frame-copy');
-        expect(entries).not.toContain('live-channel-failover');
         // Connecting a server is available before any connection exists.
         expect(entries).toContain('source-server');
-        expect(entries.length).toBe(SETTINGS_SEARCH_ENTRIES.length - 5);
+        expect(entries.length).toBe(SETTINGS_SEARCH_ENTRIES.length - 4);
     });
 
     it('offers the server section and rows with server storage', () => {
