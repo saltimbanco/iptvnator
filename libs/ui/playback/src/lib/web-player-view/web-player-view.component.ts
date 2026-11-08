@@ -25,10 +25,8 @@ import {
 } from '@iptvnator/playback/util';
 import { PORTAL_EXTERNAL_PLAYBACK } from '@iptvnator/portal/shared/util';
 import { RuntimeCapabilitiesService, SettingsStore } from '@iptvnator/services';
-import {
-    LiveChannelFailoverService,
-    PlaybackHistoryGate,
-} from '@iptvnator/playback/data-access';
+import { LiveChannelFailoverService } from '@iptvnator/playback/data-access';
+import { PlaybackHistoryGate } from '@iptvnator/playback/data-access';
 import {
     VideoPlayer,
     type Channel,
