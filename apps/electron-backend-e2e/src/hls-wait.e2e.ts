@@ -45,9 +45,10 @@ test('Video.js HLS waiting is explained and Retry resumes the same channel', asy
             .getByRole('button', { name: 'Add playlist', exact: true })
             .click();
         const dialog = page.getByRole('dialog');
+        // Three rows of methods: Bulk import is the seventh.
         expect(
             (await dialog.locator('.apd-method-grid').boundingBox())!.height
-        ).toBeLessThan(125);
+        ).toBeLessThan(160);
         await page.screenshot({
             animations: 'disabled',
             path: testInfo.outputPath('compact-electron-light.png'),

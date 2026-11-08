@@ -11,7 +11,8 @@ test('compact methods preserve private drafts across switches', async ({
     const method = (name: RegExp) => dialog.getByRole('radio', { name });
     await expect(method(/M3U URL/)).toBeVisible();
     const grid = dialog.locator('.apd-method-grid');
-    expect((await grid.boundingBox())!.height).toBeLessThan(125);
+    // Three rows of methods: Bulk import is the seventh.
+    expect((await grid.boundingBox())!.height).toBeLessThan(160);
     await method(/Xtream credentials/).click();
     await dialog.locator('#title').fill('Remembered Xtream');
     await dialog.locator('#serverUrl').fill('https://fixture.example');
