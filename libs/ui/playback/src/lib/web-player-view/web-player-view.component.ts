@@ -176,6 +176,7 @@ export class WebPlayerViewComponent implements OnDestroy {
     /** Re-emitted embedded-MPV clean recording stop (stop enrichment). */
     readonly recordingStopped = output<RecordingStoppedEvent>();
 
+    readonly embeddedMpvLiveSubtitlesOff = signal(false);
     readonly showCaptions = computed(
         () => this.settingsStore.showCaptions?.() ?? false
     );

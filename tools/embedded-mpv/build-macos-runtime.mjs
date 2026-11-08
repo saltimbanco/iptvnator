@@ -30,6 +30,9 @@ const sourcePackages = [
         id: 'fribidi',
         version: '1.0.16',
         url: 'https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz',
+        mirrors: [
+            'https://distfiles.macports.org/fribidi/fribidi-1.0.16.tar.xz',
+        ],
         expectedSha256:
             '1b1cde5b235d40479e91be2f0e88a309e3214c8ab470ec8a2744d82a5a9ea05c',
         license: 'LGPL-2.1-or-later',
@@ -182,13 +185,14 @@ function commandExists(command) {
 }
 
 function buildEnv() {
+    const { GH_TOKEN: _githubToken, ...environment } = process.env;
     const pkgConfigDirs = [
         path.join(prefix, 'lib', 'pkgconfig'),
         path.join(prefix, 'share', 'pkgconfig'),
     ].join(path.delimiter);
 
     return {
-        ...process.env,
+        ...environment,
         PATH: [path.join(prefix, 'bin'), process.env.PATH]
             .filter(Boolean)
             .join(path.delimiter),
@@ -324,7 +328,34 @@ function downloadSources() {
             archivePath,
             expectedSha256: sourcePackage.expectedSha256,
             urls: [sourcePackage.url, ...(sourcePackage.mirrors ?? [])],
-            download: ({ destinationPath, url }) =>
+            download: ({ destinationPath, url }) => {
+                const githubAsset = url.match(
+                    /^https:\/\/github\.com\/([^/]+\/[^/]+)\/releases\/download\/([^/]+)\/([^/]+)$/
+                );
+                if (process.env.GH_TOKEN && githubAsset) {
+                    const [, repository, tag, filename] = githubAsset;
+                    try {
+                        run(
+                            'gh',
+                            [
+                                'release',
+                                'download',
+                                tag,
+                                '--repo',
+                                repository,
+                                '--pattern',
+                                filename,
+                                '--output',
+                                destinationPath,
+                            ],
+                            { env: process.env }
+                        );
+                        return;
+                    } catch {
+                        fs.rmSync(destinationPath, { force: true });
+                        log('GitHub asset API failed; trying the public URL.');
+                    }
+                }
                 run('curl', [
                     '--fail',
                     '--location',
@@ -339,7 +370,8 @@ function downloadSources() {
                     '--output',
                     destinationPath,
                     url,
-                ]),
+                ]);
+            },
         });
 
         const packageSourcePath = sourcePathFor(sourcePackage.id);

@@ -133,6 +133,7 @@ export * from './lib/source-health';
 export * from './lib/source-reachability';
 export * from './lib/server-storage.contract';
 export * from './lib/source-sync.interface';
+export * from './lib/hosted-server.interface';
 
 export { sourceIdentity } from './lib/playlist-source-identity.util';
 

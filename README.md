@@ -107,9 +107,10 @@ Run the browser app and its backend together with Docker:
 docker compose -f docker/docker-compose.yml up --build -d
 ```
 
-Open <http://localhost:4333>. No separate backend container is needed.
-Connected clients can share source definitions. Favorites and watch progress
-have separate synchronization opt-ins; history stays local to each device.
+Open <http://localhost:4333>. No separate backend container is needed. You can
+also [run a server from the desktop app](docker/README.md#run-the-server-from-the-desktop-app).
+Connected clients can share sources. Favorites, Recently Viewed and supported
+watch progress each have their own synchronization opt-in.
 
 The PWA does not include M3U XMLTV, Embedded MPV, managed external-player
 launching, the download manager or Electron remote-control features.
@@ -144,6 +145,15 @@ work.
 The `Build TV shell APK` workflow can publish a GitHub release, marked as a
 pre-release by default. For APK builds, installation and remote controls, see
 the [Android shell guide](./tv-shell/README.md).
+
+### Enigma2 receivers
+
+Dreaminator is a standalone IPTV plugin and browser-based playlist manager for
+Enigma2 receivers. Organize channels in a browser and watch with the receiver's
+remote. Tested on the Dreambox DM520 and Vu+ Uno 4K SE.
+
+[Dreaminator on GitHub](https://github.com/4gray/dreaminator) ·
+[Dreaminator on the IPTVnator blog](https://4gray.github.io/iptvnator/blog/dreaminator-enigma2/)
 
 ## Help and development
 
