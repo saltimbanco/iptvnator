@@ -1,13 +1,6 @@
 import { app, dialog, powerSaveBlocker, screen } from 'electron';
 import { spawnSync } from 'child_process';
-import {
-    closeSync,
-    existsSync,
-    mkdirSync,
-    openSync,
-    readFileSync,
-    unlinkSync,
-} from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 import { createRequire } from 'module';
 import path from 'path';
 import App from '../app';
@@ -35,6 +28,10 @@ import {
 import { isExternalPlayerTraceEnabled, trace } from './debug-trace';
 import { toNativeViewBounds } from './embedded-mpv-bounds.util';
 import { embeddedMpvRecordingTracker } from './embedded-mpv-recording-tracker';
+import {
+    releaseRecordingTargetPath,
+    reserveRecordingTargetPath,
+} from './recording-target-path';
 import {
     createEmbeddedMpvReconnectState,
     EmbeddedMpvReconnectCoordinator,
@@ -938,14 +935,14 @@ export class EmbeddedMpvNativeService {
 
         const fallbackChannelName =
             options.title || session.title || 'IPTVnator recording';
-        const targetPath = this.reserveRecordingTargetPath(
+        const targetPath = reserveRecordingTargetPath(
             directory,
             fallbackChannelName
         );
         try {
             addon.startRecording(sessionId, targetPath);
         } catch (error) {
-            this.releaseReservedRecordingTargetPath(targetPath);
+            releaseRecordingTargetPath(targetPath);
             throw error;
         }
         // Register with the tracker before the refresh below broadcasts the
@@ -1482,43 +1479,6 @@ export class EmbeddedMpvNativeService {
         return windowHandle;
     }
 
-    private reserveRecordingTargetPath(
-        directory: string,
-        title: string
-    ): string {
-        const baseName = this.sanitizeRecordingFileName(title);
-        const timestamp = this.formatRecordingTimestamp(new Date());
-        let candidate = path.join(directory, `${baseName}-${timestamp}.ts`);
-        let suffix = 2;
-
-        while (true) {
-            try {
-                const fd = openSync(candidate, 'wx');
-                closeSync(fd);
-                return candidate;
-            } catch (error) {
-                if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
-                    candidate = path.join(
-                        directory,
-                        `${baseName}-${timestamp}-${suffix}.ts`
-                    );
-                    suffix += 1;
-                    continue;
-                }
-
-                throw error;
-            }
-        }
-    }
-
-    private releaseReservedRecordingTargetPath(targetPath: string): void {
-        try {
-            unlinkSync(targetPath);
-        } catch {
-            // Ignore cleanup failures; the start error is more useful.
-        }
-    }
-
     private createClosedRecordingState(
         recording?: EmbeddedMpvRecordingState
     ): EmbeddedMpvRecordingState {
@@ -1529,30 +1489,6 @@ export class EmbeddedMpvNativeService {
                 : {}),
             ...(recording?.error ? { error: recording.error } : {}),
         };
-    }
-
-    private sanitizeRecordingFileName(title: string): string {
-        const normalized = title
-            // Control characters are invalid in file names on Windows; the
-            // range is matched intentionally.
-            // eslint-disable-next-line no-control-regex
-            .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
-            .replace(/\s+/g, ' ')
-            .trim();
-        return (normalized || 'IPTVnator recording').slice(0, 120);
-    }
-
-    private formatRecordingTimestamp(date: Date): string {
-        const parts = [
-            date.getFullYear(),
-            date.getMonth() + 1,
-            date.getDate(),
-            date.getHours(),
-            date.getMinutes(),
-            date.getSeconds(),
-        ].map((part) => String(part).padStart(2, '0'));
-
-        return `${parts[0]}${parts[1]}${parts[2]}-${parts[3]}${parts[4]}${parts[5]}`;
     }
 
     private assertEmbeddedMpvEnabled(): void {

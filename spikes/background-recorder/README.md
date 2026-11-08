@@ -9,7 +9,7 @@ Not production code; nothing here is wired into the app.
 
 | File | What it is |
 | --- | --- |
-| `recorder/mpv_recorder.cpp` | `iptvnator_mpv_recorder.exe`: libmpv with `vo=null`, `ao=null`, frame decoding skipped, `stream-record` into `.ts` files. Reuses `apps/electron-backend/native/helper/frame_helper_io.h`: tab-separated, percent-encoded commands on stdin (`open`, `rotate`, `stop`, `quit`; EOF quits), JSON events on stdout (`ready`, `opened`, `recording`, `buffering`, `record-failed`, `ended`, `stopped`, `log`). URLs and headers only travel over stdin; log lines containing URLs are redacted. |
+| `apps/electron-backend/native/helper/mpv_recorder.cpp` (moved there from this folder) | `iptvnator_mpv_recorder.exe`: libmpv with `vo=null`, `ao=null`, frame decoding skipped, `stream-record` into `.ts` files. Reuses `apps/electron-backend/native/helper/frame_helper_io.h`: tab-separated, percent-encoded commands on stdin (`open`, `rotate`, `stop`, `quit`; EOF quits), JSON events on stdout (`ready`, `opened`, `recording`, `buffering`, `record-failed`, `ended`, `stopped`, `log`). URLs and headers only travel over stdin; log lines containing URLs are redacted. |
 | `recorder/build.sh` | mingw-w64 cross-compile against the pinned Windows libmpv dev archive (`tools/embedded-mpv/windows-runtime-pin.json`). |
 | `ts-index.mjs` | Incremental MPEG-TS indexer over the growing files: PAT/PMT cache, keyframes with PTS, HLS segment cuts, virtual reads across files. |
 | `relay.mjs` | `127.0.0.1` HTTP server, random token in the path: `live.ts` (PAT+PMT, newest keyframe, then tail; ends at a file boundary), `timeshift.m3u8` (EVENT playlist, `BYTERANGE` into `rec.ts`, discontinuity per file, `ENDLIST` when done), `rec.ts` with Range. |
@@ -73,6 +73,13 @@ timeshift view only on pause or seek; *Back to live* switches back.
 Not tested: VLC and external `mpv.exe` (not installed), Video.js/ArtPlayer
 wrappers (they use the same mpegts.js/hls.js engines), real Stalker/Xtream
 providers, HLS provider streams.
+
+## After the spike
+
+The recorder source moved to `apps/electron-backend/native/helper/` and lost
+its `rotate` command: the app starts one recorder process per file. So
+`session.mjs --rotate-every` only works with the recorder from the spike
+commit.
 
 ## Left for the real implementation
 

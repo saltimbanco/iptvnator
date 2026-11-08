@@ -10,6 +10,10 @@ import type { SourceProbeContext } from '@iptvnator/shared/interfaces';
 import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron';
 import {
     APP_MENU_OPEN,
+    BACKGROUND_RECORDING_GET_STATE,
+    BACKGROUND_RECORDING_START,
+    BACKGROUND_RECORDING_STOP,
+    RECORDING_ACTIVE_STATE,
     APP_UPDATE_CHECK,
     APP_UPDATE_DOWNLOAD,
     APP_UPDATE_GET_RELEASE_NOTES,
@@ -47,6 +51,8 @@ import {
     toXtreamPreloadPerformanceTargetMethod,
 } from './xtream-preload-performance-capture';
 import type {
+    BackgroundRecordingStartRequest,
+    BackgroundRecordingState,
     ContentMetadataPatch,
     DownloadMetadataSnapshot,
     EmbeddedMpvBounds,
@@ -1306,6 +1312,23 @@ const electronApi: ElectronBridgeApi = {
         const handler = () => callback();
         ipcRenderer.on('RECORDINGS_UPDATE_EVENT', handler);
         return () => ipcRenderer.off('RECORDINGS_UPDATE_EVENT', handler);
+    },
+    // Background recording (Windows recorder process)
+    backgroundRecordingStart: (request: BackgroundRecordingStartRequest) =>
+        ipcRenderer.invoke(BACKGROUND_RECORDING_START, request),
+    backgroundRecordingStop: (recordingId?: string) =>
+        ipcRenderer.invoke(BACKGROUND_RECORDING_STOP, recordingId),
+    backgroundRecordingGetState: () =>
+        ipcRenderer.invoke(BACKGROUND_RECORDING_GET_STATE),
+    onBackgroundRecordingState: (
+        callback: (state: BackgroundRecordingState) => void
+    ) => {
+        const handler = (
+            _event: Electron.IpcRendererEvent,
+            state: BackgroundRecordingState
+        ) => callback(state);
+        ipcRenderer.on(RECORDING_ACTIVE_STATE, handler);
+        return () => ipcRenderer.off(RECORDING_ACTIVE_STATE, handler);
     },
 };
 

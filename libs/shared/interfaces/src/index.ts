@@ -22,6 +22,7 @@ export * from './lib/epg-item.interface';
 export * from './lib/epg-mapping-key.util';
 export * from './lib/epg-program.model';
 export * from './lib/epg-source-reference.util';
+export * from './lib/background-recording.interface';
 export * from './lib/external-player-arguments.utils';
 export * from './lib/embedded-mpv-extra-options.util';
 export * from './lib/external-player-session.interface';

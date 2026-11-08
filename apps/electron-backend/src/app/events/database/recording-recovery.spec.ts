@@ -1,6 +1,7 @@
 const mockGetDatabase = jest.fn();
 const mockStatSync = jest.fn();
 const mockActiveRowIds = jest.fn();
+const mockBackgroundRowIds = jest.fn();
 const mockExecFileSync = jest.fn();
 const mockBroadcast = jest.fn();
 
@@ -20,6 +21,11 @@ jest.mock('child_process', () => ({
 jest.mock('../../services/embedded-mpv-recording-tracker', () => ({
     embeddedMpvRecordingTracker: {
         activeRowIds: (...args: unknown[]) => mockActiveRowIds(...args),
+    },
+}));
+jest.mock('../../services/background-recording.runtime', () => ({
+    backgroundRecordingService: {
+        activeRowIds: (...args: unknown[]) => mockBackgroundRowIds(...args),
     },
 }));
 jest.mock('./recording-broadcast', () => ({
@@ -63,6 +69,7 @@ describe('reconcileStaleRecordings', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockActiveRowIds.mockResolvedValue(new Set<number>());
+        mockBackgroundRowIds.mockResolvedValue(new Set<number>());
         // A live peer pid resolves to an IPTVnator-looking process name
         // unless a test says otherwise.
         mockExecFileSync.mockReturnValue('iptvnator');
@@ -341,6 +348,23 @@ describe('reconcileStaleRecordings', () => {
         ]);
         mockStatSync.mockResolvedValue({ isFile: () => true, size: 2048 });
         mockActiveRowIds.mockResolvedValue(new Set([9]));
+
+        await reconcileStaleRecordings();
+
+        expect(updateSet).not.toHaveBeenCalled();
+    });
+
+    it('leaves a row of the running background recording alone', async () => {
+        const { updateSet } = mockDb([
+            {
+                id: 11,
+                filePath: '/rec/background.ts',
+                endedAt: null,
+                ownerPid: process.pid,
+            },
+        ]);
+        mockStatSync.mockResolvedValue({ isFile: () => true, size: 2048 });
+        mockBackgroundRowIds.mockResolvedValue(new Set([11]));
 
         await reconcileStaleRecordings();
 

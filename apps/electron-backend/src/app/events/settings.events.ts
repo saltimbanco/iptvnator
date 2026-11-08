@@ -14,6 +14,7 @@ import {
     PARENTAL_LOCK_ENABLED,
     STARTUP_WINDOW_MODE,
     PORTAL_CONNECTIVITY_GUARD,
+    RECORDING_FOLDER,
     store,
     VLC_PLAYER_ARGUMENTS,
     VLC_REUSE_INSTANCE,
@@ -104,6 +105,11 @@ ipcMain.handle('SETTINGS_UPDATE', (_event, arg) => {
             STARTUP_WINDOW_MODE,
             normalizeStartupWindowMode(arg.startupWindowMode)
         );
+    }
+
+    // Background recordings start in the main process (schedules, tray).
+    if (typeof arg.recordingFolder === 'string') {
+        store.set(RECORDING_FOLDER, arg.recordingFolder.trim());
     }
 
     if (arg.vlcReuseInstance !== undefined) {

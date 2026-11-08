@@ -1,13 +1,14 @@
 /*
  * iptvnator_mpv_recorder: headless libmpv process that captures one live
  * stream to MPEG-TS files with mpv's `stream-record`, for background
- * recording on Windows (spike).
+ * recording on Windows. Driven by BackgroundRecordingService
+ * (apps/electron-backend/src/app/services/background-recording.service.ts);
+ * see docs/architecture/background-recording.md.
  *
  * stdin (one command per line, the frame helper's encoding: tab-separated
  * fields, first the name, then key=value with percent-encoded values):
  *   open    url=…  path=…  [user-agent=…] [referrer=…] [headers=…]
  *           headers is mpv's http-header-fields list ("K: V,K2: V2").
- *   rotate  path=…    close the current file, continue into a new one
  *   stop              close the file and end playback, then emit `stopped`
  *   quit              stop and exit
  * stdin EOF (parent died) behaves like quit. The URL and headers never
@@ -15,8 +16,11 @@
  *
  * stdout: one JSON event per line: ready, opened, recording {path},
  * buffering {active}, ended {reason, error}, stopped, record-failed {error},
- * log {level, text},
- * fatal {error}.
+ * log {level, prefix, text}, fatal {error}.
+ *
+ * One process records one file: the service starts a new process for the
+ * next file after a reconnect, because mpv restarts the timestamps of every
+ * `stream-record` file anyway.
  */
 #include <mpv/client.h>
 
@@ -26,7 +30,7 @@
 #include <string>
 #include <thread>
 
-#include "../../../apps/electron-backend/native/helper/frame_helper_io.h"
+#include "frame_helper_io.h"
 
 using frame_helper::Command;
 using frame_helper::emitLine;
@@ -109,13 +113,6 @@ void runStdinLoop() {
         const Command command = frame_helper::parseCommandLine(line);
         if (command.name == "open") {
             handleOpen(command);
-        } else if (command.name == "rotate") {
-            const std::string path = command.get("path");
-            if (!path.empty()) {
-                g_fileOpen.store(false);
-                setProperty("stream-record", "");
-                startRecordingFile(path);
-            }
         } else if (command.name == "stop") {
             handleStop();
         } else if (command.name == "quit") {

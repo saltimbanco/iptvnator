@@ -134,7 +134,8 @@ const RECORDINGS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS recordings (
       started_at TEXT NOT NULL,
       ended_at TEXT,
       created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
+      updated_at TEXT DEFAULT (datetime('now')),
+      origin TEXT CHECK (origin IN ('button', 'menu', 'schedule'))
   )`;
 const RECORDINGS_INDEX_STATEMENTS = [
     `CREATE INDEX IF NOT EXISTS recordings_status_idx ON recordings(status)`,
@@ -400,6 +401,9 @@ const COLUMN_MIGRATION_STATEMENTS = [
     `ALTER TABLE downloads ADD COLUMN metadata_snapshot TEXT`,
     // Series queue: scope coordinate compatibility across provider series modes
     `ALTER TABLE downloads ADD COLUMN episode_identity_scope TEXT`,
+    // Background recording (Windows): where it was started; NULL for
+    // embedded MPV player recordings
+    `ALTER TABLE recordings ADD COLUMN origin TEXT CHECK (origin IN ('button', 'menu', 'schedule'))`,
 ];
 
 const INDEX_MIGRATION_STATEMENTS = [

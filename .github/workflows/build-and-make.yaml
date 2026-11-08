@@ -697,6 +697,8 @@ jobs:
                       # resolves the mpv DLL from its own directory, so the DLL
                       # must sit beside it at the native/ top level too.
                       test -f dist/apps/electron-backend/native/iptvnator_mpv_helper.exe
+                      # Background recorder (Windows only); same DLL rule.
+                      test -f dist/apps/electron-backend/native/iptvnator_mpv_recorder.exe
                       test -f dist/apps/electron-backend/native/embedded_mpv_frame_reader.node
                       find dist/apps/electron-backend/native -maxdepth 1 \( -name 'mpv-2.dll' -o -name 'libmpv-2.dll' -o -name 'mpv.dll' -o -name 'libmpv.dll' \) -print -quit | grep -q .
                       ;;

@@ -4,6 +4,7 @@ import { stat } from 'node:fs/promises';
 import { basename } from 'path';
 import { getDatabase } from '../../database/connection';
 import * as schema from '../../database/schema';
+import { backgroundRecordingService } from '../../services/background-recording.runtime';
 import { embeddedMpvRecordingTracker } from '../../services/embedded-mpv-recording-tracker';
 import { broadcastRecordingsUpdate } from './recording-broadcast';
 
@@ -212,7 +213,8 @@ function provablyStartedAfter(
  * Rows this process is itself tracking are skipped too: the renderer is
  * interactive before this pass runs, so a recording started during bootstrap
  * carries `ownerPid === process.pid` — indistinguishable by pid from a
- * recycled-pid leftover, but alive by the tracker's own ledger.
+ * recycled-pid leftover, but alive by the tracker's (or the background
+ * recording service's) own ledger.
  */
 export async function reconcileStaleRecordings(): Promise<void> {
     try {
@@ -224,7 +226,10 @@ export async function reconcileStaleRecordings(): Promise<void> {
         // Resolved after the SELECT: any row the query saw was enqueued by a
         // tracker entry that already exists, so awaiting the tracked row ids
         // here cannot miss it.
-        const liveRowIds = await embeddedMpvRecordingTracker.activeRowIds();
+        const liveRowIds = new Set([
+            ...(await embeddedMpvRecordingTracker.activeRowIds()),
+            ...(await backgroundRecordingService.activeRowIds()),
+        ]);
 
         // Rows from one crashed instance share a pid: memoize the (bounded,
         // synchronous) process probes so each unique pid costs at most one

@@ -836,6 +836,8 @@ recording UI and timer path.
 
 The default recording folder is `app.getPath('downloads')`, matching the desktop download manager's fallback. Users can override it in Settings through `Settings.recordingFolder`; an empty setting means system Downloads. Recordings never enter the Downloads queue (MPV writes from the active playback session while the download manager owns independent backend download jobs), but their lifecycle IS tracked: `EmbeddedMpvRecordingTracker` (`apps/electron-backend/src/app/services/embedded-mpv-recording-tracker.ts`) persists each recording into the dedicated `recordings` SQLite table — start hook and explicit-stop hook from `EmbeddedMpvNativeService`, plus a session-snapshot observer that catches the three implicit stop paths (stream-replacement auto-stop, frame-copy helper crash leaving `active: true` behind, session error/close). Rows left in `recording` by a hard app kill are repaired at startup into playable `interrupted` partials or `failed`. The download manager surfaces these rows; see `docs/architecture/download-manager.md` ("Live-TV recordings").
 
+On Windows, background recordings use a separate recorder executable built from the same libmpv runtime; see [background recording](background-recording.md).
+
 mpv's own caveats apply: the output container is inferred from the target extension, and seeking or switching streams while recording can produce broken output. IPTVnator limits the UI to live streams and stops recording on playback replacement to avoid the most obvious corruption path, but the feature should still be treated as an experimental embedded MPV capability.
 
 ## Renderer Architecture And Reactivity
