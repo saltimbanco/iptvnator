@@ -11,6 +11,14 @@ this marker — see `.changes/README.md`.
 
 <!-- next-release -->
 
+# [0.25.5](https://github.com/4gray/iptvnator/compare/v0.25.5...v0.25.5) (2026-11-09)
+
+### Features
+
+- **playback** — Live channel failover now covers web players and external MPV/VLC: a live channel that fails is retried and then switched to the same channel in another source. ([5bb62dc](https://github.com/4gray/iptvnator/commit/5bb62dc798b018d8bb91a3f419dd70c8519ac8d1))
+- **playlist** — Bulk import now reads provider list files where each row carries its own portal address, so multi-panel Stalker files import cleanly instead of rows without a portal.
+- **recordings** — IPTVnator can now record live streams on Windows in the background while you use other apps, with recovery for interrupted sessions.
+
 # [0.25.4](https://github.com/4gray/iptvnator/compare/v0.25.3...v0.25.4) (2026-11-05)
 
 ### Fixes
