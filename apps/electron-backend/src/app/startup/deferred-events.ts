@@ -25,6 +25,9 @@ import {
 } from '../events/database/downloads.events';
 import { setRecordingsMainWindow } from '../events/database/recording-broadcast';
 import { reconcileStaleRecordings } from '../events/database/recording-recovery';
+import BackgroundRecordingEvents, {
+    shutdownBackgroundRecording,
+} from '../events/background-recording.events';
 import ElectronEvents from '../events/electron.events';
 import EmbeddedMpvEvents, {
     shutdownEmbeddedMpv,
@@ -87,6 +90,7 @@ export function bootstrapDeferredEvents(
 
     ElectronEvents.bootstrapElectronEvents();
     EmbeddedMpvEvents.bootstrapEmbeddedMpvEvents();
+    BackgroundRecordingEvents.bootstrapBackgroundRecordingEvents();
     PlaylistEvents.bootstrapPlaylistEvents();
     SharedEvents.bootstrapSharedEvents();
     PlayerEvents.bootstrapPlayerEvents();
@@ -137,6 +141,7 @@ export async function finishStartupAfterFirstLoad(): Promise<void> {
 
 /** Tears down sessions and the DB worker; safe when nothing was started. */
 export function shutdownDeferredServices(): void {
+    shutdownBackgroundRecording();
     shutdownEmbeddedMpv();
     shutdownMpvSession();
     shutdownVlcSession();

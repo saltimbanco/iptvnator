@@ -1,6 +1,10 @@
 import type { HostedServerCommand, HostedServerStatus } from './hosted-server.interface';
 export type ElectronBridgeAppMenuAction = 'settings' | 'check-for-updates';
 import type { AppUpdateChannel } from './app-update-channel.util';
+import type {
+    BackgroundRecordingStartRequest,
+    BackgroundRecordingState,
+} from './background-recording.interface';
 import type { SourceProbeContext, SourceHealthResult } from './source-health';
 import type { PortalRequestFailureEnvelope } from './portal-request-failure.util';
 import type { XtreamConnectionFailure } from './xtream-connection-test';
@@ -1538,4 +1542,17 @@ export interface ElectronBridgeApi {
         filePath: string
     ) => Promise<ElectronBridgeErrorResult>;
     onRecordingsUpdate?: (callback: () => void) => () => void;
+    // Background recording (Windows). `BackgroundRecordingState.available`
+    // says whether the recorder is present; start rejects with a message
+    // when it cannot record (already recording, DRM, no recorder).
+    backgroundRecordingStart?: (
+        request: BackgroundRecordingStartRequest
+    ) => Promise<BackgroundRecordingState>;
+    backgroundRecordingStop?: (
+        recordingId?: string
+    ) => Promise<BackgroundRecordingState>;
+    backgroundRecordingGetState?: () => Promise<BackgroundRecordingState>;
+    onBackgroundRecordingState?: (
+        callback: (state: BackgroundRecordingState) => void
+    ) => () => void;
 }

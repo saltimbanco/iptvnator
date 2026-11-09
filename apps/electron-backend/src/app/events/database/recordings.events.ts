@@ -8,6 +8,7 @@ import { stat, unlink } from 'node:fs/promises';
 import { getDatabase } from '../../database/connection';
 import * as schema from '../../database/schema';
 import { embeddedMpvNativeService } from '../../services/embedded-mpv-native.service';
+import { backgroundRecordingService } from '../../services/background-recording.runtime';
 import { embeddedMpvRecordingTracker } from '../../services/embedded-mpv-recording-tracker';
 import { getDownloadFileAvailabilityWithTimeoutAsync } from './download-file-availability';
 import { broadcastRecordingsUpdate } from './recording-broadcast';
@@ -198,6 +199,12 @@ ipcMain.handle('RECORDINGS_STOP', async (_event, recordingId: number) => {
                 error: 'Recording belongs to another IPTVnator instance',
                 success: false,
             };
+        }
+        if (row.origin) {
+            // A background recording: its session id is the recording id,
+            // shared by every file it wrote.
+            await backgroundRecordingService.stop(row.sessionId);
+            return { success: true };
         }
         // Finalization (status, ended_at, file size, broadcast) happens in
         // the recording tracker's stop hook, exactly like a stop from the

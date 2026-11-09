@@ -72,6 +72,13 @@ export const EMBEDDED_MPV_EXTRA_OPTIONS = 'EMBEDDED_MPV_EXTRA_OPTIONS';
  */
 export const EMBEDDED_MPV_AUTO_RECONNECT = 'EMBEDDED_MPV_AUTO_RECONNECT';
 
+/**
+ * Live-TV recording folder (empty means the Downloads folder). Mirrored by
+ * the SETTINGS_UPDATE handler so background recordings, which start in the
+ * main process (schedules, tray), use the folder the user chose.
+ */
+export const RECORDING_FOLDER = 'RECORDING_FOLDER';
+
 export const HOSTED_SERVER_ENABLED = 'HOSTED_SERVER_ENABLED';
 
 export const HOSTED_SERVER_LAN_ADDRESS = 'HOSTED_SERVER_LAN_ADDRESS';
@@ -95,6 +102,7 @@ export type StoreType = {
     [PARENTAL_LOCK_ENABLED]: boolean;
     [APP_UPDATE_CHANNEL]: AppUpdateChannel;
     [TRUSTED_LOCAL_EPG_SOURCES]: string[];
+    [RECORDING_FOLDER]: string;
 };
 
 // Export singleton store instance

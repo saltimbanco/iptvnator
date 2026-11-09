@@ -11,6 +11,7 @@ const registeredHandlers = new Map<string, IpcHandler>();
 const mockGetDatabase = jest.fn();
 const mockBroadcast = jest.fn();
 const mockStopRecording = jest.fn();
+const mockStopBackground = jest.fn();
 const mockWhenSettled = jest.fn();
 const mockGetAvailabilityAsync = jest.fn();
 const mockUnlink = jest.fn();
@@ -32,6 +33,7 @@ async function setupRecordingsEventsHarness(): Promise<void> {
     mockGetDatabase.mockReset();
     mockBroadcast.mockReset();
     mockStopRecording.mockReset();
+    mockStopBackground.mockReset().mockResolvedValue(undefined);
     mockWhenSettled.mockReset().mockResolvedValue(undefined);
     mockGetAvailabilityAsync.mockReset().mockResolvedValue('available');
     mockUnlink.mockReset().mockResolvedValue(undefined);
@@ -62,6 +64,9 @@ async function setupRecordingsEventsHarness(): Promise<void> {
     }));
     jest.doMock('../../services/embedded-mpv-native.service', () => ({
         embeddedMpvNativeService: { stopRecording: mockStopRecording },
+    }));
+    jest.doMock('../../services/background-recording.runtime', () => ({
+        backgroundRecordingService: { stop: mockStopBackground },
     }));
     jest.doMock('../../services/embedded-mpv-recording-tracker', () => ({
         embeddedMpvRecordingTracker: { whenSettled: mockWhenSettled },
@@ -293,6 +298,22 @@ describe('recordings events', () => {
                 getHandler('RECORDINGS_STOP')(null, 42)
             ).resolves.toEqual({ success: true });
             expect(mockStopRecording).toHaveBeenCalledWith('session-1');
+        });
+
+        it('stops a background recording through its service', async () => {
+            mockRowDb(
+                recordingRow({
+                    status: 'recording',
+                    endedAt: null,
+                    origin: 'button',
+                    sessionId: 'recording-7',
+                })
+            );
+            await expect(
+                getHandler('RECORDINGS_STOP')(null, 42)
+            ).resolves.toEqual({ success: true });
+            expect(mockStopBackground).toHaveBeenCalledWith('recording-7');
+            expect(mockStopRecording).not.toHaveBeenCalled();
         });
 
         it('refuses rows that are not active or lack a session id', async () => {

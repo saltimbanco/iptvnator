@@ -362,7 +362,8 @@ export type NewPlaybackPosition = typeof playbackPositions.$inferInsert;
 export * from './download-tables';
 
 // Live-TV recordings table. Rows are created by the embedded-MPV recording
-// tracker, not by the download queue: a recording has no source URL to
+// tracker and the Windows background recording service, not by the download
+// queue: a recording has no source URL to
 // re-fetch, no byte totals, and no retry/resume semantics, so it lives beside
 // `downloads` instead of inside it. playlist_id has no FK on purpose —
 // recordings outlive the deletion of their source playlist.
@@ -405,6 +406,11 @@ export const recordings = sqliteTable(
         endedAt: text('ended_at'),
         createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
         updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+        // Set for background recordings (Windows recorder process): where it
+        // was started. NULL means an embedded MPV player recording, whose
+        // session id names a player session; a background recording's
+        // session id is the recording id shared by all of its files.
+        origin: text('origin', { enum: ['button', 'menu', 'schedule'] }),
     },
     (table) => ({
         statusIdx: index('recordings_status_idx').on(table.status),

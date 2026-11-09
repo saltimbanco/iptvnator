@@ -467,6 +467,9 @@ available after restart and after the source archive expires.
 
 ## Live-TV recordings
 
+Windows background recordings share the `recordings` table but have their own
+service; see [background recording](background-recording.md).
+
 Recordings made with the embedded MPV player live beside downloads, not inside
 them: a recording has no source URL to re-fetch, no byte totals, and no
 retry/resume semantics, so it gets its own `recordings` SQLite table (no
