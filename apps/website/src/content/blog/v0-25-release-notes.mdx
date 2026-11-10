@@ -108,6 +108,16 @@ Set a PIN in **Settings → Parental lock**, then choose which Xtream categories
 
 There are two ways to try IPTVnator with a TV remote. The dedicated **LG webOS and Samsung Tizen** client can browse M3U, Xtream and Stalker sources and accepts phone setup by QR code. The **Fire TV and Android TV** shell packages the browser app and a local backend in an APK and can hand an incompatible stream off to an installed player. Both paths are experimental and have separate installation steps. Selected flows were verified on LG BX; Samsung device playback is still awaiting validation. See the [TV client](https://github.com/4gray/iptvnator/blob/v0.25.0/apps/tv/README.md) and [Fire TV and Android TV](https://github.com/4gray/iptvnator/blob/v0.25.0/tv-shell/README.md) guides.
 
+## Fixes in 0.25.7 and 0.25.8
+
+<StatusPill type="fixed" />
+
+- **Scheduled recordings show what happened.** The recordings manager lists a schedule's status — scheduled, recording, canceled, or failed with the reason — and a pending one can be rescheduled instead of only canceled. Closing the window keeps the app and its schedules running, and a notification confirms when a scheduled recording starts or fails.
+- **A schedule that recorded nothing no longer looks successful.** When the recording produced no file, the schedule shows **Failed** with the recorder's own reason instead of claiming it is still recording.
+- **Background recordings use the player's own engine.** Scheduled and background recordings now record through the built-in player exactly like the record button, so a second recorder executable is no longer installed or started.
+- **Stalker recordings recover from a dropped stream.** A Stalker recording that loses its connection mints a fresh portal link before reconnecting, instead of retrying an expired one.
+- **The channel menu opens where you click.** The right-click menu appears at the pointer on the first attempt of a session, so **Schedule recording** is reachable immediately.
+
 <Spoiler title="See the full list of changes">
 The [full changelog](https://github.com/4gray/iptvnator/blob/v0.25.0/CHANGELOG.md#0250-2026-11-08) lists every feature, fix and performance entry, with links to the relevant changes and issues.
 </Spoiler>
