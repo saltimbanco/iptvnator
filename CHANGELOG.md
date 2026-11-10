@@ -11,6 +11,18 @@ this marker — see `.changes/README.md`.
 
 <!-- next-release -->
 
+# [0.25.8](https://github.com/4gray/iptvnator/compare/v0.25.7...v0.25.8) (2026-11-10)
+
+### Features
+
+- **recordings** — Scheduled and background recordings now record through the built-in player engine, exactly like the record button, so the installer no longer ships a second recorder executable and there is no extra process or binary that can be missing at the scheduled time. ([5bd7b06](https://github.com/4gray/iptvnator/commit/5bd7b06a72c3b83c1a72f7dd2abb52cff33f6d46))
+
+### Fixes
+
+- **channels** — The channel right-click menu now opens at the pointer on the first attempt of a session instead of at the top-left corner of the window, so Schedule recording reaches the dialog straight away. ([5bd7b06](https://github.com/4gray/iptvnator/commit/5bd7b06a72c3b83c1a72f7dd2abb52cff33f6d46))
+- **recordings** — A scheduled recording that produced no file no longer keeps saying it is recording: the schedule shows Failed with the recorder's own reason, so a recording that never happened is visible instead of silently missing. ([5bd7b06](https://github.com/4gray/iptvnator/commit/5bd7b06a72c3b83c1a72f7dd2abb52cff33f6d46))
+- **recordings** — A scheduled Stalker recording that loses its stream now reconnects with a freshly minted portal link instead of the expired one it started with, so the recording resumes in a new file instead of dying on a retired token. ([5bd7b06](https://github.com/4gray/iptvnator/commit/5bd7b06a72c3b83c1a72f7dd2abb52cff33f6d46))
+
 # [0.25.7](https://github.com/4gray/iptvnator/compare/v0.25.6...v0.25.7) (2026-11-10)
 
 ### Fixes
