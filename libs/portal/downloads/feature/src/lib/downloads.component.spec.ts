@@ -18,7 +18,6 @@ import {
     PlaylistsService,
     type RecordingItem,
     RecordingsService,
-    RecordingSchedulesService,
 } from '@iptvnator/services';
 import {
     PORTAL_SHELL_ACTIONS,
@@ -32,6 +31,7 @@ import type {
 import { DialogService } from '@iptvnator/ui/components';
 import { BehaviorSubject, type Observable, Subject } from 'rxjs';
 import { DownloadLibraryNavigationService } from './download-library-navigation.service';
+import { RecordingSchedulesService } from './recording-schedules.service';
 import type { DownloadActionResult } from './download-actions';
 import { DownloadManagerActionsService } from './download-manager-actions.service';
 import { RecordingManagerActionsService } from './recording-manager-actions.service';

@@ -1,15 +1,17 @@
 import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import type {
     ElectronBridgeErrorResult,
-    RecordingScheduleCreateRequest,
     RecordingScheduleItem,
 } from '@iptvnator/shared/interfaces';
-import { RuntimeCapabilitiesService } from './runtime-capabilities.service';
+import { RuntimeCapabilitiesService } from '@iptvnator/services';
 
 /**
- * Scheduled recordings as the renderer sees them. The main process owns the
- * timers; this store only mirrors the rows and forwards create/cancel, so a
- * schedule survives a renderer reload and fires with the window hidden.
+ * Scheduled recordings as the recordings manager sees them. The main process
+ * owns the timers; this store only mirrors the rows and forwards cancel, so a
+ * schedule survives a renderer reload and fires with the window hidden. It
+ * lives here rather than in `libs/services` so the shared runtime barrel — and
+ * with it the startup chunk — does not carry it: only the downloads route
+ * needs it, and creating a schedule goes through the bridge directly.
  */
 @Injectable({ providedIn: 'root' })
 export class RecordingSchedulesService implements OnDestroy {
@@ -44,30 +46,6 @@ export class RecordingSchedulesService implements OnDestroy {
             this.schedules.set(list ?? []);
         } catch (error) {
             console.error('[RecordingSchedulesService] load failed:', error);
-        }
-    }
-
-    async create(
-        request: RecordingScheduleCreateRequest
-    ): Promise<ElectronBridgeErrorResult> {
-        if (!this.isAvailable()) {
-            return { error: 'Scheduling is not available', success: false };
-        }
-        try {
-            const result =
-                (await window.electron?.recordingScheduleCreate?.(request)) ?? {
-                    error: 'Scheduling bridge unavailable',
-                    success: false,
-                };
-            if (result.success) {
-                await this.load();
-            }
-            return result;
-        } catch (error) {
-            return {
-                error: error instanceof Error ? error.message : String(error),
-                success: false,
-            };
         }
     }
 

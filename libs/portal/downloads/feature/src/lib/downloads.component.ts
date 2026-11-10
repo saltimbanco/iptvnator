@@ -20,7 +20,6 @@ import {
     PlaylistsService,
     type RecordingItem,
     RecordingsService,
-    RecordingSchedulesService,
     injectTranslationTick,
 } from '@iptvnator/services';
 import { EmptyStateComponent } from '@iptvnator/playlist/shared/ui';
@@ -37,6 +36,7 @@ import type {
     XtreamCategory,
 } from '@iptvnator/shared/interfaces';
 import { map, startWith, take } from 'rxjs';
+import { RecordingSchedulesService } from './recording-schedules.service';
 import type {
     DownloadActionResult,
     DownloadItemAction,

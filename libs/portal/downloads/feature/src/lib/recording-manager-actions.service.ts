@@ -5,10 +5,10 @@ import { TranslateService } from '@ngx-translate/core';
 import {
     type RecordingItem,
     RecordingsService,
-    RecordingSchedulesService,
 } from '@iptvnator/services';
 import type { RecordingScheduleItem } from '@iptvnator/shared/interfaces';
 import { DialogService } from '@iptvnator/ui/components';
+import { RecordingSchedulesService } from './recording-schedules.service';
 import type {
     RecordingActionResult,
     RecordingItemAction,
