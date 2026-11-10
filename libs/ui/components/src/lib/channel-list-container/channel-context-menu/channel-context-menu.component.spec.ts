@@ -101,6 +101,21 @@ describe('ChannelContextMenuComponent', () => {
         expect(rows()[0].dataset['testid']).toBe('channel-open-in-playlist');
     });
 
+    it('moves the anchor to the pointer before the menu opens', () => {
+        const menu = render({ showDetails: true });
+        const anchor = fixture.nativeElement.querySelector(
+            '.channel-context-menu-anchor'
+        ) as HTMLElement;
+        expect(anchor.style.left).toBe('0px');
+
+        // No change detection between these two steps: the menu reads the
+        // anchor when it opens, so the anchor must already be at the pointer.
+        menu.open({ clientX: 320, clientY: 240 });
+
+        expect(anchor.style.left).toBe('320px');
+        expect(anchor.style.top).toBe('240px');
+    });
+
     it('moves an open menu to the new pointer position', async () => {
         render({ showDetails: true });
         await openAt(10, 20);

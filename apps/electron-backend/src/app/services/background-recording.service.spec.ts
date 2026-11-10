@@ -1,83 +1,101 @@
 import type {
+    BackgroundRecordingOutcome,
     BackgroundRecordingStartRequest,
     BackgroundRecordingState,
 } from '@iptvnator/shared/interfaces';
-import type { RecorderProcess } from './background-recorder-process';
-import type { RecorderEvent } from './background-recorder-protocol';
-import type {
-    RecordingRowEnd,
-    RecordingRowStart,
-} from './background-recording-rows';
-import { BackgroundRecordingService } from './background-recording.service';
+import {
+    BackgroundRecordingService,
+    type DvrRecordingEngine,
+    type DvrRecordingFinal,
+    type DvrRecordingOpen,
+    type DvrRecordingSessionState,
+} from './background-recording.service';
 
-class FakeRecorder implements RecorderProcess {
-    readonly sent: string[] = [];
-    shutdowns = 0;
-    private readonly eventListeners: Array<(event: RecorderEvent) => void> = [];
-    private readonly exitListeners: Array<(code: number | null) => void> = [];
+class FakeEngine implements DvrRecordingEngine {
+    ready = true;
+    reason: string | undefined;
+    readonly opened: DvrRecordingOpen[] = [];
+    readonly stopped: string[] = [];
+    readonly sessions = new Map<string, DvrRecordingSessionState>();
+    private readonly listeners: Array<(final: DvrRecordingFinal) => void> = [];
+    private nextId = 0;
 
-    send(command: string): void {
-        this.sent.push(command);
+    canRecord(): { ready: boolean; reason?: string } {
+        return this.ready
+            ? { ready: true }
+            : { ready: false, ...(this.reason ? { reason: this.reason } : {}) };
     }
-    onEvent(listener: (event: RecorderEvent) => void): void {
-        this.eventListeners.push(listener);
+
+    open(input: DvrRecordingOpen): string {
+        this.opened.push(input);
+        const sessionId = `dvr-${++this.nextId}`;
+        this.sessions.set(sessionId, {
+            status: 'loading',
+            active: false,
+            targetPath: `/rec/${sessionId}.ts`,
+        });
+        return sessionId;
     }
-    onExit(listener: (code: number | null) => void): void {
-        this.exitListeners.push(listener);
+
+    stop(sessionId: string): void {
+        this.stopped.push(sessionId);
     }
-    shutdown(): Promise<void> {
-        this.shutdowns += 1;
-        this.exit(0);
-        return Promise.resolve();
+
+    state(sessionId: string): DvrRecordingSessionState | null {
+        return this.sessions.get(sessionId) ?? null;
     }
-    emit(event: RecorderEvent): void {
-        this.eventListeners.forEach((listener) => listener(event));
+
+    onFinalized(listener: (final: DvrRecordingFinal) => void): void {
+        this.listeners.push(listener);
     }
-    exit(code: number | null): void {
-        this.exitListeners.forEach((listener) => listener(code));
+
+    activeRowIds(): Promise<Set<number>> {
+        return Promise.resolve(new Set([42]));
+    }
+
+    /** The engine's view of the stream changing under a running recording. */
+    setState(
+        sessionId: string,
+        patch: Partial<DvrRecordingSessionState>
+    ): void {
+        const current = this.sessions.get(sessionId);
+        if (!current) {
+            return;
+        }
+        this.sessions.set(sessionId, { ...current, ...patch });
+    }
+
+    /** The tracker finalizing the file. */
+    finalize(sessionId: string, final: Partial<DvrRecordingFinal> = {}): void {
+        this.sessions.delete(sessionId);
+        const payload: DvrRecordingFinal = {
+            sessionId,
+            status: 'completed',
+            fileSizeBytes: 4096,
+            ...final,
+        };
+        this.listeners.forEach((listener) => listener(payload));
     }
 }
 
+const started: BackgroundRecordingService[] = [];
+
 function createHarness() {
-    const recorders: FakeRecorder[] = [];
-    const sizes = new Map<string, number>();
-    const inserted: RecordingRowStart[] = [];
-    const finalized: Array<{ rowId: number | null } & RecordingRowEnd> = [];
+    const engine = new FakeEngine();
     const states: BackgroundRecordingState[] = [];
-    let fileNo = 0;
     const deps = {
-        resolveRecorderPath: () => 'C:\\app\\iptvnator_mpv_recorder.exe',
-        spawnRecorder: jest.fn(() => {
-            const recorder = new FakeRecorder();
-            recorders.push(recorder);
-            return recorder;
-        }),
-        rows: {
-            insert: jest.fn(async (start: RecordingRowStart) => {
-                inserted.push(start);
-                return inserted.length;
-            }),
-            finalize: jest.fn(
-                async (rowId: Promise<number | null>, end: RecordingRowEnd) => {
-                    finalized.push({ rowId: await rowId, ...end });
-                }
-            ),
-            whenSettled: () => Promise.resolve(),
-            activeRowIds: () => Promise.resolve(new Set<number>()),
-        },
+        engine,
         resolveDirectory: jest.fn(
             (requested?: string) => requested ?? 'C:\\rec'
         ),
-        reservePath: jest.fn(() => `C:\\rec\\News-${++fileNo}.ts`),
-        releasePath: jest.fn(),
-        statSize: jest.fn(async (filePath: string) => sizes.get(filePath) ?? 0),
         keepAwake: jest.fn(),
         broadcast: jest.fn((state: BackgroundRecordingState) => {
             states.push(state);
         }),
     };
     const service = new BackgroundRecordingService(deps);
-    return { service, deps, recorders, sizes, inserted, finalized, states };
+    started.push(service);
+    return { service, deps, engine, states };
 }
 
 const request = (
@@ -94,204 +112,159 @@ const request = (
         playlistId: 'source-a',
         sourceType: 'xtream',
     },
-    origin: 'button',
+    origin: 'menu',
     ...overrides,
 });
-
-/** Lets the recorder open, then grows the file across one poll. */
-async function startWriting(
-    harness: ReturnType<typeof createHarness>,
-    recorder: FakeRecorder,
-    bytes = 4096
-) {
-    recorder.emit({ event: 'ready' });
-    harness.sizes.set(
-        harness.deps.reservePath.mock.results.at(-1)?.value,
-        bytes
-    );
-    await jest.advanceTimersByTimeAsync(2_000);
-}
 
 describe('BackgroundRecordingService', () => {
     beforeEach(() => {
         jest.useFakeTimers();
         jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     });
-    afterEach(() => {
+    afterEach(async () => {
+        // A test may leave a recording running; its poll interval must not
+        // outlive the suite.
+        await Promise.all(started.splice(0).map((service) => service.stop()));
         jest.useRealTimers();
         jest.restoreAllMocks();
     });
 
-    it('records into a new file and inserts its row once bytes arrive', async () => {
+    it('opens the stream on the player engine in the resolved folder', () => {
         const harness = createHarness();
-        const state = harness.service.start(request());
 
-        expect(state).toMatchObject({ status: 'starting', segment: 1 });
-        expect(harness.deps.keepAwake).toHaveBeenCalledWith(true);
-        const [recorder] = harness.recorders;
-        recorder.emit({ event: 'ready' });
-        expect(recorder.sent).toEqual([
-            'open\turl=http://provider.example.test/live/1.ts\tpath=C:\\rec\\News-1.ts\tuser-agent=Synthetic/1.0\theaders=X-Token: synthetic',
-        ]);
-        // No bytes yet: an attempt that never records leaves no row.
-        await jest.advanceTimersByTimeAsync(2_000);
-        expect(harness.inserted).toEqual([]);
+        const state = harness.service.start(
+            request({ origin: 'schedule', scheduleId: 7 })
+        );
 
-        harness.sizes.set('C:\\rec\\News-1.ts', 4096);
-        await jest.advanceTimersByTimeAsync(2_000);
-
-        expect(harness.inserted).toEqual([
+        expect(harness.deps.resolveDirectory).not.toHaveBeenCalledWith(
+            expect.anything()
+        );
+        expect(harness.deps.resolveDirectory).toHaveBeenCalled();
+        expect(harness.engine.opened).toEqual([
             expect.objectContaining({
-                recordingId: state.recordingId,
-                filePath: 'C:\\rec\\News-1.ts',
-                origin: 'button',
+                playback: expect.objectContaining({
+                    streamUrl: 'http://provider.example.test/live/1.ts',
+                }),
+                directory: 'C:\\rec',
+                title: 'News',
+                origin: 'schedule',
+                metadata: expect.objectContaining({ channelName: 'News' }),
             }),
         ]);
-        expect(harness.service.getState().status).toBe('recording');
+        expect(state).toMatchObject({
+            status: 'starting',
+            recordingId: 'dvr-1',
+            origin: 'schedule',
+            channelName: 'News',
+            segment: 1,
+        });
+        expect(harness.deps.keepAwake).toHaveBeenCalledWith(true);
     });
 
-    it('finalizes the file as completed on stop and releases the machine', async () => {
+    it('reports recording once the engine says the file is being written', () => {
         const harness = createHarness();
         harness.service.start(request());
-        await startWriting(harness, harness.recorders[0]);
-        harness.sizes.set('C:\\rec\\News-1.ts', 9000);
 
-        await harness.service.stop();
-        await jest.advanceTimersByTimeAsync(0);
+        expect(harness.service.getState().status).toBe('starting');
+        harness.engine.setState('dvr-1', { status: 'playing', active: true });
+        jest.advanceTimersByTime(2_000);
 
-        expect(harness.recorders[0].shutdowns).toBe(1);
-        expect(harness.finalized).toEqual([
-            expect.objectContaining({
-                rowId: 1,
-                status: 'completed',
-                fileSizeBytes: 9000,
-            }),
-        ]);
-        expect(harness.deps.keepAwake).toHaveBeenLastCalledWith(false);
-        expect(harness.service.getState()).toEqual({
-            available: true,
-            status: 'idle',
-        });
-    });
-
-    it('continues a dropped stream in a new file of the same recording', async () => {
-        const harness = createHarness();
-        const resolver = jest.fn(async () => ({
-            streamUrl: 'http://provider.example.test/live/1-fresh.ts',
-            title: 'News',
-        }));
-        harness.service.setPlaybackResolver(resolver);
-        const { recordingId } = harness.service.start(request());
-        await startWriting(harness, harness.recorders[0]);
-
-        harness.recorders[0].emit({ event: 'ended', reason: 'eof' });
-        await jest.advanceTimersByTimeAsync(0);
-        expect(harness.service.getState().status).toBe('reconnecting');
-        expect(harness.finalized).toEqual([
-            expect.objectContaining({ rowId: 1, status: 'interrupted' }),
-        ]);
-
-        await jest.advanceTimersByTimeAsync(2_000);
-        expect(resolver).toHaveBeenCalledTimes(1);
-        const second = harness.recorders[1];
-        second.emit({ event: 'ready' });
-        expect(second.sent[0]).toContain(
-            'url=http://provider.example.test/live/1-fresh.ts'
-        );
-        expect(second.sent[0]).toContain('path=C:\\rec\\News-2.ts');
-        harness.sizes.set('C:\\rec\\News-2.ts', 100);
-        await jest.advanceTimersByTimeAsync(2_000);
-
-        expect(harness.inserted.map((row) => row.recordingId)).toEqual([
-            recordingId,
-            recordingId,
-        ]);
         expect(harness.service.getState()).toMatchObject({
             status: 'recording',
-            segment: 2,
-            recordingId,
+            filePath: '/rec/dvr-1.ts',
         });
     });
 
-    it('treats a file that stops growing as a dropped stream', async () => {
-        const harness = createHarness();
-        harness.service.start(request());
-        await startWriting(harness, harness.recorders[0]);
-
-        // 20 s without growth, then the 2 s reconnect backoff.
-        await jest.advanceTimersByTimeAsync(19_000);
-        expect(harness.finalized).toEqual([]);
-        await jest.advanceTimersByTimeAsync(5_000);
-
-        expect(harness.finalized[0]).toMatchObject({ status: 'interrupted' });
-        expect(harness.recorders).toHaveLength(2);
-    });
-
-    it('removes an attempt that recorded nothing instead of keeping a row', async () => {
-        const harness = createHarness();
-        harness.service.start(request());
-        harness.recorders[0].emit({
-            event: 'ended',
-            reason: 'error',
-            error: 'loading failed',
-        });
-        await jest.advanceTimersByTimeAsync(0);
-
-        expect(harness.deps.releasePath).toHaveBeenCalledWith(
-            'C:\\rec\\News-1.ts'
-        );
-        expect(harness.deps.rows.insert).not.toHaveBeenCalled();
-        expect(harness.deps.rows.finalize).not.toHaveBeenCalled();
-    });
-
-    it('gives up after five failed reopen attempts and reports why', async () => {
-        const harness = createHarness();
-        harness.service.start(request());
-        for (let attempt = 0; attempt <= 5; attempt += 1) {
-            harness.recorders[attempt].exit(1);
-            await jest.advanceTimersByTimeAsync(30_000);
-        }
-
-        expect(harness.recorders).toHaveLength(6);
-        expect(harness.service.getState()).toEqual({
-            available: true,
-            status: 'idle',
-            error: 'The recorder stopped. Reconnecting failed.',
-        });
-        expect(harness.deps.keepAwake).toHaveBeenLastCalledWith(false);
-    });
-
-    it('ends without retrying when the file cannot be written', async () => {
-        const harness = createHarness();
-        harness.service.start(request());
-        harness.recorders[0].emit({
-            event: 'record-failed',
-            error: 'Failed opening output file.',
-        });
-        await jest.advanceTimersByTimeAsync(60_000);
-
-        expect(harness.recorders).toHaveLength(1);
-        expect(harness.service.getState().error).toBe(
-            'The recording file could not be written: Failed opening output file.'
-        );
-    });
-
-    it('stops at the planned end', async () => {
+    it('stops at the planned end and releases the machine', async () => {
         const harness = createHarness();
         harness.service.start(
             request({ endsAt: new Date(Date.now() + 20_000).toISOString() })
         );
-        await startWriting(harness, harness.recorders[0]);
-        harness.sizes.set('C:\\rec\\News-1.ts', 8192);
-        await jest.advanceTimersByTimeAsync(17_000);
-        expect(harness.service.getState().status).toBe('recording');
+        harness.engine.setState('dvr-1', { status: 'playing', active: true });
+        jest.advanceTimersByTime(2_000);
 
-        await jest.advanceTimersByTimeAsync(1_000);
+        await jest.advanceTimersByTimeAsync(18_000);
 
-        expect(harness.finalized).toEqual([
-            expect.objectContaining({ status: 'completed' }),
-        ]);
+        expect(harness.engine.stopped).toEqual(['dvr-1']);
+        expect(harness.deps.keepAwake).toHaveBeenLastCalledWith(false);
+        expect(harness.service.getState()).toEqual({
+            available: true,
+            status: 'idle',
+        });
+    });
+
+    it('reports the bytes a finished recording wrote', () => {
+        const harness = createHarness();
+        const outcomes: BackgroundRecordingOutcome[] = [];
+        harness.service.setOutcomeListener((_request, outcome) =>
+            outcomes.push(outcome)
+        );
+        harness.service.start(request({ origin: 'schedule', scheduleId: 7 }));
+
+        harness.engine.finalize('dvr-1', { fileSizeBytes: 9000 });
+
+        expect(outcomes).toEqual([{ recordedBytes: 9000 }]);
         expect(harness.service.getState().status).toBe('idle');
+    });
+
+    it('reports an empty recording as nothing written, with its reason', () => {
+        const harness = createHarness();
+        const outcomes: BackgroundRecordingOutcome[] = [];
+        harness.service.setOutcomeListener((_request, outcome) =>
+            outcomes.push(outcome)
+        );
+        harness.service.start(request({ origin: 'schedule', scheduleId: 7 }));
+
+        harness.engine.finalize('dvr-1', {
+            status: 'failed',
+            fileSizeBytes: 0,
+            errorMessage: 'Failed opening output file.',
+        });
+
+        expect(outcomes).toEqual([
+            {
+                error: 'Failed opening output file.',
+                recordedBytes: 0,
+            },
+        ]);
+    });
+
+    it('ends the recording when the engine reports a stream error', () => {
+        const harness = createHarness();
+        harness.service.start(request());
+        harness.engine.setState('dvr-1', {
+            status: 'error',
+            error: 'The stream closed.',
+        });
+
+        jest.advanceTimersByTime(2_000);
+
+        expect(harness.engine.stopped).toEqual(['dvr-1']);
+        expect(harness.service.getState()).toEqual({
+            available: true,
+            status: 'idle',
+            error: 'The stream closed.',
+        });
+    });
+
+    it('stops on request and reports the outcome after the file is filed', async () => {
+        const harness = createHarness();
+        const outcomes: BackgroundRecordingOutcome[] = [];
+        harness.service.setOutcomeListener((_request, outcome) =>
+            outcomes.push(outcome)
+        );
+        harness.service.start(request());
+        harness.engine.setState('dvr-1', { status: 'playing', active: true });
+        jest.advanceTimersByTime(2_000);
+
+        await harness.service.stop();
+        expect(harness.engine.stopped).toEqual(['dvr-1']);
+        expect(harness.service.getState().status).toBe('idle');
+        // The tracker finalizes after the stop, not during it.
+        expect(outcomes).toEqual([]);
+
+        harness.engine.finalize('dvr-1', { fileSizeBytes: 1200 });
+        expect(outcomes).toEqual([{ recordedBytes: 1200 }]);
     });
 
     it('refuses a second recording, DRM streams and past end times', () => {
@@ -316,20 +289,28 @@ describe('BackgroundRecordingService', () => {
         expect(() => harness.service.start(request())).toThrow(
             'A background recording is already running.'
         );
-        expect(harness.recorders).toHaveLength(1);
+        expect(harness.engine.opened).toHaveLength(1);
     });
 
-    it('is unavailable without the recorder executable', () => {
+    it('is unavailable when the player engine cannot record', () => {
         const harness = createHarness();
-        harness.deps.resolveRecorderPath = () => null;
-        const service = new BackgroundRecordingService(harness.deps);
+        harness.engine.ready = false;
+        harness.engine.reason = 'Embedded MPV is not available.';
 
-        expect(service.getState()).toEqual({
+        expect(harness.service.isAvailable()).toBe(false);
+        expect(harness.service.getState()).toEqual({
             available: false,
             status: 'idle',
         });
-        expect(() => service.start(request())).toThrow(
-            'Background recording is not available.'
+        expect(() => harness.service.start(request())).toThrow(
+            'Background recording is not available. Embedded MPV is not available.'
+        );
+    });
+
+    it('leaves rows the tracker still owns to startup recovery', async () => {
+        const harness = createHarness();
+        await expect(harness.service.activeRowIds()).resolves.toEqual(
+            new Set([42])
         );
     });
 });

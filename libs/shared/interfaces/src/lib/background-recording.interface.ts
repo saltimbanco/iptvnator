@@ -1,12 +1,13 @@
 import { ResolvedPortalPlayback } from './portal-playback.interface';
 import { RecordingStartMetadata } from './recording-metadata.interface';
+import { StalkerScheduleRefresh } from './recording-schedule.interface';
 
 /**
- * Background recording (Windows): a separate mpv recorder process owns the
- * provider connection and writes the stream to disk independently of the
- * visible player. One background recording runs at a time; it ends on an
- * explicit stop or at its planned end. See
- * docs/architecture/background-recording.md.
+ * Background recording: the player's own engine records the channel on a
+ * hidden session, so the app keeps writing the stream with the window closed
+ * to the tray and no second recorder binary is involved. One background
+ * recording runs at a time; it ends on an explicit stop or at its planned
+ * end. See docs/architecture/background-recording.md.
  */
 
 /** Where a background recording was started from (`recordings.origin`). */
@@ -27,10 +28,29 @@ export interface BackgroundRecordingStartRequest {
     directory?: string;
     /** Planned end (ISO instant). Absent means "until stopped". */
     endsAt?: string;
+    /** The schedule that started this recording, when `origin` is `schedule`. */
+    scheduleId?: number;
+    /**
+     * Present for Stalker rows: the recorder re-mints the short-lived
+     * `create_link` URL from it whenever the stream has to be reconnected.
+     */
+    refresh?: StalkerScheduleRefresh;
+}
+
+/**
+ * What a finished background recording actually left behind, reported once its
+ * last file is closed. A scheduled recording uses it to tell "recorded" apart
+ * from "handed over but wrote nothing", which would otherwise stay silent.
+ */
+export interface BackgroundRecordingOutcome {
+    /** Why it ended early, when it did. */
+    error?: string;
+    /** Bytes written across every file; 0 means nothing was recorded. */
+    recordedBytes: number;
 }
 
 export interface BackgroundRecordingState {
-    /** Windows with the recorder executable present. */
+    /** Whether the player engine can record right now. */
     available: boolean;
     status: BackgroundRecordingStatus;
     /** Stable id of the running recording; shared by all of its files. */

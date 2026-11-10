@@ -251,6 +251,43 @@ describe('EmbeddedMpvNativeService reconnect', () => {
         expect(addon.loadPlayback).toHaveBeenCalledTimes(1);
     };
 
+    it('re-mints the link before a DVR session reloads a dropped stream', async () => {
+        const directory = mkdtempSync(path.join(tmpdir(), 'iptvnator-dvr-'));
+        try {
+            const stale = {
+                ...LIVE,
+                streamUrl: 'http://host/live.ts?token=stale',
+            };
+            const fresh = { ...stale, streamUrl: 'http://host/live.ts?token=fresh' };
+            const refreshPlayback = jest.fn().mockResolvedValue(fresh);
+            service.openRecordingSession({
+                playback: stale,
+                directory,
+                title: 'Live channel',
+                metadata: { channelName: 'Live channel' } as never,
+                origin: 'schedule',
+                refreshPlayback,
+            });
+
+            poll('loading');
+            poll('playing');
+            // The stream drops: the reconnect must ask the portal for a new
+            // link instead of dialling the retired one again.
+            poll('error');
+            jest.advanceTimersByTime(2_000);
+            await Promise.resolve();
+            await Promise.resolve();
+
+            expect(refreshPlayback).toHaveBeenCalledTimes(1);
+            expect(addon.loadPlayback).toHaveBeenLastCalledWith(
+                'session-1',
+                fresh
+            );
+        } finally {
+            rmSync(directory, { recursive: true, force: true });
+        }
+    });
+
     it('hands the session options to the addon', () => {
         service.createSession(BOUNDS, 'Title', 0.5, {
             extraOptions: ['network-timeout=10', 'hwdec=no'],

@@ -4,6 +4,9 @@ import {
     type ResolvedPortalPlayback,
     type StalkerScheduleRefresh,
 } from '@iptvnator/shared/interfaces';
+import { eq } from 'drizzle-orm';
+import { getDatabase } from '../database/connection';
+import * as schema from '../database/schema';
 import { assertRemoteUrlAllowed } from '../events/url-safety';
 import { requestWithValidatedRedirects } from '../util/validated-axios';
 import { buildStalkerPlaybackHeaders } from './stalker-playback-context.service';
@@ -70,6 +73,52 @@ export const requestStalkerSchedulePortal: StalkerScheduleTransport = async ({
 
     return response.status >= 400 ? {} : (response.data ?? {});
 };
+
+/** The portal identity of a playlist row, or null once it is gone. */
+export async function loadStalkerSchedulePortal(
+    playlistId: string
+): Promise<StalkerSchedulePortal | null> {
+    try {
+        const db = await getDatabase();
+        const rows = await db
+            .select({
+                portalUrl: schema.playlists.portalUrl,
+                url: schema.playlists.url,
+                macAddress: schema.playlists.macAddress,
+            })
+            .from(schema.playlists)
+            .where(eq(schema.playlists.id, playlistId))
+            .limit(1);
+        const playlist = rows[0];
+        const portalUrl = playlist?.portalUrl ?? playlist?.url ?? '';
+        if (!portalUrl || !playlist?.macAddress) {
+            return null;
+        }
+        return { portalUrl, macAddress: playlist.macAddress };
+    } catch (error) {
+        console.error('[Recording schedule] playlist lookup failed:', error);
+        return null;
+    }
+}
+
+/**
+ * A re-mint bound to one recording, as the recorder holds it: every
+ * reconnect of a Stalker recording asks for a fresh link, because the one
+ * the stream dropped on was minted for the session that had just died.
+ * Resolves `null` when the portal cannot mint one; the caller then falls
+ * back to the stored link.
+ */
+export function stalkerPlaybackRefresher(input: {
+    refresh: StalkerScheduleRefresh;
+    playlistId?: string | null;
+    title?: string;
+    thumbnail?: string | null;
+}): () => Promise<ResolvedPortalPlayback | null> {
+    return () =>
+        refreshStalkerSchedulePlayback(input, {
+            getPortal: loadStalkerSchedulePortal,
+        });
+}
 
 /**
  * Re-mints a Stalker schedule's playback at the start instant.

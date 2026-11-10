@@ -77,6 +77,11 @@ export interface EmbeddedMpvReconnectState {
     /** A reload was issued and neither `playing` nor a loss has answered it yet. */
     attemptInFlight: boolean;
     /**
+     * The issued reload is still being prepared (re-minting an expired
+     * stream link); observations of the old outage answer that attempt.
+     */
+    reloadInFlight: boolean;
+    /**
      * Last position reported while the stream played, seeded from the
      * playback's own `startTime`. Non-live reloads carry it as `startTime`,
      * otherwise mpv would restart at the playback's original resume offset.
@@ -100,8 +105,15 @@ export interface EmbeddedMpvReconnectState {
 }
 
 export interface EmbeddedMpvReconnectHooks {
-    /** Issue the reload against the addon; may throw. */
-    reload(sessionId: string, playback: ResolvedPortalPlayback): void;
+    /**
+     * Issue the reload against the addon; may throw. A promise means the
+     * reload is still being prepared — the attempt then stays in flight until
+     * it settles, so the loss it answers is never scheduled a second time.
+     */
+    reload(
+        sessionId: string,
+        playback: ResolvedPortalPlayback
+    ): void | Promise<void>;
     /** Re-read the session so the renderer sees the attempt; must not throw. */
     publish(sessionId: string): void;
     now?(): number;
@@ -118,6 +130,7 @@ export function createEmbeddedMpvReconnectState(
         attempts: 0,
         playingSince: null,
         attemptInFlight: false,
+        reloadInFlight: false,
         lastPositionSeconds: null,
         positionReported: false,
         resumedAtSeconds: null,
@@ -171,6 +184,14 @@ export function isEmbeddedMpvEarlyEof(
     return durationSeconds - positionSeconds > margin;
 }
 
+function isPromiseLike(value: unknown): value is Promise<void> {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as Promise<void>).then === 'function'
+    );
+}
+
 export class EmbeddedMpvReconnectCoordinator {
     private readonly now: () => number;
     private readonly log: Pick<Console, 'log' | 'warn'>;
@@ -191,6 +212,7 @@ export class EmbeddedMpvReconnectCoordinator {
         state.attempts = 0;
         state.playingSince = null;
         state.attemptInFlight = false;
+        state.reloadInFlight = false;
         state.lastPositionSeconds =
             typeof playback.startTime === 'number' &&
             Number.isFinite(playback.startTime) &&
@@ -213,6 +235,7 @@ export class EmbeddedMpvReconnectCoordinator {
     cancel(state: EmbeddedMpvReconnectState): void {
         this.clearTimer(state);
         state.attemptInFlight = false;
+        state.reloadInFlight = false;
         state.pending = null;
     }
 
@@ -290,6 +313,12 @@ export class EmbeddedMpvReconnectCoordinator {
 
         state.playingSince = null;
 
+        if (state.reloadInFlight) {
+            // The attempt is still minting a fresh link for its reload; what
+            // is observed here still describes the outage it answers.
+            return state.pending;
+        }
+
         if (status === 'loading') {
             // A fresh user load, or our own attempt in flight.
             return state.pending;
@@ -360,34 +389,64 @@ export class EmbeddedMpvReconnectCoordinator {
             state.attempts = attempt;
             state.attemptInFlight = true;
             try {
-                this.hooks.reload(sessionId, playback);
-                // Only a reload that started can end where it resumed; a
-                // refused one leaves the original EOF, still a drop.
-                state.resumedAtSeconds = playback.startTime ?? null;
-            } catch (error) {
-                state.attemptInFlight = false;
-                if (isEmbeddedMpvSessionGoneError(error)) {
-                    // Nothing behind the session can take a load any more;
-                    // stop so the renderer shows the actionable error
-                    // instead of a reconnect spinner that never resolves.
-                    this.log.warn(
-                        `[Embedded MPV][reconnect] session ${sessionId}: engine gone, giving up`,
-                        error
+                const reloading = this.hooks.reload(sessionId, playback);
+                if (isPromiseLike(reloading)) {
+                    state.reloadInFlight = true;
+                    void reloading.then(
+                        () => {
+                            state.reloadInFlight = false;
+                            // Only a reload that started can end where it
+                            // resumed; a refused one leaves the original EOF,
+                            // still a drop.
+                            state.resumedAtSeconds = playback.startTime ?? null;
+                            this.hooks.publish(sessionId);
+                        },
+                        (error: unknown) => {
+                            state.reloadInFlight = false;
+                            this.failAttempt(sessionId, state, attempt, error);
+                        }
                     );
-                    state.pending = null;
                 } else {
-                    this.log.warn(
-                        `[Embedded MPV][reconnect] session ${sessionId}: attempt ${attempt} could not start`,
-                        error
-                    );
-                    // The addon refused the load outright, so no loading→loss
-                    // transition will ever arrive: continue the backoff here.
-                    this.schedule(sessionId, state, this.now());
+                    // Only a reload that started can end where it resumed; a
+                    // refused one leaves the original EOF, still a drop.
+                    state.resumedAtSeconds = playback.startTime ?? null;
                 }
+            } catch (error) {
+                this.failAttempt(sessionId, state, attempt, error);
             }
             this.hooks.publish(sessionId);
         }, delay);
         return state.pending;
+    }
+
+    /**
+     * An attempt whose reload never started: continue the backoff, unless the
+     * engine itself is gone, where only a new session can recover.
+     */
+    private failAttempt(
+        sessionId: string,
+        state: EmbeddedMpvReconnectState,
+        attempt: number,
+        error: unknown
+    ): void {
+        state.attemptInFlight = false;
+        if (isEmbeddedMpvSessionGoneError(error)) {
+            // Nothing behind the session can take a load any more; stop so
+            // the renderer shows the actionable error instead of a reconnect
+            // spinner that never resolves.
+            this.log.warn(
+                `[Embedded MPV][reconnect] session ${sessionId}: engine gone, giving up`,
+                error
+            );
+            state.pending = null;
+            return;
+        }
+        this.log.warn(
+            `[Embedded MPV][reconnect] session ${sessionId}: attempt ${attempt} could not start`,
+            error
+        );
+        // No loading→loss transition will ever arrive: continue the backoff.
+        this.schedule(sessionId, state, this.now());
     }
 
     /**

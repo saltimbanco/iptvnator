@@ -1,4 +1,5 @@
 import type { PlayerSubtitleStyle } from './subtitle-style.util';
+import type { BackgroundRecordingOrigin } from './background-recording.interface';
 import type { RecordingStartMetadata } from './recording-metadata.interface';
 
 export type EmbeddedMpvSessionStatus =
@@ -134,6 +135,12 @@ export interface EmbeddedMpvStreamStats {
 export interface EmbeddedMpvRecordingStartOptions {
     directory?: string;
     title?: string;
+    /**
+     * Where the recording was started from. DVR recordings are started by the
+     * main process on a hidden session and carry their origin into the
+     * `recordings` row; a recording from the player leaves it unset.
+     */
+    origin?: BackgroundRecordingOrigin;
     /**
      * Channel/EPG snapshot captured by the live host at recording start; the
      * main-process recording tracker persists it. See

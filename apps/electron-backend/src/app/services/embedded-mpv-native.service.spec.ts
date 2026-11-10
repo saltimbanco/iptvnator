@@ -1283,6 +1283,75 @@ describe('EmbeddedMpvNativeService power blocker', () => {
         expect(updated?.recording?.targetPath).toBe(targetPath);
     });
 
+    it('records a DVR session on a hidden player session with output switched off', () => {
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date(2026, 4, 9, 10, 11, 12));
+        const directory = createTempDir();
+        const targetPath = path.join(
+            directory,
+            'News-20260509-101112.ts'
+        );
+        addon.createSession.mockReturnValueOnce('dvr-1');
+        addon.getSessionSnapshot.mockReturnValue(
+            snapshot('playing', {
+                recording: { active: true, targetPath },
+            })
+        );
+
+        const sessionId = service.openRecordingSession({
+            playback: {
+                streamUrl: 'http://provider.example.test/live/1.ts',
+                title: 'News',
+            },
+            directory,
+            title: 'News',
+            metadata: {
+                channelName: 'News',
+                sourceType: 'xtream',
+            } as never,
+            origin: 'schedule',
+        });
+
+        expect(sessionId).toBe('dvr-1');
+        // Nothing renders or plays, but both tracks stay in the file.
+        expect(addon.createSession).toHaveBeenCalledWith(
+            expect.any(Buffer),
+            expect.anything(),
+            'News',
+            0,
+            ['vo=null', 'ao=null']
+        );
+        expect(addon.loadPlayback).toHaveBeenCalledWith(
+            'dvr-1',
+            expect.objectContaining({
+                streamUrl: 'http://provider.example.test/live/1.ts',
+            })
+        );
+        expect(addon.startRecording).toHaveBeenCalledWith('dvr-1', targetPath);
+        // A DVR session has no renderer owner: it is never broadcast.
+        expect(mainWindowSendMock).not.toHaveBeenCalled();
+        expect(service.getRecordingSessionState('dvr-1')).toEqual({
+            status: 'playing',
+            active: true,
+            targetPath,
+        });
+
+        service.stopRecordingSession('dvr-1');
+        expect(addon.stopRecording).toHaveBeenCalledWith('dvr-1');
+        expect(addon.disposeSession).toHaveBeenCalledWith('dvr-1');
+        expect(mainWindowSendMock).not.toHaveBeenCalled();
+    });
+
+    it('reports DVR availability from the engine it already ships', () => {
+        expect(service.canRecord()).toEqual({ ready: true });
+
+        (addon as Partial<MockAddon>).startRecording = undefined;
+        expect(service.canRecord()).toEqual({
+            ready: false,
+            reason: 'The embedded MPV engine cannot record streams.',
+        });
+    });
+
     it('preserves the recording target path when disposing an active recording session', () => {
         const targetPath = '/tmp/News_Live-20260509-101112.ts';
         startSession(

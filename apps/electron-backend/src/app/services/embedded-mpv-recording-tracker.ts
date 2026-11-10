@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { stat, unlink } from 'node:fs/promises';
 import {
+    BackgroundRecordingOrigin,
     EmbeddedMpvSession,
     RecordingStartMetadata,
 } from '@iptvnator/shared/interfaces';
@@ -13,12 +14,15 @@ interface RecordingStartedEvent {
     targetPath: string;
     fallbackChannelName: string;
     metadata?: RecordingStartMetadata;
+    /** Set by a DVR recording; the player's own recordings leave it unset. */
+    origin?: BackgroundRecordingOrigin;
 }
 
 interface OpenRecordingEntry {
     sessionId: string;
     targetPath: string;
     startedAt: string;
+    origin?: BackgroundRecordingOrigin;
     /**
      * Whether any session snapshot reported this recording as active. A
      * successful start may pass through `active: false` snapshots while the
@@ -42,7 +46,21 @@ interface OpenRecordingEntry {
     rowId: Promise<number | null>;
 }
 
-type RecordingFinalStatus = 'completed' | 'interrupted' | 'failed';
+export type RecordingFinalStatus = 'completed' | 'interrupted' | 'failed';
+
+/**
+ * What a finished file left behind, reported once its row is final. A DVR
+ * recording reads this to tell "recorded" apart from "handed over but wrote
+ * nothing".
+ */
+export interface EmbeddedMpvRecordingFinal {
+    sessionId: string;
+    targetPath: string;
+    origin?: BackgroundRecordingOrigin;
+    status: RecordingFinalStatus;
+    fileSizeBytes: number | null;
+    errorMessage?: string;
+}
 
 /**
  * mpv acknowledges a stop asynchronously (`mpv_set_property_async`, or a
@@ -116,6 +134,16 @@ export class EmbeddedMpvRecordingTracker {
     private readonly finalizing = new Set<OpenRecordingEntry>();
     /** Serializes DB mutations so a fast stop cannot outrun its insert. */
     private chain: Promise<void> = Promise.resolve();
+    private finalizedListener:
+        | ((final: EmbeddedMpvRecordingFinal) => void)
+        | null = null;
+
+    /** Told once per finalized file, with what actually reached the disk. */
+    onRecordingFinalized(
+        listener: (final: EmbeddedMpvRecordingFinal) => void
+    ): void {
+        this.finalizedListener = listener;
+    }
 
     onRecordingStarted(event: RecordingStartedEvent): void {
         // A session runs at most one recording, so a new start means any
@@ -146,6 +174,7 @@ export class EmbeddedMpvRecordingTracker {
                 // row another live process still owns.
                 ownerPid: process.pid,
                 status: 'recording',
+                origin: event.origin ?? null,
                 filePath: event.targetPath,
                 channelName:
                     metadata?.channelName?.trim() || event.fallbackChannelName,
@@ -167,6 +196,7 @@ export class EmbeddedMpvRecordingTracker {
             sessionId: event.sessionId,
             targetPath: event.targetPath,
             startedAt,
+            origin: event.origin,
             sawActive: false,
             interrupted: false,
             stopRequested: false,
@@ -237,8 +267,14 @@ export class EmbeddedMpvRecordingTracker {
             // settle timer means the stop was already acknowledged before
             // the session went down — leave it to finalize as 'completed'.
             if (entry.settleTimer === undefined) {
+                // A stop the caller asked for is a completed recording even
+                // when the session is torn down right behind it; only an
+                // unrequested teardown ends the file as interrupted.
                 entry.settleTimer = setTimeout(() => {
-                    this.finalize(entry, 'interrupted');
+                    this.finalize(
+                        entry,
+                        entry.stopRequested ? 'completed' : 'interrupted'
+                    );
                 }, TEARDOWN_FLUSH_WINDOW_MS);
             }
             return;
@@ -389,12 +425,21 @@ export class EmbeddedMpvRecordingTracker {
                         eq(schema.recordings.status, 'recording')
                     )
                 );
-            return rowId;
-        }).then((rowId) => {
+            return { status: finalStatus, fileSizeBytes: fileSize };
+        }).then((final) => {
             this.finalizing.delete(entry);
-            if (rowId !== null) {
-                broadcastRecordingsUpdate();
+            if (final === null) {
+                return;
             }
+            broadcastRecordingsUpdate();
+            this.finalizedListener?.({
+                sessionId: entry.sessionId,
+                targetPath: entry.targetPath,
+                ...(entry.origin ? { origin: entry.origin } : {}),
+                status: final.status,
+                fileSizeBytes: final.fileSizeBytes,
+                ...(errorMessage ? { errorMessage } : {}),
+            });
         });
     }
 

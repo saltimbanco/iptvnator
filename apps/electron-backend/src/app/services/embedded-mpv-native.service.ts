@@ -5,6 +5,7 @@ import { createRequire } from 'module';
 import path from 'path';
 import App from '../app';
 import {
+    BackgroundRecordingOrigin,
     EmbeddedMpvAudioTrack,
     EmbeddedMpvBounds,
     EmbeddedMpvChapter,
@@ -21,13 +22,17 @@ import {
     EmbeddedMpvSupport,
     EMBEDDED_MPV_FRAME_SOURCE_CHANGED,
     EMBEDDED_MPV_SESSION_UPDATE,
+    RecordingStartMetadata,
     ResolvedPortalPlayback,
     clampSubtitleDelay,
     normalizeSubtitleStyle,
 } from '@iptvnator/shared/interfaces';
 import { isExternalPlayerTraceEnabled, trace } from './debug-trace';
 import { toNativeViewBounds } from './embedded-mpv-bounds.util';
-import { embeddedMpvRecordingTracker } from './embedded-mpv-recording-tracker';
+import {
+    embeddedMpvRecordingTracker,
+    type EmbeddedMpvRecordingFinal,
+} from './embedded-mpv-recording-tracker';
 import {
     releaseRecordingTargetPath,
     reserveRecordingTargetPath,
@@ -136,6 +141,11 @@ interface EmbeddedMpvRuntimeSession {
     lastPayloadKey: string;
     lastStatus: EmbeddedMpvSessionStatus | null;
     reconnect: EmbeddedMpvReconnectState;
+    /**
+     * A DVR session: opened by the main process, never shown or broadcast to
+     * the renderer, and left alone when the renderer goes away.
+     */
+    headless: boolean;
     /** Linux native-view only: the `--include` file carrying the options. */
     optionsFile: string | null;
     /** What `startRecording` was last asked for, until an explicit stop. */
@@ -156,6 +166,13 @@ interface EmbeddedMpvRuntimeSession {
     externalSubtitlePath: string | null;
     /** The automatic reload dropped the external subtitle; re-add it once the reload plays. */
     restoreSubtitleAfterReconnect: boolean;
+    /**
+     * Re-mints the stream link before a reconnect reloads it. A Stalker
+     * `create_link` URL is minted for the session that asked and dies with
+     * the connection it was opened on, so reloading the stored one would
+     * dial a retired token. Null for every other source.
+     */
+    refreshPlayback: (() => Promise<ResolvedPortalPlayback | null>) | null;
 }
 
 const EMBEDDED_MPV_FRAME_COPY_ENV = 'IPTVNATOR_ENABLE_EMBEDDED_MPV_FRAME_COPY';
@@ -164,6 +181,13 @@ const SUPPORTED_EMBEDDED_MPV_PLATFORMS = new Set<NodeJS.Platform>([
     'win32',
     'linux',
 ]);
+/** A DVR session renders nothing; mpv only needs a surface id to accept a session. */
+const HIDDEN_RECORDING_BOUNDS: EmbeddedMpvBounds = {
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+};
 
 export class EmbeddedMpvNativeService {
     private addon: NativeEmbeddedMpvAddon | null = null;
@@ -182,6 +206,10 @@ export class EmbeddedMpvNativeService {
     private linuxMpvExecutableProbeIsProvisional = false;
     private frameCopyAdapter: EmbeddedMpvFrameCopyAdapter | null = null;
     private sessionOptionsDirectory: string | null = null;
+    /** DVR consumers notified when one of their files is finalized. */
+    private readonly recordingFinalizeListeners: Array<
+        (final: EmbeddedMpvRecordingFinal) => void
+    > = [];
     /**
      * Reloads a dropped stream (see embedded-mpv-reconnect.ts). `publish`
      * runs from a timer, outside the polling try/catch, so it must swallow
@@ -189,39 +217,19 @@ export class EmbeddedMpvNativeService {
      */
     private readonly reconnect = new EmbeddedMpvReconnectCoordinator({
         reload: (sessionId, playback) => {
-            const addon = this.getAddon();
-            const session = this.sessions.get(sessionId);
-            if (session?.recordingRunningAtLoss && session.lastRecordingStart) {
-                // This reload replaces the recorded stream: the file mpv was
-                // writing is over (file it as interrupted, not completed),
-                // and the recording is started again once the reload plays.
-                // A stream that recovers by itself before this fires keeps
-                // its recording running and never reaches this branch.
-                embeddedMpvRecordingTracker.onRecordingInterrupted(sessionId);
-                session.restartRecordingAfterReconnect = true;
-                // Consumed: a failed attempt's next reload must not re-arm
-                // the tracker's flush window and postpone the verdict.
-                session.recordingRunningAtLoss = false;
-            }
-            if (session?.externalSubtitlePath) {
-                // The engines drop external subtitle tracks with the file
-                // they were added to (START_FILE clears them); re-add the
-                // user's file once the reload plays.
-                session.restoreSubtitleAfterReconnect = true;
-            }
-            addon.loadPlayback(sessionId, playback);
-            // Sessions run with keep-open=yes, so EOF on a live stream leaves
-            // mpv paused at the end of the old file and a plain loadfile
-            // inherits that pause: the reload then buffers, reports
-            // `paused` and never plays. Unpausing is part of the reload.
-            try {
-                addon.setPaused(sessionId, false);
-            } catch (error) {
-                console.warn(
-                    `[Embedded MPV][reconnect] session ${sessionId}: could not clear the keep-open pause after the reload:`,
-                    error
+            const refreshPlayback =
+                this.sessions.get(sessionId)?.refreshPlayback;
+            if (refreshPlayback) {
+                // The link was minted for the connection that just died:
+                // mint a fresh one before dialling again, and keep the
+                // attempt in flight until the mint answers.
+                return this.reloadWithFreshLink(
+                    sessionId,
+                    playback,
+                    refreshPlayback
                 );
             }
+            this.reloadSession(sessionId, playback);
         },
         publish: (sessionId) => {
             try {
@@ -234,6 +242,75 @@ export class EmbeddedMpvNativeService {
             }
         },
     });
+
+    /**
+     * Replaces the stream of a session after an outage. The reload stops the
+     * running recording (the file it was writing is over), so the recording
+     * is started again in a fresh file once the reload plays.
+     */
+    private reloadSession(
+        sessionId: string,
+        playback: ResolvedPortalPlayback
+    ): void {
+        const session = this.sessions.get(sessionId);
+        if (!session) {
+            return;
+        }
+        const addon = this.getAddon();
+        if (session.recordingRunningAtLoss && session.lastRecordingStart) {
+            // This reload replaces the recorded stream: the file mpv was
+            // writing is over (file it as interrupted, not completed),
+            // and the recording is started again once the reload plays.
+            // A stream that recovers by itself before this fires keeps its
+            // recording running and never reaches this branch.
+            embeddedMpvRecordingTracker.onRecordingInterrupted(sessionId);
+            session.restartRecordingAfterReconnect = true;
+            // Consumed: a failed attempt's next reload must not re-arm the
+            // tracker's flush window and postpone the verdict.
+            session.recordingRunningAtLoss = false;
+        }
+        if (session.externalSubtitlePath) {
+            // The engines drop external subtitle tracks with the file they
+            // were added to (START_FILE clears them); re-add the user's file
+            // once the reload plays.
+            session.restoreSubtitleAfterReconnect = true;
+        }
+        addon.loadPlayback(sessionId, playback);
+        // Sessions run with keep-open=yes, so EOF on a live stream leaves mpv
+        // paused at the end of the old file and a plain loadfile inherits
+        // that pause: the reload then buffers, reports `paused` and never
+        // plays. Unpausing is part of the reload.
+        try {
+            addon.setPaused(sessionId, false);
+        } catch (error) {
+            console.warn(
+                `[Embedded MPV][reconnect] session ${sessionId}: could not clear the keep-open pause after the reload:`,
+                error
+            );
+        }
+    }
+
+    /**
+     * A reconnect of a source whose link expires re-mints it first. Resolves
+     * once the reload has been issued, so the reconnect coordinator holds the
+     * attempt until the portal has answered.
+     */
+    private async reloadWithFreshLink(
+        sessionId: string,
+        playback: ResolvedPortalPlayback,
+        refreshPlayback: () => Promise<ResolvedPortalPlayback | null>
+    ): Promise<void> {
+        let next = playback;
+        try {
+            next = (await refreshPlayback()) ?? playback;
+        } catch (error) {
+            console.warn(
+                `[Embedded MPV][reconnect] session ${sessionId}: could not re-mint the stream link:`,
+                error
+            );
+        }
+        this.reloadSession(sessionId, next);
+    }
 
     /**
      * Frame-copy engine: helper process + shm ring + renderer canvas.
@@ -611,6 +688,178 @@ export class EmbeddedMpvNativeService {
         initialVolume = 1,
         options?: EmbeddedMpvSessionOptions
     ): EmbeddedMpvSession {
+        const startedAt = new Date().toISOString();
+        const sessionId = this.createRuntimeSession({
+            bounds,
+            title,
+            initialVolume,
+            options,
+            headless: false,
+            refreshPlayback: null,
+        });
+        return (
+            this.refreshSession(sessionId) ?? {
+                id: sessionId,
+                title,
+                streamUrl: '',
+                status: 'idle',
+                positionSeconds: 0,
+                durationSeconds: null,
+                volume: 1,
+                audioTracks: [],
+                selectedAudioTrackId: null,
+                subtitleTracks: [],
+                selectedSubtitleTrackId: null,
+                playbackSpeed: 1,
+                aspectOverride: 'no',
+                recording: { active: false },
+                startedAt,
+                updatedAt: startedAt,
+            }
+        );
+    }
+
+    /**
+     * Opens `playback` on a session the renderer never sees — no visible
+     * surface, no session updates, not torn down with the renderer — and
+     * records it with the player's own `stream-record`.
+     */
+    openRecordingSession(input: {
+        playback: ResolvedPortalPlayback;
+        directory: string;
+        title: string;
+        metadata?: RecordingStartMetadata;
+        origin: BackgroundRecordingOrigin;
+        options?: EmbeddedMpvSessionOptions;
+        /** Minted afresh before every reconnect; absent for stable links. */
+        refreshPlayback?: () => Promise<ResolvedPortalPlayback | null>;
+    }): string {
+        const sessionId = this.createRuntimeSession({
+            bounds: HIDDEN_RECORDING_BOUNDS,
+            title: input.title,
+            initialVolume: 0,
+            options: {
+                extraOptions: [
+                    ...(input.options?.extraOptions ?? []),
+                    // Nothing is rendered or played; `ao=null` keeps the audio
+                    // track in the file, `audio=no` would drop it.
+                    'vo=null',
+                    'ao=null',
+                ],
+                autoReconnect: input.options?.autoReconnect ?? true,
+            },
+            headless: true,
+            refreshPlayback: input.refreshPlayback ?? null,
+        });
+        try {
+            this.loadPlayback(sessionId, input.playback);
+            this.startRecording(sessionId, {
+                directory: input.directory,
+                title: input.title,
+                metadata: input.metadata,
+                origin: input.origin,
+            });
+        } catch (error) {
+            this.disposeSession(sessionId);
+            throw error;
+        }
+        return sessionId;
+    }
+
+    /**
+     * Whether a DVR recording can run right now. The answer is the player
+     * engine's own recording capability: there is no second recorder binary
+     * to find, version or keep in step.
+     */
+    canRecord(): { ready: boolean; reason?: string } {
+        let support: EmbeddedMpvSupport;
+        try {
+            support = this.getSupport();
+        } catch (error) {
+            return {
+                ready: false,
+                reason: error instanceof Error ? error.message : String(error),
+            };
+        }
+        if (!support.supported) {
+            return {
+                ready: false,
+                ...(support.reason ? { reason: support.reason } : {}),
+            };
+        }
+        if (support.capabilities?.recording !== true) {
+            return {
+                ready: false,
+                reason: 'The embedded MPV engine cannot record streams.',
+            };
+        }
+        return { ready: true };
+    }
+
+    /** Live state of a DVR session, or null once the engine has dropped it. */
+    getRecordingSessionState(sessionId: string): {
+        status: EmbeddedMpvSessionStatus;
+        active: boolean;
+        targetPath?: string;
+        error?: string;
+    } | null {
+        if (!this.sessions.has(sessionId)) {
+            return null;
+        }
+        const snapshot = this.getAddon().getSessionSnapshot(sessionId);
+        if (!snapshot) {
+            return null;
+        }
+        const error = snapshot.recording?.error ?? snapshot.error;
+        return {
+            status: snapshot.status,
+            active: snapshot.recording?.active === true,
+            ...(snapshot.recording?.targetPath
+                ? { targetPath: snapshot.recording.targetPath }
+                : {}),
+            ...(error ? { error } : {}),
+        };
+    }
+
+    /** Stops the recording and closes the hidden session. */
+    stopRecordingSession(sessionId: string): void {
+        if (!this.sessions.has(sessionId)) {
+            return;
+        }
+        try {
+            this.stopRecording(sessionId);
+        } catch (error) {
+            console.warn(
+                `[Embedded MPV] session ${sessionId}: could not stop the DVR recording:`,
+                error
+            );
+        }
+        this.disposeSession(sessionId);
+    }
+
+    /** Finished files, with what reached the disk; see the DVR service. */
+    onRecordingFinalized(
+        listener: (final: EmbeddedMpvRecordingFinal) => void
+    ): void {
+        this.recordingFinalizeListeners.push(listener);
+    }
+
+    private createRuntimeSession(input: {
+        bounds: EmbeddedMpvBounds;
+        title: string;
+        initialVolume: number;
+        options: EmbeddedMpvSessionOptions | undefined;
+        headless: boolean;
+        refreshPlayback: (() => Promise<ResolvedPortalPlayback | null>) | null;
+    }): string {
+        const {
+            bounds,
+            title,
+            initialVolume,
+            options,
+            headless,
+            refreshPlayback,
+        } = input;
         this.assertEmbeddedMpvEnabled();
         const addon = this.getAddon();
         // The frame-copy adapter ignores the native window handle (frames go
@@ -656,6 +905,7 @@ export class EmbeddedMpvNativeService {
             reconnect: createEmbeddedMpvReconnectState(
                 options?.autoReconnect ?? true
             ),
+            headless,
             optionsFile,
             lastRecordingStart: null,
             lastRecordingActive: false,
@@ -664,30 +914,12 @@ export class EmbeddedMpvNativeService {
             rejectedOptionsReported: false,
             externalSubtitlePath: null,
             restoreSubtitleAfterReconnect: false,
+            refreshPlayback,
         });
 
         this.ensurePolling();
         this.ensureRendererLifecycleWatch();
-        return (
-            this.refreshSession(sessionId) ?? {
-                id: sessionId,
-                title,
-                streamUrl: '',
-                status: 'idle',
-                positionSeconds: 0,
-                durationSeconds: null,
-                volume: 1,
-                audioTracks: [],
-                selectedAudioTrackId: null,
-                subtitleTracks: [],
-                selectedSubtitleTrackId: null,
-                playbackSpeed: 1,
-                aspectOverride: 'no',
-                recording: { active: false },
-                startedAt,
-                updatedAt: startedAt,
-            }
-        );
+        return sessionId;
     }
 
     loadPlayback(sessionId: string, playback: ResolvedPortalPlayback): void {
@@ -953,6 +1185,7 @@ export class EmbeddedMpvNativeService {
             targetPath,
             fallbackChannelName,
             metadata: options.metadata,
+            origin: options.origin,
         });
         session.lastRecordingStart = { ...options };
         return this.refreshSession(sessionId);
@@ -1077,6 +1310,7 @@ export class EmbeddedMpvNativeService {
             // closed-session broadcast below.
         }
 
+        const headless = session.headless;
         this.sessions.delete(sessionId);
         this.pollFailuresLogged.delete(sessionId);
         const payload: EmbeddedMpvSession = {
@@ -1097,7 +1331,13 @@ export class EmbeddedMpvNativeService {
             startedAt: session.startedAt,
             updatedAt: new Date().toISOString(),
         };
-        this.sendSessionUpdate(payload);
+        if (headless) {
+            // No renderer owns this session, but the tracker still has to see
+            // the close so its row is finalized.
+            embeddedMpvRecordingTracker.observeSnapshot(payload);
+        } else {
+            this.sendSessionUpdate(payload);
+        }
         this.stopPollingIfIdle();
         this.updatePowerBlocker();
         return payload;
@@ -1169,13 +1409,15 @@ export class EmbeddedMpvNativeService {
             console.warn(
                 `[Embedded MPV] Disposing ${this.sessions.size} session(s): renderer ${reason}`
             );
-            [...this.sessions.keys()].forEach((sessionId) => {
-                try {
-                    this.disposeSession(sessionId);
-                } catch {
-                    // best-effort reaping; polling cleanup handles the rest
-                }
-            });
+            [...this.sessions.values()]
+                .filter((session) => !session.headless)
+                .forEach((session) => {
+                    try {
+                        this.disposeSession(session.id);
+                    } catch {
+                        // best-effort reaping; polling cleanup handles the rest
+                    }
+                });
         };
 
         App.mainWindow.webContents.on(
@@ -1446,7 +1688,13 @@ export class EmbeddedMpvNativeService {
         // observable here.
         embeddedMpvRecordingTracker.observeSnapshot(session);
 
-        if (!App.mainWindow || App.mainWindow.isDestroyed()) {
+        // A DVR session has no renderer owner: it must survive a renderer
+        // reload and must not appear in the player's session list.
+        if (
+            this.sessions.get(session.id)?.headless ||
+            !App.mainWindow ||
+            App.mainWindow.isDestroyed()
+        ) {
             return;
         }
 

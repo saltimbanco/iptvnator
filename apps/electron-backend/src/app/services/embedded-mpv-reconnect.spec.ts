@@ -47,7 +47,7 @@ describe('embedded MPV reconnect policy helpers', () => {
 });
 
 describe('EmbeddedMpvReconnectCoordinator', () => {
-    let reload: jest.Mock<void, [string, ResolvedPortalPlayback]>;
+    let reload: jest.Mock<void | Promise<void>, [string, ResolvedPortalPlayback]>;
     let publish: jest.Mock<void, [string]>;
     let log: { log: jest.Mock; warn: jest.Mock };
     let coordinator: EmbeddedMpvReconnectCoordinator;
@@ -119,6 +119,35 @@ describe('EmbeddedMpvReconnectCoordinator', () => {
         expect(coordinator.observe(SESSION, state, 'loading', 'error')).toEqual(
             info
         );
+    });
+
+    it('holds the attempt while its reload is still minting a link', async () => {
+        let finishReload: () => void = () => undefined;
+        reload.mockImplementationOnce(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishReload = resolve;
+                })
+        );
+        startPlaying();
+
+        const info = coordinator.observe(SESSION, state, 'error', 'playing');
+        jest.advanceTimersByTime(2_000);
+        expect(reload).toHaveBeenCalledWith(SESSION, LIVE);
+        expect(state.reloadInFlight).toBe(true);
+
+        // The poll keeps reading the outage while the mint runs: it answers
+        // the attempt already in flight, so no second reload is scheduled
+        // on top of it.
+        expect(coordinator.observe(SESSION, state, 'error', 'error')).toBe(info);
+        expect(state.timer).toBeNull();
+        expect(state.attempts).toBe(1);
+
+        finishReload();
+        await Promise.resolve();
+        expect(state.reloadInFlight).toBe(false);
+        expect(state.attempts).toBe(1);
+        expect(publish).toHaveBeenCalledWith(SESSION);
     });
 
     it('doubles the delay per failed attempt and gives up after the sixth', () => {

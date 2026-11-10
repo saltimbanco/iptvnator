@@ -1,107 +1,139 @@
-import { randomUUID } from 'crypto';
 import type {
+    BackgroundRecordingOrigin,
+    BackgroundRecordingOutcome,
     BackgroundRecordingStartRequest,
     BackgroundRecordingState,
     BackgroundRecordingStatus,
+    RecordingStartMetadata,
     ResolvedPortalPlayback,
+    StalkerScheduleRefresh,
 } from '@iptvnator/shared/interfaces';
-import type { RecorderProcess } from './background-recorder-process';
-import { buildRecorderOpenCommand } from './background-recorder-protocol';
-import type {
-    RecordingRowEnd,
-    RecordingRowsStore,
-} from './background-recording-rows';
+
+/**
+ * DVR recording (the channel menu's record action and the scheduler). It
+ * records through the player's own engine: the stream is opened on a hidden
+ * embedded-MPV session and captured with the same `stream-record` the
+ * record button uses, so there is no second recorder binary, no second
+ * protocol to keep in step, and no separate process to package.
+ *
+ * This service owns policy only — one recording at a time, the folder, the
+ * planned end, the state the renderer sees and the outcome a schedule needs.
+ * The engine owns the stream and the files, and the recording tracker owns
+ * the `recordings` rows.
+ */
+
+/** One finished file, as the engine reports it. */
+export interface DvrRecordingFinal {
+    sessionId: string;
+    status: 'completed' | 'interrupted' | 'failed';
+    fileSizeBytes: number | null;
+    errorMessage?: string;
+}
+
+/** Live state of a DVR session. */
+export interface DvrRecordingSessionState {
+    status: string;
+    active: boolean;
+    targetPath?: string;
+    error?: string;
+}
+
+export interface DvrRecordingOpen {
+    playback: ResolvedPortalPlayback;
+    directory: string;
+    title: string;
+    metadata: RecordingStartMetadata;
+    origin: BackgroundRecordingOrigin;
+    /** Stalker rows: the engine re-mints the link on every reconnect. */
+    refresh?: StalkerScheduleRefresh;
+}
+
+/**
+ * What DVR recording needs from the player engine — implemented over
+ * `EmbeddedMpvNativeService`, faked in tests.
+ */
+export interface DvrRecordingEngine {
+    canRecord(): { ready: boolean; reason?: string };
+    /** Opens the stream on a hidden session and starts recording it. */
+    open(input: DvrRecordingOpen): string;
+    stop(sessionId: string): void;
+    state(sessionId: string): DvrRecordingSessionState | null;
+    onFinalized(listener: (final: DvrRecordingFinal) => void): void;
+    /** Rows the tracker still owns; startup recovery must leave them alone. */
+    activeRowIds(): Promise<Set<number>>;
+}
 
 export interface BackgroundRecordingDeps {
-    resolveRecorderPath(): string | null;
-    spawnRecorder(executablePath: string): RecorderProcess;
-    rows: RecordingRowsStore;
+    readonly engine: DvrRecordingEngine;
     /** The folder to record into, created if needed. */
     resolveDirectory(requested?: string): string;
-    reservePath(directory: string, title: string): string;
-    releasePath(filePath: string): void;
-    /** File size, or null when it cannot be read. */
-    statSize(filePath: string): Promise<number | null>;
     keepAwake(active: boolean): void;
     broadcast(state: BackgroundRecordingState): void;
 }
 
-/** File-growth poll; also how the first bytes are noticed. */
+/** How often the engine's live state is read while a recording runs. */
 const POLL_MS = 2_000;
-/**
- * No growth for this long counts as a dropped stream. libmpv's HTTP stream
- * can sit on a dead connection without ending playback, so this, not an
- * `ended` event, is often what notices a provider outage.
- */
-const STALL_MS = 20_000;
-/** Reopen attempts in a row before the recording ends with an error. */
-const MAX_RESTARTS = 5;
-const MAX_RESTART_DELAY_MS = 30_000;
 /** setTimeout's limit; longer planned ends are re-armed. */
 const MAX_TIMER_MS = 2_147_483_647;
 
-/** One recorder process writing one file. */
-interface Segment {
-    filePath: string;
-    startedAt: string;
-    process: RecorderProcess;
-    /** Inserted once the file first grows, so empty attempts leave no row. */
-    rowId: Promise<number | null> | null;
-    size: number;
-    lastGrowthAt: number;
-    ended: boolean;
-}
-
 interface Recording {
+    /** The engine session id, which is also the id of the rows it writes. */
     id: string;
     request: BackgroundRecordingStartRequest;
-    executablePath: string;
-    directory: string;
     startedAt: string;
     status: BackgroundRecordingStatus;
-    segment: Segment | null;
-    segmentCount: number;
-    restarts: number;
+    filePath?: string;
     endTimer?: ReturnType<typeof setTimeout>;
-    restartTimer?: ReturnType<typeof setTimeout>;
     pollTimer?: ReturnType<typeof setInterval>;
-    stopping: Promise<void> | null;
+    stopping: boolean;
 }
 
-type SegmentStatus = RecordingRowEnd['status'];
-
 /**
- * Owns the one background recording (Windows): supervises the recorder
- * process, writes one `recordings` row per file, keeps the machine awake
- * and pushes its state. A dropped, stalled or crashed stream ends the
- * current file as `interrupted` and continues in a new one with backoff,
- * re-resolving the stream first (Stalker links expire within seconds).
+ * One DVR recording at a time. A dropped stream is the engine's business:
+ * its reconnect coordinator reloads the stream and restarts the recording,
+ * so this service only has to notice the session ending and report what
+ * reached the disk.
  */
 export class BackgroundRecordingService {
     private active: Recording | null = null;
     private lastError: string | undefined;
-    private recorderPath: string | null | undefined;
-    private resolvePlayback: (
-        request: BackgroundRecordingStartRequest
-    ) => Promise<ResolvedPortalPlayback> = (request) =>
-        Promise.resolve(request.playback);
+    /**
+     * Requests of recordings whose file is not finalized yet. The outcome is
+     * reported from the tracker's finalize, which lands after the stop, so
+     * the request has to outlive the active recording.
+     */
+    private readonly finishing = new Map<
+        string,
+        { request: BackgroundRecordingStartRequest; error?: string }
+    >();
+    private outcomeListener:
+        | ((
+              request: BackgroundRecordingStartRequest,
+              outcome: BackgroundRecordingOutcome
+          ) => void)
+        | null = null;
 
-    constructor(private readonly deps: BackgroundRecordingDeps) {}
+    constructor(private readonly deps: BackgroundRecordingDeps) {
+        this.deps.engine.onFinalized((final) => this.handleFinalized(final));
+    }
 
-    /** How a reopen gets a fresh stream; defaults to the start playback. */
-    setPlaybackResolver(
-        resolver: (
-            request: BackgroundRecordingStartRequest
-        ) => Promise<ResolvedPortalPlayback>
+    /**
+     * Told once a recording has finished, with what it really wrote. A
+     * schedule hands the stream over and is marked as recording before a byte
+     * exists, so without this a stream that never opened leaves the schedule
+     * claiming a recording that is not there.
+     */
+    setOutcomeListener(
+        listener: (
+            request: BackgroundRecordingStartRequest,
+            outcome: BackgroundRecordingOutcome
+        ) => void
     ): void {
-        this.resolvePlayback = resolver;
+        this.outcomeListener = listener;
     }
 
     isAvailable(): boolean {
-        if (this.recorderPath === undefined) {
-            this.recorderPath = this.deps.resolveRecorderPath();
-        }
-        return this.recorderPath !== null;
+        return this.deps.engine.canRecord().ready;
     }
 
     getState(): BackgroundRecordingState {
@@ -115,6 +147,9 @@ export class BackgroundRecordingService {
             };
         }
         const { metadata, origin, endsAt } = recording.request;
+        const filePath =
+            this.deps.engine.state(recording.id)?.targetPath ??
+            recording.filePath;
         return {
             available,
             status: recording.status,
@@ -126,14 +161,19 @@ export class BackgroundRecordingService {
             sourceType: metadata.sourceType,
             startedAt: recording.startedAt,
             endsAt,
-            filePath: recording.segment?.filePath,
-            segment: recording.segmentCount,
+            ...(filePath ? { filePath } : {}),
+            segment: 1,
         };
     }
 
     start(request: BackgroundRecordingStartRequest): BackgroundRecordingState {
-        if (!this.isAvailable() || !this.recorderPath) {
-            throw new Error('Background recording is not available.');
+        const availability = this.deps.engine.canRecord();
+        if (!availability.ready) {
+            throw new Error(
+                `Background recording is not available.${
+                    availability.reason ? ` ${availability.reason}` : ''
+                }`
+            );
         }
         if (this.active) {
             throw new Error('A background recording is already running.');
@@ -149,19 +189,22 @@ export class BackgroundRecordingService {
             throw new Error('The planned end is not in the future.');
         }
 
-        const recording: Recording = {
-            id: randomUUID(),
-            request,
-            executablePath: this.recorderPath,
+        const sessionId = this.deps.engine.open({
+            playback: request.playback,
             directory: this.deps.resolveDirectory(request.directory),
+            title:
+                request.metadata.channelName || request.playback.title || '',
+            metadata: request.metadata,
+            origin: request.origin,
+            ...(request.refresh ? { refresh: request.refresh } : {}),
+        });
+        const recording: Recording = {
+            id: sessionId,
+            request,
             startedAt: new Date().toISOString(),
             status: 'starting',
-            segment: null,
-            segmentCount: 0,
-            restarts: 0,
-            stopping: null,
+            stopping: false,
         };
-        this.openSegment(recording, request.playback);
         this.active = recording;
         this.lastError = undefined;
         this.deps.keepAwake(true);
@@ -169,7 +212,7 @@ export class BackgroundRecordingService {
             this.armEndTimer(recording, endsAtMs);
         }
         recording.pollTimer = setInterval(
-            () => void this.poll(recording),
+            () => this.poll(recording),
             POLL_MS
         );
         this.publish();
@@ -186,187 +229,93 @@ export class BackgroundRecordingService {
     }
 
     activeRowIds(): Promise<Set<number>> {
-        return this.deps.rows.activeRowIds();
+        return this.deps.engine.activeRowIds();
     }
 
-    private openSegment(
-        recording: Recording,
-        playback: ResolvedPortalPlayback
-    ): void {
-        const filePath = this.deps.reservePath(
-            recording.directory,
-            recording.request.metadata.channelName || playback.title
-        );
-        const segment: Segment = {
-            filePath,
-            startedAt: new Date().toISOString(),
-            process: this.deps.spawnRecorder(recording.executablePath),
-            rowId: null,
-            size: 0,
-            lastGrowthAt: Date.now(),
-            ended: false,
-        };
-        recording.segment = segment;
-        recording.segmentCount += 1;
-        segment.process.onEvent((event) => {
-            if (event.event === 'ready') {
-                segment.process.send(
-                    buildRecorderOpenCommand(playback, filePath)
-                );
-            } else if (event.event === 'record-failed') {
-                void this.finish(
-                    recording,
-                    `The recording file could not be written: ${event.error}`,
-                    'failed'
-                );
-            } else if (
-                event.event === 'ended' &&
-                event.reason !== 'stop' &&
-                event.reason !== 'quit'
-            ) {
-                this.dropSegment(recording, segment, 'The stream ended.');
-            } else if (event.event === 'fatal') {
-                this.dropSegment(recording, segment, event.error);
-            }
-        });
-        segment.process.onExit(() =>
-            this.dropSegment(recording, segment, 'The recorder stopped.')
-        );
-    }
-
-    private async poll(recording: Recording): Promise<void> {
-        const segment = recording.segment;
-        if (!segment || segment.ended) {
+    private poll(recording: Recording): void {
+        const state = this.deps.engine.state(recording.id);
+        if (!state) {
+            void this.finish(recording, 'The recording stopped unexpectedly.');
             return;
         }
-        const size = await this.deps.statSize(segment.filePath);
-        if (segment.ended || recording.stopping) {
+        if (state.targetPath) {
+            recording.filePath = state.targetPath;
+        }
+        if (state.error) {
+            void this.finish(recording, state.error);
             return;
         }
-        if (size !== null && size > segment.size) {
-            segment.size = size;
-            segment.lastGrowthAt = Date.now();
-            segment.rowId ??= this.insertRow(recording, segment);
-            recording.restarts = 0;
-            if (recording.status !== 'recording') {
-                recording.status = 'recording';
-                this.publish();
-            }
-        } else if (Date.now() - segment.lastGrowthAt > STALL_MS) {
-            this.dropSegment(recording, segment, 'The stream stalled.');
-        }
-    }
-
-    private dropSegment(
-        recording: Recording,
-        segment: Segment,
-        reason: string
-    ): void {
-        if (segment.ended || recording.stopping) {
+        if (
+            state.status === 'ended' ||
+            state.status === 'idle' ||
+            state.status === 'closed' ||
+            state.status === 'error'
+        ) {
+            // The stream is over; the tracker files the file and reports it.
+            void this.finish(recording);
             return;
         }
-        void this.endSegment(recording, segment, 'interrupted');
-        if (recording.restarts >= MAX_RESTARTS) {
-            void this.finish(recording, `${reason} Reconnecting failed.`);
-            return;
-        }
-        recording.restarts += 1;
-        recording.status = 'reconnecting';
-        this.publish();
-        const delay = Math.min(
-            1_000 * 2 ** recording.restarts,
-            MAX_RESTART_DELAY_MS
-        );
-        recording.restartTimer = setTimeout(() => {
-            void this.reopen(recording, reason);
-        }, delay);
-    }
-
-    private async reopen(recording: Recording, reason: string): Promise<void> {
-        let playback: ResolvedPortalPlayback;
-        try {
-            playback = await this.resolvePlayback(recording.request);
-        } catch (error) {
-            playback = recording.request.playback;
-            console.warn('[Background recording] re-resolve failed:', error);
-        }
-        if (this.active !== recording || recording.stopping) {
-            return;
-        }
-        try {
-            this.openSegment(recording, playback);
+        const next: BackgroundRecordingStatus =
+            state.status === 'loading'
+                ? 'reconnecting'
+                : state.active
+                  ? 'recording'
+                  : recording.status;
+        if (next !== recording.status) {
+            recording.status = next;
             this.publish();
-        } catch (error) {
-            void this.finish(recording, `${reason} ${String(error)}`);
         }
     }
 
-    private async endSegment(
-        recording: Recording,
-        segment: Segment,
-        status: SegmentStatus,
-        errorMessage?: string
-    ): Promise<void> {
-        if (segment.ended) {
-            return;
-        }
-        segment.ended = true;
-        if (recording.segment === segment) {
-            recording.segment = null;
-        }
-        await segment.process.shutdown();
-        const size =
-            (await this.deps.statSize(segment.filePath)) ?? segment.size;
-        if (size <= 0 && !segment.rowId) {
-            // Nothing was recorded: drop the reserved file, keep no row.
-            this.deps.releasePath(segment.filePath);
-            return;
-        }
-        segment.rowId ??= this.insertRow(recording, segment);
-        this.deps.rows.finalize(segment.rowId, {
-            status: size > 0 ? status : 'failed',
-            fileSizeBytes: size > 0 ? size : null,
-            errorMessage,
-            endedAt: new Date().toISOString(),
-        });
-    }
-
-    private finish(
-        recording: Recording,
-        error?: string,
-        segmentStatus: SegmentStatus = error ? 'interrupted' : 'completed'
-    ): Promise<void> {
+    private finish(recording: Recording, error?: string): Promise<void> {
         if (recording.stopping) {
-            return recording.stopping;
+            return Promise.resolve();
         }
+        recording.stopping = true;
         clearTimeout(recording.endTimer);
-        clearTimeout(recording.restartTimer);
         clearInterval(recording.pollTimer);
         recording.status = 'stopping';
         this.publish();
-        const segment = recording.segment;
-        recording.stopping = (async () => {
-            if (segment) {
-                await this.endSegment(recording, segment, segmentStatus, error);
-            }
+        this.finishing.set(recording.id, {
+            request: recording.request,
+            ...(error ? { error } : {}),
+        });
+        try {
+            this.deps.engine.stop(recording.id);
+        } catch (stopError) {
+            console.warn('[Background recording] stop failed:', stopError);
+        }
+        if (this.active === recording) {
+            this.active = null;
+        }
+        this.lastError = error;
+        this.deps.keepAwake(false);
+        this.publish();
+        return Promise.resolve();
+    }
+
+    private handleFinalized(final: DvrRecordingFinal): void {
+        const pending = this.finishing.get(final.sessionId);
+        this.finishing.delete(final.sessionId);
+        const recording =
+            this.active?.id === final.sessionId ? this.active : null;
+        const request = pending?.request ?? recording?.request;
+        if (!request) {
+            return;
+        }
+        const error = pending?.error ?? final.errorMessage;
+        if (recording) {
+            // The file ended on its own (stream over, recorder error).
+            clearTimeout(recording.endTimer);
+            clearInterval(recording.pollTimer);
             this.active = null;
             this.lastError = error;
             this.deps.keepAwake(false);
             this.publish();
-        })();
-        return recording.stopping;
-    }
-
-    private insertRow(
-        recording: Recording,
-        segment: Segment
-    ): Promise<number | null> {
-        return this.deps.rows.insert({
-            recordingId: recording.id,
-            filePath: segment.filePath,
-            metadata: recording.request.metadata,
-            origin: recording.request.origin,
-            startedAt: segment.startedAt,
+        }
+        this.outcomeListener?.(request, {
+            ...(error ? { error } : {}),
+            recordedBytes: final.fileSizeBytes ?? 0,
         });
     }
 

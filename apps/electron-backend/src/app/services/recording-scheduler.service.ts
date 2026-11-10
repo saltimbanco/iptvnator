@@ -1,4 +1,5 @@
 import type {
+    BackgroundRecordingOutcome,
     BackgroundRecordingStartRequest,
     RecordingScheduleItem,
     RecordingScheduleStatus,
@@ -15,7 +16,10 @@ import {
     type RecordingScheduleNotification,
     notifyRecordingSchedule,
 } from './recording-schedule-notify';
-import { refreshStalkerSchedulePlayback } from './stalker-schedule-refresh.service';
+import {
+    loadStalkerSchedulePortal,
+    refreshStalkerSchedulePlayback,
+} from './stalker-schedule-refresh.service';
 
 type ScheduleRow = schema.RecordingSchedule;
 
@@ -63,7 +67,32 @@ export class RecordingSchedulerService {
     private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
     private loaded = false;
 
-    constructor(private readonly deps: RecordingSchedulerDeps = {}) {}
+    constructor(private readonly deps: RecordingSchedulerDeps = {}) {
+        backgroundRecordingService.setOutcomeListener((request, outcome) =>
+            this.reportRecordingOutcome(request, outcome)
+        );
+    }
+
+    /**
+     * A schedule is marked as started at handover, before the recorder has
+     * opened the stream. When the recording then ends having written nothing
+     * — a dead link, a recorder that never started — the row must stop
+     * claiming it is recording, and say why instead.
+     */
+    private reportRecordingOutcome(
+        request: BackgroundRecordingStartRequest,
+        outcome: BackgroundRecordingOutcome
+    ): void {
+        const scheduleId = request.scheduleId;
+        if (typeof scheduleId !== 'number' || outcome.recordedBytes > 0) {
+            return;
+        }
+        void this.failById(
+            scheduleId,
+            request.metadata?.channelName ?? '',
+            outcome.error ?? 'Nothing was recorded.'
+        );
+    }
 
     /** Loads pending rows and arms their timers; safe to call repeatedly. */
     async start(): Promise<void> {
@@ -205,12 +234,19 @@ export class RecordingSchedulerService {
             return;
         }
 
-        const playback = await this.withFreshPlayback(row, storedPlayback);
+        const refresh = parseJson<StalkerScheduleRefresh>(row.refreshJson);
+        const playback = await this.withFreshPlayback(
+            row,
+            storedPlayback,
+            refresh
+        );
         const request: BackgroundRecordingStartRequest = {
             playback,
             metadata,
             origin: 'schedule',
             endsAt: row.endAt,
+            scheduleId: row.id,
+            ...(refresh ? { refresh } : {}),
         };
 
         try {
@@ -250,9 +286,9 @@ export class RecordingSchedulerService {
      */
     private async withFreshPlayback(
         row: ScheduleRow,
-        stored: ResolvedPortalPlayback
+        stored: ResolvedPortalPlayback,
+        refresh: StalkerScheduleRefresh | null
     ): Promise<ResolvedPortalPlayback> {
-        const refresh = parseJson<StalkerScheduleRefresh>(row.refreshJson);
         if (refresh?.kind !== 'stalker') {
             return stored;
         }
@@ -264,7 +300,7 @@ export class RecordingSchedulerService {
                 title: stored.title,
                 thumbnail: stored.thumbnail,
             },
-            { getPortal: (playlistId) => this.loadPortal(playlistId) }
+            { getPortal: loadStalkerSchedulePortal }
         );
         if (fresh) {
             return fresh;
@@ -277,44 +313,26 @@ export class RecordingSchedulerService {
         return stored;
     }
 
-    private async loadPortal(
-        playlistId: string
-    ): Promise<{ portalUrl: string; macAddress: string } | null> {
-        try {
-            const db = await getDatabase();
-            const rows = await db
-                .select({
-                    portalUrl: schema.playlists.portalUrl,
-                    url: schema.playlists.url,
-                    macAddress: schema.playlists.macAddress,
-                })
-                .from(schema.playlists)
-                .where(eq(schema.playlists.id, playlistId))
-                .limit(1);
-            const playlist = rows[0];
-            const portalUrl = playlist?.portalUrl ?? playlist?.url ?? '';
-            if (!portalUrl || !playlist?.macAddress) {
-                return null;
-            }
-            return { portalUrl, macAddress: playlist.macAddress };
-        } catch (error) {
-            console.error('[Recording schedule] playlist lookup failed:', error);
-            return null;
-        }
-    }
-
     /** Records why a schedule did not record and tells the user about it. */
     private async fail(row: ScheduleRow, reason: string): Promise<void> {
+        await this.failById(row.id, row.channelName, reason);
+    }
+
+    private async failById(
+        id: number,
+        channelName: string,
+        reason: string
+    ): Promise<void> {
         console.warn('[Recording schedule] failed', {
-            id: row.id,
-            channelName: row.channelName,
+            id,
+            channelName,
             reason,
         });
         this.notify({
             title: 'Scheduled recording failed',
-            body: `${row.channelName}: ${reason}`,
+            body: `${channelName}: ${reason}`,
         });
-        await this.mark(row.id, 'failed', reason);
+        await this.mark(id, 'failed', reason);
     }
 
     private notify(notification: RecordingScheduleNotification): void {

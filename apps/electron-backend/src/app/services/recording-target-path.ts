@@ -2,8 +2,8 @@ import { closeSync, openSync, unlinkSync } from 'fs';
 import path from 'path';
 
 /**
- * File naming for live-TV recordings, shared by the embedded MPV recording
- * and the Windows background recorder:
+ * File naming for live-TV recordings, shared by the player's record button
+ * and DVR recordings (which record through the same embedded MPV session):
  * `<sanitized title, max 120 chars>-<YYYYMMDD-HHMMSS local time>.ts`, with
  * `-2`, `-3`… on a clash. The name is claimed with an exclusive create, so
  * two recordings started in the same second never share a file.

@@ -1,40 +1,15 @@
 import { app, powerSaveBlocker } from 'electron';
 import { mkdirSync } from 'fs';
-import { stat } from 'fs/promises';
 import { broadcastBackgroundRecordingState } from '../events/database/recording-broadcast';
 import {
-    resolveBackgroundRecorderPath,
-    spawnRecorderProcess,
-} from './background-recorder-process';
-import { createRecordingRowsStore } from './background-recording-rows';
-import { BackgroundRecordingService } from './background-recording.service';
-import {
-    releaseRecordingTargetPath,
-    reserveRecordingTargetPath,
-} from './recording-target-path';
+    BackgroundRecordingService,
+    type DvrRecordingEngine,
+} from './background-recording.service';
+import { embeddedMpvNativeService } from './embedded-mpv-native.service';
+import { readEmbeddedMpvSessionOptions } from './embedded-mpv-session-options';
+import { embeddedMpvRecordingTracker } from './embedded-mpv-recording-tracker';
+import { stalkerPlaybackRefresher } from './stalker-schedule-refresh.service';
 import { RECORDING_FOLDER, store } from './store.service';
-
-/**
- * The folder may be on a network share: a stat that hangs must read as
- * "unknown", not stall the service's polling.
- */
-const STAT_TIMEOUT_MS = 3_000;
-
-async function statSize(filePath: string): Promise<number | null> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timedOut = new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), STAT_TIMEOUT_MS);
-    });
-    const probe = stat(filePath).then(
-        (stats) => (stats.isFile() ? stats.size : null),
-        () => null
-    );
-    try {
-        return await Promise.race([probe, timedOut]);
-    } finally {
-        clearTimeout(timer);
-    }
-}
 
 let blockerId: number | null = null;
 
@@ -53,12 +28,44 @@ function keepAwake(active: boolean): void {
     }
 }
 
+/**
+ * The player engine is the DVR recorder: a background recording is a hidden
+ * embedded-MPV session recording with `stream-record`, exactly like the
+ * player's record button.
+ */
+const engine: DvrRecordingEngine = {
+    canRecord: () => embeddedMpvNativeService.canRecord(),
+    open: (input) =>
+        embeddedMpvNativeService.openRecordingSession({
+            ...input,
+            // The user's own session options (network/proxy tuning) apply to
+            // a DVR session too; the engine adds vo/ao off on top.
+            options: readEmbeddedMpvSessionOptions(),
+            // A Stalker `create_link` URL dies with the connection it was
+            // minted for, so a reconnect has to mint a new one first.
+            ...(input.refresh
+                ? {
+                      refreshPlayback: stalkerPlaybackRefresher({
+                          refresh: input.refresh,
+                          playlistId: input.metadata.playlistId,
+                          title: input.playback.title,
+                          thumbnail: input.playback.thumbnail,
+                      }),
+                  }
+                : {}),
+        }),
+    stop: (sessionId) =>
+        embeddedMpvNativeService.stopRecordingSession(sessionId),
+    state: (sessionId) =>
+        embeddedMpvNativeService.getRecordingSessionState(sessionId),
+    onFinalized: (listener) =>
+        embeddedMpvRecordingTracker.onRecordingFinalized(listener),
+    activeRowIds: () => embeddedMpvRecordingTracker.activeRowIds(),
+};
+
 export const backgroundRecordingService = new BackgroundRecordingService({
-    resolveRecorderPath: resolveBackgroundRecorderPath,
-    spawnRecorder: spawnRecorderProcess,
-    rows: createRecordingRowsStore(),
+    engine,
     resolveDirectory(requested) {
-        // mpv does not create missing folders; it records nothing instead.
         const directory =
             requested?.trim() ||
             store.get(RECORDING_FOLDER, '').trim() ||
@@ -66,9 +73,6 @@ export const backgroundRecordingService = new BackgroundRecordingService({
         mkdirSync(directory, { recursive: true });
         return directory;
     },
-    reservePath: reserveRecordingTargetPath,
-    releasePath: releaseRecordingTargetPath,
-    statSize,
     keepAwake,
     broadcast: broadcastBackgroundRecordingState,
 });

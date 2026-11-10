@@ -1,6 +1,7 @@
 import {
     ChangeDetectionStrategy,
     Component,
+    ElementRef,
     computed,
     input,
     output,
@@ -62,18 +63,25 @@ export class ChannelContextMenuComponent {
     );
 
     private readonly trigger = viewChild.required(MatMenuTrigger);
+    private readonly anchor = viewChild.required<ElementRef<HTMLElement>>(
+        'anchor'
+    );
 
     /** Opens the menu at the pointer, replacing a menu that is still open. */
     open(point: ChannelContextMenuPoint): void {
-        this.position.set({
-            x: `${point.clientX}px`,
-            y: `${point.clientY}px`,
-        });
+        const x = `${point.clientX}px`;
+        const y = `${point.clientY}px`;
+        this.position.set({ x, y });
+        // The binding only reaches the DOM with the next render, but the menu
+        // reads the anchor's rect when it opens — so on a session's first
+        // right-click it opened at the viewport origin instead of the pointer.
+        const anchor = this.anchor().nativeElement;
+        anchor.style.left = x;
+        anchor.style.top = y;
         const trigger = this.trigger();
         if (trigger.menuOpen) {
             trigger.closeMenu();
         }
-        // The anchor moves with the position signal; open after it renders.
         queueMicrotask(() => this.trigger().openMenu());
     }
 
