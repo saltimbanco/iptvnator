@@ -30,6 +30,7 @@ const STORE_KEYS = {
     MPV_REUSE_INSTANCE: 'MPV_REUSE_INSTANCE',
     STARTUP_WINDOW_MODE: 'STARTUP_WINDOW_MODE',
     PORTAL_CONNECTIVITY_GUARD: 'PORTAL_CONNECTIVITY_GUARD',
+    RECORDING_FOLDER: 'RECORDING_FOLDER',
     VLC_PLAYER_ARGUMENTS: 'VLC_PLAYER_ARGUMENTS',
     VLC_REUSE_INSTANCE: 'VLC_REUSE_INSTANCE',
 } as const;
@@ -60,6 +61,7 @@ jest.mock('../services/store.service', () => ({
     MPV_REUSE_INSTANCE: STORE_KEYS.MPV_REUSE_INSTANCE,
     STARTUP_WINDOW_MODE: STORE_KEYS.STARTUP_WINDOW_MODE,
     PORTAL_CONNECTIVITY_GUARD: STORE_KEYS.PORTAL_CONNECTIVITY_GUARD,
+    RECORDING_FOLDER: STORE_KEYS.RECORDING_FOLDER,
     VLC_PLAYER_ARGUMENTS: STORE_KEYS.VLC_PLAYER_ARGUMENTS,
     VLC_REUSE_INSTANCE: STORE_KEYS.VLC_REUSE_INSTANCE,
     PARENTAL_LOCK_ENABLED: 'PARENTAL_LOCK_ENABLED',
@@ -256,6 +258,23 @@ describe('SETTINGS_UPDATE', () => {
         expect(mockStoreSet.mock.calls).toEqual([
             [STORE_KEYS.STARTUP_WINDOW_MODE, 'normal'],
         ]);
+    });
+
+    it('mirrors a trimmed recording folder into the main-process store', () => {
+        settingsUpdateHandler({}, { recordingFolder: '  D:\\Recordings  ' });
+
+        expect(mockStoreSet.mock.calls).toEqual([
+            [STORE_KEYS.RECORDING_FOLDER, 'D:\\Recordings'],
+        ]);
+        expect(mockUpdateSettings).not.toHaveBeenCalled();
+    });
+
+    it('ignores a non-string recording folder instead of storing junk', () => {
+        settingsUpdateHandler({}, {
+            recordingFolder: 42 as unknown as string,
+        });
+
+        expect(mockStoreSet).not.toHaveBeenCalled();
     });
 
     it('mirrors the update channel into the main-process store and notifies the updater', async () => {
