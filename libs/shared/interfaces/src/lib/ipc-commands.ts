@@ -104,6 +104,14 @@ export const BACKGROUND_RECORDING_GET_STATE = 'BACKGROUND_RECORDING_GET_STATE';
 /** Main -> renderer push of `BackgroundRecordingState` on every change. */
 export const RECORDING_ACTIVE_STATE = 'RECORDING_ACTIVE_STATE';
 
+// Scheduled recordings (channel context menu). The main process owns the
+// timers, so they run while the window is hidden in the tray.
+export const RECORDING_SCHEDULE_CREATE = 'RECORDING_SCHEDULE_CREATE';
+export const RECORDING_SCHEDULE_CANCEL = 'RECORDING_SCHEDULE_CANCEL';
+export const RECORDING_SCHEDULE_GET_LIST = 'RECORDING_SCHEDULE_GET_LIST';
+/** Main -> renderer push after a schedule is created, fired or canceled. */
+export const RECORDING_SCHEDULE_UPDATE_EVENT = 'RECORDING_SCHEDULE_UPDATE_EVENT';
+
 // Xtream
 export const XTREAM_REQUEST = 'XTREAM_REQUEST';
 export const XTREAM_RESPONSE = 'XTREAM_RESPONSE';

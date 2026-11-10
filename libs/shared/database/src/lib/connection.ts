@@ -142,6 +142,32 @@ const RECORDINGS_INDEX_STATEMENTS = [
     `CREATE INDEX IF NOT EXISTS recordings_file_path_idx ON recordings(file_path)`,
     `CREATE INDEX IF NOT EXISTS recordings_playlist_idx ON recordings(playlist_id)`,
 ];
+// Scheduled recordings: the main process keeps one timer per pending row.
+// playlist_id carries no FK for the same reason as recordings: a schedule
+// outlives the playlist it was created from.
+const RECORDING_SCHEDULES_TABLE_SQL = `CREATE TABLE IF NOT EXISTS recording_schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      channel_name TEXT NOT NULL,
+      channel_logo_url TEXT,
+      playlist_id TEXT,
+      playlist_name TEXT,
+      source_type TEXT CHECK (source_type IN ('m3u', 'xtream', 'stalker')),
+      epg_channel_id TEXT,
+      playback_json TEXT NOT NULL,
+      metadata_json TEXT NOT NULL,
+      refresh_json TEXT,
+      start_at TEXT NOT NULL,
+      end_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'started', 'canceled', 'failed')),
+      error_message TEXT,
+      recording_id TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+  )`;
+const RECORDING_SCHEDULES_INDEX_STATEMENTS = [
+    `CREATE INDEX IF NOT EXISTS recording_schedules_status_idx ON recording_schedules(status)`,
+    `CREATE INDEX IF NOT EXISTS recording_schedules_start_idx ON recording_schedules(start_at)`,
+];
 
 const CREATE_TABLE_STATEMENTS = [
     playlistsTableSql('playlists'),
@@ -346,6 +372,9 @@ const CREATE_TABLE_STATEMENTS = [
     // Live-TV recordings table
     RECORDINGS_TABLE_SQL,
     ...RECORDINGS_INDEX_STATEMENTS,
+    // Scheduled recordings table
+    RECORDING_SCHEDULES_TABLE_SQL,
+    ...RECORDING_SCHEDULES_INDEX_STATEMENTS,
     // TMDB metadata cache (details payloads + search match resolutions)
     TMDB_METADATA_TABLE_SQL,
     TMDB_METADATA_INDEX_SQL,
@@ -404,6 +433,9 @@ const COLUMN_MIGRATION_STATEMENTS = [
     // Background recording (Windows): where it was started; NULL for
     // embedded MPV player recordings
     `ALTER TABLE recordings ADD COLUMN origin TEXT CHECK (origin IN ('button', 'menu', 'schedule'))`,
+    // Scheduled recordings: Stalker `create_link` URLs expire, so the row
+    // keeps what the main process needs to mint a fresh one at start time
+    `ALTER TABLE recording_schedules ADD COLUMN refresh_json TEXT`,
 ];
 
 const INDEX_MIGRATION_STATEMENTS = [

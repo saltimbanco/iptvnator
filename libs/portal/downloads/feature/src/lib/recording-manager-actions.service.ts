@@ -1,7 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
-import { type RecordingItem, RecordingsService } from '@iptvnator/services';
+import {
+    type RecordingItem,
+    RecordingsService,
+    RecordingSchedulesService,
+} from '@iptvnator/services';
+import type { RecordingScheduleItem } from '@iptvnator/shared/interfaces';
 import { DialogService } from '@iptvnator/ui/components';
 import type {
     RecordingActionResult,
@@ -17,11 +23,14 @@ interface RecordingOperationResult {
 @Injectable()
 export class RecordingManagerActionsService {
     private readonly recordings = inject(RecordingsService);
+    private readonly schedules = inject(RecordingSchedulesService);
     private readonly dialogs = inject(DialogService);
     private readonly translate = inject(TranslateService);
     private readonly snackBar = inject(MatSnackBar);
+    private readonly router = inject(Router);
 
     readonly pendingIds = signal<ReadonlySet<number>>(new Set());
+    readonly pendingScheduleIds = signal<ReadonlySet<number>>(new Set());
 
     async run(action: RecordingItemAction): Promise<RecordingActionResult> {
         const { item, type } = action;
@@ -37,10 +46,41 @@ export class RecordingManagerActionsService {
                     this.recordings.stopRecording(item.id)
                 );
             case 'play':
+                return this.playInApp(item);
             case 'reveal':
                 return this.runFileAction(type, item);
             case 'open-detail':
                 return 'ignored';
+        }
+    }
+
+    /** Cancel a pending schedule in the main process that owns its timer. */
+    async cancelSchedule(
+        schedule: RecordingScheduleItem
+    ): Promise<RecordingActionResult> {
+        if (this.pendingScheduleIds().has(schedule.id)) {
+            return 'ignored';
+        }
+        this.pendingScheduleIds.update((ids) => new Set(ids).add(schedule.id));
+        try {
+            const result = await this.schedules.cancel(schedule.id);
+            if (!result.success) {
+                this.showMessage('RECORDING_SCHEDULE.CANCEL_FAILED', 4000);
+                return 'failed';
+            }
+            this.showMessage('RECORDING_SCHEDULE.CANCELED', 4000);
+            return 'success';
+        } catch (error) {
+            this.showActionError(
+                error instanceof Error ? error.message : String(error)
+            );
+            return 'failed';
+        } finally {
+            this.pendingScheduleIds.update((ids) => {
+                const next = new Set(ids);
+                next.delete(schedule.id);
+                return next;
+            });
         }
     }
 
@@ -74,6 +114,27 @@ export class RecordingManagerActionsService {
                     this.recordings.removeRecording(item.id)
                 ),
         });
+    }
+
+    /** Playback happens in IPTVnator's own player, not the OS default app. */
+    private async playInApp(
+        item: RecordingItem
+    ): Promise<RecordingActionResult> {
+        if (!item.filePath) {
+            this.showMessage('DOWNLOADS.FILE_NOT_FOUND', 3000);
+            return 'file-missing';
+        }
+        try {
+            const navigated = await this.router.navigate([
+                '/workspace',
+                'downloads',
+                'recording-player',
+                String(item.id),
+            ]);
+            return navigated ? 'success' : 'failed';
+        } catch {
+            return 'failed';
+        }
     }
 
     private async runFileAction(

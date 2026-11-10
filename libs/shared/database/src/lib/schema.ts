@@ -422,6 +422,50 @@ export const recordings = sqliteTable(
 export type Recording = typeof recordings.$inferSelect;
 export type NewRecording = typeof recordings.$inferInsert;
 
+// Scheduled recordings (channel context menu → "Schedule recording…").
+// The main process arms one timer per pending row, so the schedule survives
+// a renderer reload and fires while the window is hidden in the tray. The
+// resolved playback is stored as JSON: Xtream and M3U live URLs stay valid
+// for the scheduled window, while an expired Stalker link fails loudly
+// instead of silently writing an empty file.
+export const recordingSchedules = sqliteTable(
+    'recording_schedules',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        channelName: text('channel_name').notNull(),
+        channelLogoUrl: text('channel_logo_url'),
+        playlistId: text('playlist_id'),
+        playlistName: text('playlist_name'),
+        sourceType: text('source_type', {
+            enum: ['m3u', 'xtream', 'stalker'],
+        }),
+        epgChannelId: text('epg_channel_id'),
+        playbackJson: text('playback_json').notNull(),
+        metadataJson: text('metadata_json').notNull(),
+        // Stalker only: the portal command the main process re-mints at the
+        // start instant, since `create_link` results expire.
+        refreshJson: text('refresh_json'),
+        startAt: text('start_at').notNull(),
+        endAt: text('end_at').notNull(),
+        status: text('status', {
+            enum: ['pending', 'started', 'canceled', 'failed'],
+        })
+            .notNull()
+            .default('pending'),
+        errorMessage: text('error_message'),
+        recordingId: text('recording_id'),
+        createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+    },
+    (table) => ({
+        statusIdx: index('recording_schedules_status_idx').on(table.status),
+        startIdx: index('recording_schedules_start_idx').on(table.startAt),
+    })
+);
+
+export type RecordingSchedule = typeof recordingSchedules.$inferSelect;
+export type NewRecordingSchedule = typeof recordingSchedules.$inferInsert;
+
 // TMDB metadata cache table.
 // Two row kinds share the table, discriminated by the lookup_key prefix:
 // - 'id:<tmdbId>'                 → full TMDB details payload (JSON)

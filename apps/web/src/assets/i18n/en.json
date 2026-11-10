@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Search groups...",
             "NO_RESULTS": "No matching groups found",
             "SAVE": "Save"
-        }
+        },
+        "SCHEDULE_RECORDING": "Schedule recording…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Programme guide"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Removing cached categories...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Keeping favorites, watch history, hidden categories, and playback progress ready for restore after sync.",
             "XTREAM_REFRESH_PROGRESS": "Local records processed: {{current}} / {{total}}",
-            "RAIL_RADIO": "Radio"
+            "RAIL_RADIO": "Radio",
+            "RAIL_RECORDINGS": "Recordings"
         },
         "SOURCES": {
             "TITLE": "Sources",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "History saved locally; server unavailable",
         "STATE_incompatible": "This server does not support history synchronization",
         "PENDING": "Queued history changes: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Schedule recording · {{channel}}",
+        "HINT": "IPTVnator records in the background. Keep the app running; it stays in the tray when the window is closed.",
+        "DATE": "Date",
+        "START": "Start",
+        "END": "End",
+        "SAVE": "Schedule",
+        "ERROR_TIMES": "Pick a date, a start and an end time.",
+        "ERROR_ORDER": "The end time must be after the start time.",
+        "ERROR_PAST": "Pick a time in the future.",
+        "ERROR_SAVE": "The recording could not be scheduled.",
+    "ERROR_RESOLVE": "This channel's stream could not be resolved for recording.",
+        "LIST_TITLE": "Scheduled recordings",
+        "CANCEL": "Cancel scheduled recording",
+        "CANCELED": "Scheduled recording canceled.",
+        "CANCEL_FAILED": "The scheduled recording could not be canceled."
+    },
+    "COMMON": {
+        "CANCEL": "Cancel",
+        "SAVE": "Save"
     }
 }

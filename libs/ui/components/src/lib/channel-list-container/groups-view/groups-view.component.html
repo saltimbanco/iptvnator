@@ -379,8 +379,10 @@
 
 <app-channel-context-menu
     [showMapEpg]="supportsEpgMapping"
+    [showScheduleRecording]="supportsScheduleRecording"
     [showDetails]="true"
     (mapEpg)="openEpgMapping()"
+    (scheduleRecording)="openScheduleRecording()"
     (details)="openChannelDetails()"
 />
 

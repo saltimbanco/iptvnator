@@ -252,7 +252,12 @@
     </div>
 </ng-template>
 
-<app-channel-context-menu [showMapEpg]="true" (mapEpg)="openEpgMapping()" />
+<app-channel-context-menu
+    [showMapEpg]="true"
+    [showScheduleRecording]="supportsScheduleRecording"
+    (mapEpg)="openEpgMapping()"
+    (scheduleRecording)="openScheduleRecording()"
+/>
 
 <!-- The channel list, stamped into the sidebar and — with its own search
      term — into the player's fullscreen channel panel. Every instance carries

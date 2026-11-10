@@ -18,6 +18,7 @@ export {
     downloads,
     downloadArchiveFinalizations,
     recordings,
+    recordingSchedules,
     appState,
     // Types
     type Playlist,
@@ -42,4 +43,6 @@ export {
     type NewDownload,
     type Recording,
     type NewRecording,
+    type RecordingSchedule,
+    type NewRecordingSchedule,
 } from '@iptvnator/shared/database';

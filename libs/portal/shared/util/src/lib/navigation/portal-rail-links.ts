@@ -18,6 +18,8 @@ export interface PortalRailLink {
     icon: string;
     tooltip: string;
     path: (string | number)[];
+    /** Opens a filtered view of the target page (e.g. recordings). */
+    queryParams?: Record<string, string>;
     exact?: boolean;
     section?: PortalRailSection;
 }

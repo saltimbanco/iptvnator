@@ -120,6 +120,14 @@
     }
 
     <main class="downloads__content" data-test-id="downloads-content">
+        @if (scheduledRecordings().length > 0) {
+            <app-recording-schedule-list
+                [schedules]="scheduledRecordings()"
+                [pendingIds]="schedulePendingIds()"
+                (cancelRequested)="cancelSchedule($event)"
+            />
+        }
+
         @if (!isAvailable()) {
             <div class="downloads__message">
                 <mat-icon aria-hidden="true">desktop_access_disabled</mat-icon>

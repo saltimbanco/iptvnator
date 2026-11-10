@@ -18,12 +18,17 @@ import {
     PlaylistsService,
     type RecordingItem,
     RecordingsService,
+    RecordingSchedulesService,
 } from '@iptvnator/services';
 import {
     PORTAL_SHELL_ACTIONS,
     PortalCollectionContextService,
 } from '@iptvnator/portal/shared/util';
-import type { Playlist, XtreamCategory } from '@iptvnator/shared/interfaces';
+import type {
+    Playlist,
+    RecordingScheduleItem,
+    XtreamCategory,
+} from '@iptvnator/shared/interfaces';
 import { DialogService } from '@iptvnator/ui/components';
 import { BehaviorSubject, type Observable, Subject } from 'rxjs';
 import { DownloadLibraryNavigationService } from './download-library-navigation.service';
@@ -164,6 +169,15 @@ describe('DownloadsComponent', () => {
         open: jest.Mock;
     };
     let snackBar: { open: jest.Mock };
+    let scheduledItems: ReturnType<typeof signal<RecordingScheduleItem[]>>;
+    let recordingSchedules: {
+        readonly schedules: typeof scheduledItems;
+        readonly pending: ReturnType<typeof computed<RecordingScheduleItem[]>>;
+        readonly isAvailable: ReturnType<typeof computed<boolean>>;
+        load: jest.Mock;
+        create: jest.Mock;
+        cancel: jest.Mock;
+    };
     let matDialog: { open: jest.Mock };
     let recordings: ReturnType<typeof signal<RecordingItem[]>>;
     let recordingsService: {
@@ -223,6 +237,19 @@ describe('DownloadsComponent', () => {
         dialogSetInput = jest.fn();
         dialogActionListener = undefined;
         snackBar = { open: jest.fn() };
+        scheduledItems = signal<RecordingScheduleItem[]>([]);
+        recordingSchedules = {
+            schedules: scheduledItems,
+            pending: computed(() =>
+                scheduledItems().filter(
+                    (schedule) => schedule.status === 'pending'
+                )
+            ),
+            isAvailable: computed(() => true),
+            load: jest.fn(async () => undefined),
+            create: jest.fn(success),
+            cancel: jest.fn(success),
+        };
         navigation = {
             canOpen: jest.fn(() => true),
             open: jest.fn(async () => true),
@@ -299,6 +326,10 @@ describe('DownloadsComponent', () => {
                 {
                     provide: RecordingsService,
                     useValue: recordingsService,
+                },
+                {
+                    provide: RecordingSchedulesService,
+                    useValue: recordingSchedules,
                 },
                 {
                     provide: PlaylistsService,
@@ -396,6 +427,13 @@ describe('DownloadsComponent', () => {
                 },
             },
             HOME: { PLAYLISTS: { ADD_YOUR_FIRST: 'Add playlist' } },
+            RECORDING_SCHEDULE: {
+                LIST_TITLE: 'Scheduled recordings',
+                CANCEL: 'Cancel scheduled recording',
+                CANCELED: 'Scheduled recording canceled.',
+                CANCEL_FAILED:
+                    'The scheduled recording could not be canceled.',
+            },
         });
         translate.use('en');
 
@@ -1078,6 +1116,110 @@ describe('DownloadsComponent', () => {
             undefined,
             expect.objectContaining({ duration: 3000 })
         );
+    });
+
+    function schedule(
+        id: number,
+        overrides: Partial<RecordingScheduleItem> = {}
+    ): RecordingScheduleItem {
+        return {
+            id,
+            channelName: `Scheduled channel ${id}`,
+            startAt: '2026-08-15T19:00:00Z',
+            endAt: '2026-08-15T20:00:00Z',
+            status: 'pending',
+            ...overrides,
+        };
+    }
+
+    it('lists only pending schedules above the recordings manager', () => {
+        scheduledItems.set([
+            schedule(1),
+            schedule(2, { status: 'started' }),
+            schedule(3),
+        ]);
+        fixture.detectChanges();
+
+        const root = fixture.nativeElement as HTMLElement;
+        const list = root.querySelector('[data-test-id="recording-schedule-list"]');
+        expect(list).not.toBeNull();
+        expect(list?.querySelectorAll('.recording-schedules__row')).toHaveLength(
+            2
+        );
+        expect(list?.textContent).toContain('Scheduled channel 1');
+        expect(list?.textContent).toContain('Scheduled channel 3');
+        expect(list?.textContent).not.toContain('Scheduled channel 2');
+    });
+
+    it('hides the schedule list once nothing is pending', () => {
+        scheduledItems.set([schedule(4)]);
+        fixture.detectChanges();
+        expect(
+            fixture.nativeElement.querySelector(
+                '[data-test-id="recording-schedule-list"]'
+            )
+        ).not.toBeNull();
+
+        scheduledItems.set([]);
+        fixture.detectChanges();
+
+        expect(
+            fixture.nativeElement.querySelector(
+                '[data-test-id="recording-schedule-list"]'
+            )
+        ).toBeNull();
+    });
+
+    it('cancels a pending schedule through the main process and confirms it', async () => {
+        const operation = deferred<{ success: boolean }>();
+        recordingSchedules.cancel.mockReturnValueOnce(operation.promise);
+        scheduledItems.set([schedule(5)]);
+        fixture.detectChanges();
+
+        const cancelButton = fixture.nativeElement.querySelector(
+            '[data-test-action="cancel-schedule-5"]'
+        ) as HTMLButtonElement;
+        expect(cancelButton).not.toBeNull();
+        cancelButton.click();
+        fixture.detectChanges();
+
+        expect(recordingSchedules.cancel).toHaveBeenCalledWith(5);
+        expect(cancelButton.disabled).toBe(true);
+        expect(snackBar.open).not.toHaveBeenCalled();
+
+        operation.resolve({ success: true });
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        expect(snackBar.open).toHaveBeenCalledWith(
+            'Scheduled recording canceled.',
+            undefined,
+            expect.objectContaining({ duration: 4000 })
+        );
+        expect(cancelButton.disabled).toBe(false);
+    });
+
+    it('reports a refused cancellation instead of pretending it worked', async () => {
+        recordingSchedules.cancel.mockResolvedValueOnce({
+            success: false,
+            error: 'schedule already started',
+        });
+        scheduledItems.set([schedule(6)]);
+        fixture.detectChanges();
+
+        (
+            fixture.nativeElement.querySelector(
+                '[data-test-action="cancel-schedule-6"]'
+            ) as HTMLButtonElement
+        ).click();
+        await fixture.whenStable();
+
+        expect(snackBar.open).toHaveBeenCalledWith(
+            'The scheduled recording could not be canceled.',
+            undefined,
+            expect.objectContaining({ duration: 4000 })
+        );
+        expect(recordingSchedules.load).not.toHaveBeenCalled();
     });
 
     it('renders one scroll owner with fixed controls and both child surfaces', () => {

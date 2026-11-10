@@ -104,6 +104,20 @@ export class WorkspaceShellRouteStateService {
             exact: true,
         });
 
+        // Past recordings get their own rail entry next to Radio and the
+        // other library sections; it opens the manager's Recordings filter.
+        if (this.runtime.supportsRecordingSchedule) {
+            links.push({
+                icon: 'event',
+                tooltip: this.translateText(
+                    'WORKSPACE.SHELL.RAIL_RECORDINGS'
+                ),
+                path: ['/workspace/downloads'],
+                queryParams: { filter: 'recording' },
+                exact: true,
+            });
+        }
+
         return links;
     });
     readonly isDashboardRoute = computed(

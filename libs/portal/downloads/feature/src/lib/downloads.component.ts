@@ -20,6 +20,7 @@ import {
     PlaylistsService,
     type RecordingItem,
     RecordingsService,
+    RecordingSchedulesService,
     injectTranslationTick,
 } from '@iptvnator/services';
 import { EmptyStateComponent } from '@iptvnator/playlist/shared/ui';
@@ -30,7 +31,11 @@ import {
     createPortalCollectionContext,
     queryParamSignal,
 } from '@iptvnator/portal/shared/util';
-import type { Playlist, XtreamCategory } from '@iptvnator/shared/interfaces';
+import type {
+    Playlist,
+    RecordingScheduleItem,
+    XtreamCategory,
+} from '@iptvnator/shared/interfaces';
 import { map, startWith, take } from 'rxjs';
 import type {
     DownloadActionResult,
@@ -54,6 +59,7 @@ import { RecordingLibraryComponent } from './recording-library.component';
 import { RecordingManagerActionsService } from './recording-manager-actions.service';
 import { buildRecordingManagerViewModel } from './recording-manager.viewmodel';
 import { RecordingQueueComponent } from './recording-queue.component';
+import { RecordingScheduleListComponent } from './recording-schedule-list/recording-schedule-list.component';
 import { dialogSize } from '@iptvnator/ui/components/dialog-size';
 
 const FILTER_KEYS = {
@@ -87,6 +93,7 @@ const ACTIVE_RECORDING_REFRESH_MS = 15_000;
         MatTooltip,
         RecordingLibraryComponent,
         RecordingQueueComponent,
+        RecordingScheduleListComponent,
         TranslatePipe,
     ],
 })
@@ -104,6 +111,7 @@ export class DownloadsComponent {
     readonly downloadsService = inject(DownloadsService);
     readonly recordingsService = inject(RecordingsService);
     private readonly recordingActions = inject(RecordingManagerActionsService);
+    private readonly schedulesService = inject(RecordingSchedulesService);
 
     readonly pendingIds = this.actions.pendingIds;
     readonly isClearing = this.actions.isClearing;
@@ -159,6 +167,8 @@ export class DownloadsComponent {
     );
     readonly recordingsAvailable = this.recordingsService.isAvailable;
     readonly recordingPendingIds = this.recordingActions.pendingIds;
+    readonly scheduledRecordings = this.schedulesService.pending;
+    readonly schedulePendingIds = this.recordingActions.pendingScheduleIds;
     readonly recordingModel = computed(() =>
         buildRecordingManagerViewModel({
             recordings: this.recordingsAvailable()
@@ -282,6 +292,10 @@ export class DownloadsComponent {
         action: RecordingItemAction
     ): Promise<RecordingActionResult> {
         return this.recordingActions.run(action);
+    }
+
+    cancelSchedule(schedule: RecordingScheduleItem): void {
+        void this.recordingActions.cancelSchedule(schedule);
     }
 
     openRecordingDetail(item: RecordingItem): void {

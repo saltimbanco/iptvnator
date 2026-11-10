@@ -38,6 +38,7 @@ import {
     ChannelListSkeletonComponent,
     EpgMappingDialogComponent,
     ResizableDirective,
+    ScheduleRecordingLauncherService,
 } from '@iptvnator/ui/components';
 import {
     EpgPreferencesService,
@@ -49,6 +50,7 @@ import {
     injectTranslationTick,
 } from '@iptvnator/services';
 import { isStalkerPlaybackRequestLockCurrent } from './stalker-live-lock-guard';
+import { buildStalkerScheduleTarget } from './stalker-schedule-target';
 import {
     foldSearchText,
     buildStalkerEpgMappingKey,
@@ -385,6 +387,12 @@ export class StalkerLiveStreamLayoutComponent
         ChannelContextMenuComponent
     );
     readonly contextMenuChannel = signal<StalkerItvChannel | null>(null);
+    private readonly scheduleLauncher = inject(
+        ScheduleRecordingLauncherService
+    );
+    get supportsScheduleRecording(): boolean {
+        return this.scheduleLauncher.isAvailable;
+    }
     readonly isElectron = this.runtime.isElectron;
     get supportsProviderEpg(): boolean {
         return (
@@ -1347,6 +1355,50 @@ export class StalkerLiveStreamLayoutComponent
     onChannelContextMenu(channel: StalkerItvChannel, event: MouseEvent): void {
         this.contextMenuChannel.set(channel);
         this.channelContextMenu().open(event);
+    }
+
+    /**
+     * Stalker resolves a channel through `create_link`, which mints the
+     * stream URL (and the portal cookies the recorder needs) only for the
+     * session that asks. The schedule therefore stores today's resolution
+     * plus the portal command, so the main process can mint a fresh link at
+     * the start instant instead of recording an expired URL.
+     */
+    async openScheduleRecording(): Promise<void> {
+        const channel = this.contextMenuChannel();
+        if (!channel) {
+            return;
+        }
+
+        this.channelContextMenu().close();
+        try {
+            const isRadio = this.isRadioMode();
+            const playable = this.toPlayableChannel(channel);
+            const playback = isRadio
+                ? await this.stalkerStore.resolveRadioPlayback(playable)
+                : await this.stalkerStore.resolveItvPlayback(playable);
+            const target = buildStalkerScheduleTarget(
+                channel,
+                playback,
+                this.stalkerStore.currentPlaylist(),
+                isRadio ? 'radio' : 'itv'
+            );
+            if (!target) {
+                this.reportScheduleFailure();
+                return;
+            }
+            this.scheduleLauncher.open(target);
+        } catch {
+            this.reportScheduleFailure();
+        }
+    }
+
+    private reportScheduleFailure(): void {
+        this.snackBar.open(
+            this.translate.instant('RECORDING_SCHEDULE.ERROR_RESOLVE'),
+            undefined,
+            { duration: 4000 }
+        );
     }
 
     async openEpgMapping(): Promise<void> {

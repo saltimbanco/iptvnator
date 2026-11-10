@@ -159,6 +159,14 @@ export const routes: Routes = [
                     ),
             },
             {
+                path: 'downloads/recording-player/:recordingId',
+                canActivate: [recordingsCapabilityGuard],
+                loadComponent: () =>
+                    import('@iptvnator/portal/downloads/feature').then(
+                        (c) => c.RecordingPlayerComponent
+                    ),
+            },
+            {
                 path: 'downloads/:downloadId',
                 loadComponent: () =>
                     import('@iptvnator/portal/downloads/feature').then(

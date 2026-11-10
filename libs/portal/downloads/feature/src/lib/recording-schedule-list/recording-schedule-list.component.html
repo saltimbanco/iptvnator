@@ -1,0 +1,71 @@
+@if (schedules().length > 0) {
+    <section
+        class="recording-schedules"
+        data-test-id="recording-schedule-list"
+        aria-labelledby="recording-schedules-heading"
+    >
+        <header class="recording-schedules__header">
+            <h2 id="recording-schedules-heading">
+                <span>{{ 'RECORDING_SCHEDULE.LIST_TITLE' | translate }}</span>
+                <span class="app-count-badge" aria-hidden="true">
+                    {{ schedules().length }}
+                </span>
+            </h2>
+        </header>
+
+        <ul class="recording-schedules__list" role="list">
+            @for (schedule of schedules(); track schedule.id) {
+                <li
+                    class="recording-schedules__row"
+                    [attr.data-test-id]="'recording-schedule-' + schedule.id"
+                    [attr.aria-busy]="isPending(schedule.id) ? 'true' : null"
+                >
+                    <span
+                        class="recording-schedules__logo"
+                        aria-hidden="true"
+                    >
+                        @if (schedule.channelLogoUrl) {
+                            <img
+                                [src]="schedule.channelLogoUrl"
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                            />
+                        } @else {
+                            <mat-icon>schedule</mat-icon>
+                        }
+                    </span>
+
+                    <div class="recording-schedules__body">
+                        <span class="recording-schedules__channel">
+                            {{ schedule.channelName }}
+                        </span>
+                        <span class="recording-schedules__times">
+                            {{ schedule.startAt | date: 'd MMM' }}
+                            · {{ schedule.startAt | date: 'HH:mm' }}
+                            –
+                            {{ schedule.endAt | date: 'HH:mm' }}
+                            @if (schedule.playlistName) {
+                                · {{ schedule.playlistName }}
+                            }
+                        </span>
+                    </div>
+
+                    <button
+                        mat-icon-button
+                        type="button"
+                        class="recording-schedules__cancel"
+                        [disabled]="isPending(schedule.id)"
+                        [attr.aria-label]="
+                            'RECORDING_SCHEDULE.CANCEL' | translate
+                        "
+                        [attr.data-test-action]="'cancel-schedule-' + schedule.id"
+                        (click)="cancel(schedule)"
+                    >
+                        <mat-icon aria-hidden="true">cancel</mat-icon>
+                    </button>
+                </li>
+            }
+        </ul>
+    </section>
+}

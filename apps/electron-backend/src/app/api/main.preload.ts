@@ -5,6 +5,7 @@ import type {
     XtreamFavoriteRemovalRef,
     XtreamBackupFavoriteItem,
     XtreamCatalogStateCondition,
+    RecordingScheduleCreateRequest,
 } from '@iptvnator/shared/interfaces';
 import type { SourceProbeContext } from '@iptvnator/shared/interfaces';
 import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron';
@@ -14,6 +15,10 @@ import {
     BACKGROUND_RECORDING_START,
     BACKGROUND_RECORDING_STOP,
     RECORDING_ACTIVE_STATE,
+    RECORDING_SCHEDULE_CANCEL,
+    RECORDING_SCHEDULE_CREATE,
+    RECORDING_SCHEDULE_GET_LIST,
+    RECORDING_SCHEDULE_UPDATE_EVENT,
     APP_UPDATE_CHECK,
     APP_UPDATE_DOWNLOAD,
     APP_UPDATE_GET_RELEASE_NOTES,
@@ -1312,6 +1317,19 @@ const electronApi: ElectronBridgeApi = {
         const handler = () => callback();
         ipcRenderer.on('RECORDINGS_UPDATE_EVENT', handler);
         return () => ipcRenderer.off('RECORDINGS_UPDATE_EVENT', handler);
+    },
+    // Scheduled recordings (owned by the main process, tray-proof)
+    recordingScheduleGetList: () =>
+        ipcRenderer.invoke(RECORDING_SCHEDULE_GET_LIST),
+    recordingScheduleCreate: (request: RecordingScheduleCreateRequest) =>
+        ipcRenderer.invoke(RECORDING_SCHEDULE_CREATE, request),
+    recordingScheduleCancel: (scheduleId: number) =>
+        ipcRenderer.invoke(RECORDING_SCHEDULE_CANCEL, scheduleId),
+    onRecordingSchedulesUpdate: (callback: () => void) => {
+        const handler = () => callback();
+        ipcRenderer.on(RECORDING_SCHEDULE_UPDATE_EVENT, handler);
+        return () =>
+            ipcRenderer.off(RECORDING_SCHEDULE_UPDATE_EVENT, handler);
     },
     // Background recording (Windows recorder process)
     backgroundRecordingStart: (request: BackgroundRecordingStartRequest) =>

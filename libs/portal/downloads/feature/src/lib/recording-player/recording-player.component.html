@@ -1,0 +1,42 @@
+@if (item(); as recording) {
+    <section class="recording-player" data-testid="recording-player">
+        <header class="recording-player__header">
+            <button
+                mat-icon-button
+                type="button"
+                data-testid="recording-player-back"
+                [attr.aria-label]="'DOWNLOADS.OFFLINE_DETAIL.BACK' | translate"
+                (click)="goBack()"
+            >
+                <mat-icon aria-hidden="true">arrow_back</mat-icon>
+            </button>
+            <div class="recording-player__heading">
+                <span class="recording-player__eyebrow">
+                    {{ 'DOWNLOADS.RECORDING_BADGE' | translate }}
+                </span>
+                <h1>{{ title() }}</h1>
+            </div>
+        </header>
+
+        @if (playback(); as playback) {
+            <app-portal-inline-player
+                [playbackSessionKey]="'recording:' + recording.id"
+                [playback]="playback"
+                [playerOverride]="player()"
+                (closed)="goBack()"
+            />
+        } @else {
+            <div class="recording-player__message">
+                <mat-icon aria-hidden="true">error_outline</mat-icon>
+                <p>
+                    {{
+                        'DOWNLOADS.RECORDING_DETAIL.MISSING_BODY' | translate
+                    }}
+                </p>
+                <button mat-flat-button type="button" (click)="goBack()">
+                    {{ 'DOWNLOADS.OFFLINE_DETAIL.BACK' | translate }}
+                </button>
+            </div>
+        }
+    </section>
+}

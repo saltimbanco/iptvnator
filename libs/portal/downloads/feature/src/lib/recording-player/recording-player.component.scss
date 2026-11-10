@@ -1,0 +1,57 @@
+:host {
+    display: block;
+    height: 100%;
+    overflow: auto;
+}
+
+.recording-player {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px clamp(16px, 3vw, 32px) 24px;
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    &__heading {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+
+        h1 {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    &__eyebrow {
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.65;
+    }
+
+    &__message {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 48px 16px;
+        text-align: center;
+        opacity: 0.85;
+
+        mat-icon {
+            font-size: 40px;
+            width: 40px;
+            height: 40px;
+        }
+    }
+}

@@ -61,7 +61,9 @@
 
         <app-channel-context-menu
             [showMapEpg]="true"
+            [showScheduleRecording]="supportsScheduleRecording"
             (mapEpg)="openEpgMapping()"
+            (scheduleRecording)="openScheduleRecording()"
         />
     } @else {
         <div class="empty-search-state">

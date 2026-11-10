@@ -66,16 +66,18 @@ function removeExpiredContextEntries() {
     }
 }
 
-export function rememberStalkerPlaybackContext(input: {
+/**
+ * Headers a minted portal stream needs. Shared by the remembered playback
+ * context (external player fallback) and the scheduled-recording refresh, so
+ * the two cannot disagree about what a portal-owned stream carries.
+ */
+export function buildStalkerPlaybackHeaders(input: {
     streamUrl: string;
     portalUrl: string;
     macAddress: string;
     serialNumber?: string;
     token?: string;
-}) {
-    const streamKey = normalizeStreamUrl(input.streamUrl);
-    if (!streamKey || !input.macAddress) return;
-
+}): Record<string, string> {
     const serialNumber = normalizeStalkerSerialNumber(input.serialNumber);
     const cookieParts = [
         `mac=${input.macAddress}`,
@@ -108,7 +110,7 @@ export function rememberStalkerPlaybackContext(input: {
             unwrapStreamUrl(input.streamUrl)
         );
 
-    const headers: Record<string, string> = crossOriginStream
+    return crossOriginStream
         ? {
               // Match the renderer's direct profile; the player owns Range
               // so each seek can request its own byte offset.
@@ -121,20 +123,28 @@ export function rememberStalkerPlaybackContext(input: {
               Cookie: cookieParts.join('; '),
               'User-Agent': STALKER_MAG_USER_AGENT,
               'X-User-Agent': STALKER_MAG_USER_AGENT,
+              ...(portalOrigin
+                  ? { Origin: portalOrigin, Referer: portalOrigin }
+                  : {}),
+              ...(serialNumber ? { SN: serialNumber } : {}),
+              ...(input.token
+                  ? { Authorization: `Bearer ${input.token}` }
+                  : {}),
           };
+}
 
-    if (!crossOriginStream && portalOrigin) {
-        headers['Origin'] = portalOrigin;
-        headers['Referer'] = portalOrigin;
-    }
+export function rememberStalkerPlaybackContext(input: {
+    streamUrl: string;
+    portalUrl: string;
+    macAddress: string;
+    serialNumber?: string;
+    token?: string;
+}) {
+    const streamKey = normalizeStreamUrl(input.streamUrl);
+    if (!streamKey || !input.macAddress) return;
 
-    if (!crossOriginStream && serialNumber) {
-        headers['SN'] = serialNumber;
-    }
-
-    if (!crossOriginStream && input.token) {
-        headers['Authorization'] = `Bearer ${input.token}`;
-    }
+    const streamOrigin = getOrigin(input.streamUrl) || undefined;
+    const headers = buildStalkerPlaybackHeaders(input);
 
     playbackContextByStream.set(streamKey, {
         headers,

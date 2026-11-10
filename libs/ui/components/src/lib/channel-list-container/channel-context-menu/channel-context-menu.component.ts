@@ -21,8 +21,8 @@ export type ChannelContextMenuPoint = Pick<MouseEvent, 'clientX' | 'clientY'>;
  *
  * The host keeps the channel the menu was opened for and its own handlers;
  * this component owns the anchor, the menu and its rows, which always come
- * in one order: Map EPG, Show details, View in a playlist, and Remove from
- * history as a destructive row after a divider.
+ * in one order: Map EPG, Schedule recording, Show details, View in a
+ * playlist, and Remove from history as a destructive row after a divider.
  */
 @Component({
     selector: 'app-channel-context-menu',
@@ -35,6 +35,11 @@ export class ChannelContextMenuComponent {
     readonly showMapEpg = input(false);
     readonly showDetails = input(false);
     /**
+     * "Schedule recording…": Electron builds whose main process owns the
+     * scheduler. Hidden everywhere else (PWA, older bridges).
+     */
+    readonly showScheduleRecording = input(false);
+    /**
      * The playlist to offer "View in …" for; no row while null. An empty
      * name (a playlist saved without one) still shows the row.
      */
@@ -42,6 +47,7 @@ export class ChannelContextMenuComponent {
     readonly showRemoveFromHistory = input(false);
 
     readonly mapEpg = output<void>();
+    readonly scheduleRecording = output<void>();
     readonly details = output<void>();
     readonly openInPlaylist = output<void>();
     readonly removeFromHistory = output<void>();
@@ -50,6 +56,7 @@ export class ChannelContextMenuComponent {
     protected readonly hasLeadingRows = computed(
         () =>
             this.showMapEpg() ||
+            this.showScheduleRecording() ||
             this.showDetails() ||
             this.openInPlaylistName() !== null
     );

@@ -8,9 +8,11 @@ playing session) are a separate, older path; see
 [embedded MPV](embedded-mpv-native.md#live-stream-recording).
 
 Status: the main-process core is in place (recorder executable, service,
-IPC, persistence). The renderer (Record button, takeover, switch guard,
-relay player view), the tray and window lifecycle, scheduling and failover
-are not built yet.
+IPC, persistence) and scheduled recordings plus the tray lifetime are built
+on top of it. The in-player Record button, takeover, switch guard and the
+relay player view are not built yet; recordings are started from the channel
+context menu and by the scheduler, and past ones play in the inline player
+(`/workspace/downloads/recording-player/:recordingId`).
 
 ## Recorder executable
 
@@ -86,3 +88,58 @@ wired with Electron dependencies in `background-recording.runtime.ts`.
 
 `BackgroundRecordingState.available` reports whether the recorder is present.
 `RECORDINGS_UPDATE_EVENT` still fires when rows change.
+
+## Scheduling
+
+`recording_schedules` (main-process SQLite) holds one row per scheduled
+recording: the resolved playback and recording metadata as JSON, the start
+and end instant, and a status (`pending`, `started`, `canceled`, `failed`).
+
+- **Where the row comes from.** Every channel list's right-click menu offers
+  *Schedule recording…* (`ChannelContextMenuComponent` + `ScheduleRecordingLauncherService`).
+  The list resolves the playback first — an M3U channel's own URL and headers,
+  the Xtream live URL built from the playlist credentials, or a Stalker
+  `create_link` result with the portal's mac cookie headers — and the dialog
+  only collects a date, a start and an end time. The renderer never holds the
+  timer. Stalker radio rows resolve through `resolveRadioPlayback`, ITV rows
+  through `resolveItvPlayback`; a channel whose link cannot be resolved shows
+  `RECORDING_SCHEDULE.ERROR_RESOLVE` instead of opening the dialog. Stalker
+  rows also carry `refresh` (`kind: 'stalker'`, the portal `cmd` and
+  `contentType`), which is what the main process re-mints at start time.
+- **Who fires it.** `RecordingSchedulerService` arms one timer per pending
+  row at startup and after every create/cancel. At the start instant it hands
+  the stored playback to `BackgroundRecordingService` with `origin: 'schedule'`
+  and the planned end, so the recorder stops itself on time. A launch that
+  lands inside a schedule's window starts it immediately; a window that has
+  already passed marks the row `failed` instead of recording nothing.
+- **Expiring links.** The playback is stored once, with the headers the
+  portal needs. Xtream and M3U live URLs stay valid; a Stalker `create_link`
+  URL usually does not. A Stalker schedule therefore also stores the
+  channel's portal command (`refresh_json`), and the main process handshakes
+  and mints a fresh `create_link` right before starting (both ITV and radio).
+  The stored link is the fallback for a portal that cannot be reached at the
+  start instant — for example a playlist deleted after scheduling.
+- **IPC.** `RECORDING_SCHEDULE_CREATE`, `RECORDING_SCHEDULE_CANCEL`,
+  `RECORDING_SCHEDULE_GET_LIST` (invoke) and `RECORDING_SCHEDULE_UPDATE_EVENT`
+  (push). The capability gate is `supportsRecordingSchedule`.
+
+## Tray and window lifetime
+
+`tray.service.ts` creates the tray after the main window exists and supplies
+the only way back from a hidden window. With a tray present, a window `close`
+hides instead of quitting, so a scheduled recording still fires and an active
+one is not cut short; `app.quit()` (tray menu, application menu, update
+install) sets the bypass first, and a close already intercepted by the
+unsaved-changes guard is left to that guard. Without a loadable icon no tray
+is created and closing keeps quitting, `IPTVNATOR_NO_TRAY=1` forces that.
+
+Past recordings keep the existing manager surface (`/workspace/downloads`,
+recordings filter), reachable from the rail's *Recordings* entry, which opens
+that filtered view. That manager also lists the pending schedule rows with a
+cancel action, so the main-process timers are visible and revocable from the
+renderer.
+
+Playback runs through the shared inline player. Recordings are MPEG-TS, which
+the web engines cannot demux, so the recording player prefers the embedded MPV
+engine when the runtime supports it; the filesystem path goes to that engine
+unchanged and is converted to a `file://` URL for the web engines.

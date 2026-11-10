@@ -63,9 +63,11 @@
 
 <app-channel-context-menu
     [showMapEpg]="supportsEpgMapping"
+    [showScheduleRecording]="supportsScheduleRecording"
     [showDetails]="true"
     [showRemoveFromHistory]="true"
     (mapEpg)="openEpgMapping()"
+    (scheduleRecording)="openScheduleRecording()"
     (details)="openChannelDetails()"
     (removeFromHistory)="removeContextMenuChannel()"
 />

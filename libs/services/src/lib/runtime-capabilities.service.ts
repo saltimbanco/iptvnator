@@ -215,6 +215,19 @@ export class RuntimeCapabilitiesService {
         return this.isElectron;
     }
 
+    /**
+     * Scheduled recordings: the main process keeps the timers and starts
+     * the background recorder, so the whole feature needs both schedule
+     * bridge halves.
+     */
+    get supportsRecordingSchedule(): boolean {
+        return (
+            this.hasElectronMethod('recordingScheduleCreate') &&
+            this.hasElectronMethod('recordingScheduleGetList') &&
+            this.hasElectronMethod('recordingScheduleCancel')
+        );
+    }
+
     get supportsSqlite(): boolean {
         return [
             'dbDeleteAllPlaylists',

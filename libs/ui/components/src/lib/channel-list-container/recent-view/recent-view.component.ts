@@ -22,6 +22,11 @@ import {
     epgProviderClockMs,
 } from '@iptvnator/shared/interfaces';
 import { ChannelContextMenuComponent } from '../channel-context-menu/channel-context-menu.component';
+import {
+    buildM3uRecordingMetadata,
+    buildM3uSchedulePlayback,
+} from '../schedule-recording-dialog/schedule-playback.util';
+import { ScheduleRecordingLauncherService } from '../schedule-recording-dialog/schedule-recording-launcher.service';
 import { EpgMappingDialogComponent } from '../epg-mapping-dialog/epg-mapping-dialog.component';
 import { ChannelDetailsDialogComponent } from '../channel-details-dialog/channel-details-dialog.component';
 import { resolveChannelLogo } from '../channel-logo-fallback.util';
@@ -78,6 +83,12 @@ export class RecentViewComponent {
     readonly removeRecent = output<string>();
 
     readonly contextMenuChannel = signal<Channel | null>(null);
+    private readonly scheduleLauncher = inject(
+        ScheduleRecordingLauncherService
+    );
+    get supportsScheduleRecording(): boolean {
+        return this.scheduleLauncher.isAvailable;
+    }
 
     readonly filteredRecentItems = computed(() => {
         const recentItems = this.recentItems();
@@ -144,6 +155,19 @@ export class RecentViewComponent {
     onChannelContextMenu(channel: Channel, event: MouseEvent): void {
         this.contextMenuChannel.set(channel);
         this.channelContextMenu().open(event);
+    }
+
+    openScheduleRecording(): void {
+        const channel = this.contextMenuChannel();
+        if (!channel) {
+            return;
+        }
+
+        this.channelContextMenu().close();
+        this.scheduleLauncher.open({
+            playback: buildM3uSchedulePlayback(channel),
+            metadata: buildM3uRecordingMetadata(channel),
+        });
     }
 
     openEpgMapping(): void {

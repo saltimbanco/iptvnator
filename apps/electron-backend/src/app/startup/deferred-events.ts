@@ -28,6 +28,11 @@ import { reconcileStaleRecordings } from '../events/database/recording-recovery'
 import BackgroundRecordingEvents, {
     shutdownBackgroundRecording,
 } from '../events/background-recording.events';
+import RecordingScheduleEvents, {
+    shutdownRecordingScheduler,
+    startRecordingScheduler,
+} from '../events/recording-schedule.events';
+import { setRecordingSchedulesMainWindow } from '../events/database/recording-schedule-broadcast';
 import ElectronEvents from '../events/electron.events';
 import EmbeddedMpvEvents, {
     shutdownEmbeddedMpv,
@@ -91,6 +96,7 @@ export function bootstrapDeferredEvents(
     ElectronEvents.bootstrapElectronEvents();
     EmbeddedMpvEvents.bootstrapEmbeddedMpvEvents();
     BackgroundRecordingEvents.bootstrapBackgroundRecordingEvents();
+    RecordingScheduleEvents.bootstrapRecordingScheduleEvents();
     PlaylistEvents.bootstrapPlaylistEvents();
     SharedEvents.bootstrapSharedEvents();
     PlayerEvents.bootstrapPlayerEvents();
@@ -115,6 +121,7 @@ export function bootstrapDeferredEvents(
     // silently swallows every DOWNLOADS_UPDATE_EVENT.
     App.onMainWindowCreated(setDownloadsMainWindow);
     App.onMainWindowCreated(setRecordingsMainWindow);
+    App.onMainWindowCreated(setRecordingSchedulesMainWindow);
 
     return { appUpdateService };
 }
@@ -137,10 +144,17 @@ export async function finishStartupAfterFirstLoad(): Promise<void> {
     await reconcileStaleRecordings();
 
     traceStartupPhase('reconcile-stale-recordings:done');
+
+    // Arms the timers of schedules saved in a previous session; a window
+    // that is opened late inside a schedule's range starts it now.
+    await startRecordingScheduler();
+
+    traceStartupPhase('recording-schedules:armed');
 }
 
 /** Tears down sessions and the DB worker; safe when nothing was started. */
 export function shutdownDeferredServices(): void {
+    shutdownRecordingScheduler();
     shutdownBackgroundRecording();
     shutdownEmbeddedMpv();
     shutdownMpvSession();

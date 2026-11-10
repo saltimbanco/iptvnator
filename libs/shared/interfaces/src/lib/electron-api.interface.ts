@@ -2,6 +2,10 @@ import type { HostedServerCommand, HostedServerStatus } from './hosted-server.in
 export type ElectronBridgeAppMenuAction = 'settings' | 'check-for-updates';
 import type { AppUpdateChannel } from './app-update-channel.util';
 import type {
+    RecordingScheduleCreateRequest,
+    RecordingScheduleItem,
+} from './recording-schedule.interface';
+import type {
     BackgroundRecordingStartRequest,
     BackgroundRecordingState,
 } from './background-recording.interface';
@@ -1542,6 +1546,16 @@ export interface ElectronBridgeApi {
         filePath: string
     ) => Promise<ElectronBridgeErrorResult>;
     onRecordingsUpdate?: (callback: () => void) => () => void;
+    // Scheduled recordings: created from a channel's context menu and owned
+    // by the main process, which keeps its timers while the window is hidden.
+    recordingScheduleGetList?: () => Promise<RecordingScheduleItem[]>;
+    recordingScheduleCreate?: (
+        request: RecordingScheduleCreateRequest
+    ) => Promise<ElectronBridgeErrorResult & { id?: number }>;
+    recordingScheduleCancel?: (
+        scheduleId: number
+    ) => Promise<ElectronBridgeErrorResult>;
+    onRecordingSchedulesUpdate?: (callback: () => void) => () => void;
     // Background recording (Windows). `BackgroundRecordingState.available`
     // says whether the recorder is present; start rejects with a message
     // when it cannot record (already recording, DRM, no recorder).

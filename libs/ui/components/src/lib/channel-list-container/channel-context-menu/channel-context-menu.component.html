@@ -13,6 +13,17 @@
             <span>{{ 'CHANNELS.MAP_EPG' | translate }}</span>
         </button>
     }
+    @if (showScheduleRecording()) {
+        <button
+            mat-menu-item
+            type="button"
+            data-testid="channel-schedule-recording"
+            (click)="scheduleRecording.emit()"
+        >
+            <mat-icon>event</mat-icon>
+            <span>{{ 'CHANNELS.SCHEDULE_RECORDING' | translate }}</span>
+        </button>
+    }
     @if (showDetails()) {
         <button mat-menu-item type="button" (click)="details.emit()">
             <mat-icon>info</mat-icon>

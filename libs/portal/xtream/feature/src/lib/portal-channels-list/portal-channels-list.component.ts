@@ -53,6 +53,8 @@ import {
 import { EpgQueueService } from '@iptvnator/portal/xtream/data-access';
 import { FavoritesService } from '@iptvnator/portal/xtream/data-access';
 import { XtreamStore } from '@iptvnator/portal/xtream/data-access';
+import { XtreamUrlService } from '@iptvnator/portal/xtream/data-access';
+import { ScheduleRecordingLauncherService } from '@iptvnator/ui/components';
 import {
     EpgPreferencesService,
     EpgSourceSettingsService,
@@ -142,6 +144,13 @@ export class PortalChannelsListComponent implements AfterViewInit, OnDestroy {
         ChannelContextMenuComponent
     );
     readonly contextMenuChannel = signal<XtreamChannelListItem | null>(null);
+    private readonly xtreamUrl = inject(XtreamUrlService);
+    private readonly scheduleLauncher = inject(
+        ScheduleRecordingLauncherService
+    );
+    get supportsScheduleRecording(): boolean {
+        return this.scheduleLauncher.isAvailable;
+    }
     get supportsProviderEpg(): boolean {
         return (
             this.epgPreferences.enabled() && this.runtime.supportsProviderEpg
@@ -739,6 +748,37 @@ export class PortalChannelsListComponent implements AfterViewInit, OnDestroy {
     ): void {
         this.contextMenuChannel.set(channel);
         this.channelContextMenu().open(event);
+    }
+
+    openScheduleRecording(): void {
+        const channel = this.contextMenuChannel();
+        const playlist = this.xtreamStore.currentPlaylist();
+        if (!channel || !playlist) {
+            return;
+        }
+
+        this.channelContextMenu().close();
+        const channelName =
+            channel.title ?? channel.name ?? String(channel.xtream_id);
+        this.scheduleLauncher.open({
+            playback: {
+                streamUrl: this.xtreamUrl.constructLiveUrl(
+                    xtreamCredentialsOf(playlist),
+                    channel.xtream_id
+                ),
+                title: channelName,
+                thumbnail: channel.stream_icon ?? null,
+                isLive: true,
+            },
+            metadata: {
+                channelName,
+                channelLogoUrl: channel.stream_icon,
+                playlistId: playlist.id,
+                playlistName: playlist.name,
+                sourceType: 'xtream',
+                epgChannelId: channel.epg_channel_id ?? undefined,
+            },
+        });
     }
 
     openEpgMapping(): void {

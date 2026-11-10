@@ -37,6 +37,11 @@ import {
 import { resolveChannelLogo } from '../channel-logo-fallback.util';
 import { buildChannelEpgMetadataMap } from '../epg-enrichment.util';
 import { ChannelDetailsDialogComponent } from '../channel-details-dialog/channel-details-dialog.component';
+import {
+    buildM3uRecordingMetadata,
+    buildM3uSchedulePlayback,
+} from '../schedule-recording-dialog/schedule-playback.util';
+import { ScheduleRecordingLauncherService } from '../schedule-recording-dialog/schedule-recording-launcher.service';
 import { EpgMappingDialogComponent } from '../epg-mapping-dialog/epg-mapping-dialog.component';
 import { ChannelListItemComponent } from '../channel-list-item/channel-list-item.component';
 import {
@@ -126,6 +131,12 @@ export class AllChannelsViewComponent {
     readonly sidebarToggleRequested = output<void>();
 
     readonly contextMenuChannel = signal<Channel | null>(null);
+    private readonly scheduleLauncher = inject(
+        ScheduleRecordingLauncherService
+    );
+    get supportsScheduleRecording(): boolean {
+        return this.scheduleLauncher.isAvailable;
+    }
     readonly allChannelsSortMode = signal<PlaylistChannelSortMode>(
         restorePlaylistChannelSortMode(ALL_CHANNELS_SORT_STORAGE_KEY)
     );
@@ -224,6 +235,19 @@ export class AllChannelsViewComponent {
 
         this.channelContextMenu().close();
         ChannelDetailsDialogComponent.open(this.dialog, channel);
+    }
+
+    openScheduleRecording(): void {
+        const channel = this.contextMenuChannel();
+        if (!channel) {
+            return;
+        }
+
+        this.channelContextMenu().close();
+        this.scheduleLauncher.open({
+            playback: buildM3uSchedulePlayback(channel),
+            metadata: buildM3uRecordingMetadata(channel),
+        });
     }
 
     openEpgMapping(): void {

@@ -3,6 +3,7 @@
         <a
             class="portal-rail-link nav-item"
             [routerLink]="link.path"
+            [queryParams]="link.queryParams ?? {} "
             [routerLinkActive]="activeClass()"
             [routerLinkActiveOptions]="{ exact: link.exact ?? false }"
             [matTooltip]="link.tooltip"

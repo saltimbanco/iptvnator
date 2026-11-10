@@ -46,6 +46,11 @@ import {
     trackNativeFullScreen,
 } from './services/native-fullscreen-transitions';
 import { attachWindowBackGestures } from './services/window-back-gestures';
+import {
+    createAppTray,
+    markAppQuitting,
+    shouldHideOnClose,
+} from './services/tray.service';
 
 const externalBrowserProtocols = new Set(['http:', 'https:']);
 const trustedDevRendererHosts = new Set([
@@ -718,6 +723,23 @@ export default class App {
         App.application = app;
 
         App.application.on('window-all-closed', App.onWindowAllClosed); // Quit when all windows are closed.
+        // Daemonized lifetime: with a tray icon present, closing the window
+        // hides it so scheduled and running background recordings continue.
+        // Quitting (tray menu, app menu, update install) closes for real.
+        App.application.on('before-quit', markAppQuitting);
+        App.onMainWindowCreated((win) => {
+            createAppTray(() => App.ensureMainWindow());
+            win.on('close', (event) => {
+                // Another listener (the unsaved-changes close guard) owning
+                // this close keeps it: hiding the window under its prompt
+                // would strand the user with no visible dialog.
+                if (event.defaultPrevented || !shouldHideOnClose()) {
+                    return;
+                }
+                event.preventDefault();
+                win.hide();
+            });
+        });
         if (App.application.isReady()) {
             App.onReady();
         } else {
