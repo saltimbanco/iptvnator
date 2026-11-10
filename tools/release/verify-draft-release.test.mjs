@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+    assetGroupsForBuildJobs,
     parseVerifyArguments,
     requiredAssetRules,
     RUN_POLL_ATTEMPTS,
@@ -43,6 +44,31 @@ function completeAssets(version) {
     ];
 }
 
+/** The build jobs of a real, complete matrix tag run. */
+const FULL_MATRIX_JOBS = [
+    { name: 'Resolve nightly version', conclusion: 'success' },
+    { name: 'Build on macos x64', conclusion: 'success' },
+    { name: 'Build on macos arm64', conclusion: 'success' },
+    { name: 'Build on windows x64', conclusion: 'success' },
+    { name: 'Build on linux x64', conclusion: 'success' },
+    { name: 'Create Draft Release', conclusion: 'success' },
+];
+
+/** A channel that ships Windows only, like the release fork. */
+const WINDOWS_ONLY_JOBS = [
+    { name: 'Resolve nightly version', conclusion: 'success' },
+    { name: 'Build on windows x64', conclusion: 'success' },
+    { name: 'Create Draft Release', conclusion: 'success' },
+];
+
+function windowsOnlyAssets(version) {
+    return [
+        `iptvnator-${version}-windows-x64-setup.exe`,
+        `iptvnator-${version}-windows-x64-setup.exe.blockmap`,
+        'latest.yml',
+    ];
+}
+
 function release(overrides = {}) {
     return {
         name: 'v0.24.0',
@@ -67,6 +93,7 @@ function io(overrides = {}) {
         watchRun: () => {
             throw new Error('watchRun must not be called');
         },
+        listRunJobs: () => FULL_MATRIX_JOBS,
         viewRelease: () => release(),
         readChangelog: () =>
             '# Changelog\n\n<!-- next-release -->\n\n# 0.24.0 (2026-08-01)\n\n### Features\n\n- **playback** — Up Next rail.\n',
@@ -137,6 +164,26 @@ describe('verifyReleaseAssets', () => {
         assert.deepEqual(extras, ['iptvnator-0x24y0-linux-x64.pacman']);
     });
 
+    it('requires only the platform groups the tag run built', () => {
+        assert.deepEqual(
+            verifyReleaseAssets(
+                windowsOnlyAssets('0.24.0'),
+                '0.24.0',
+                new Set(['windows'])
+            ).missing,
+            []
+        );
+    });
+
+    it('requires every group when the run does not say what it built', () => {
+        const { missing } = verifyReleaseAssets(
+            windowsOnlyAssets('0.24.0'),
+            '0.24.0'
+        );
+
+        assert.ok(missing.length > 0);
+    });
+
     it('surfaces unrecognized assets as extras, not errors', () => {
         const { missing, extras } = verifyReleaseAssets(
             [...completeAssets('0.24.0'), 'iptvnator-0.24.0-win-arm64.exe'],
@@ -145,6 +192,38 @@ describe('verifyReleaseAssets', () => {
 
         assert.deepEqual(missing, []);
         assert.deepEqual(extras, ['iptvnator-0.24.0-win-arm64.exe']);
+    });
+});
+
+describe('assetGroupsForBuildJobs', () => {
+    it('reads the platform groups out of the matrix job names', () => {
+        assert.deepEqual(
+            [...assetGroupsForBuildJobs(FULL_MATRIX_JOBS)].sort(),
+            ['linux', 'macos', 'windows']
+        );
+        assert.deepEqual([...assetGroupsForBuildJobs(WINDOWS_ONLY_JOBS)], [
+            'windows',
+        ]);
+    });
+
+    it('does not require the assets of a job that was skipped', () => {
+        const groups = assetGroupsForBuildJobs([
+            ...WINDOWS_ONLY_JOBS,
+            { name: 'Build on linux arm64', conclusion: 'skipped' },
+        ]);
+
+        assert.deepEqual([...groups], ['windows']);
+    });
+
+    it('returns null when the job list names no build job', () => {
+        assert.equal(assetGroupsForBuildJobs([]), null);
+        assert.equal(assetGroupsForBuildJobs(undefined), null);
+        assert.equal(
+            assetGroupsForBuildJobs([
+                { name: 'Create Draft Release', conclusion: 'success' },
+            ]),
+            null
+        );
     });
 });
 
@@ -297,10 +376,56 @@ describe('runVerification', () => {
                 listRuns: () => {
                     throw new Error('listRuns must not be called');
                 },
+                listRunJobs: () => {
+                    throw new Error('listRunJobs must not be called');
+                },
             })
         );
 
         assert.equal(result.exitCode, 0);
+    });
+
+    it('verifies a Windows-only channel against its own asset set', async () => {
+        const result = await runVerification(
+            options,
+            io({
+                listRunJobs: () => WINDOWS_ONLY_JOBS,
+                viewRelease: () =>
+                    release({
+                        assets: windowsOnlyAssets('0.24.0').map((name) => ({
+                            name,
+                        })),
+                    }),
+            })
+        );
+
+        assert.equal(result.exitCode, 0);
+        assert.match(
+            result.lines[2],
+            /Tag build produced windows assets only; not required here: macos, linux\./
+        );
+        assert.match(
+            result.lines.at(-2),
+            /All 3 required assets present \(3 attached\)\./
+        );
+    });
+
+    it('stays strict when the run does not report its jobs', async () => {
+        const result = await runVerification(
+            options,
+            io({
+                listRunJobs: () => [],
+                viewRelease: () =>
+                    release({
+                        assets: windowsOnlyAssets('0.24.0').map((name) => ({
+                            name,
+                        })),
+                    }),
+            })
+        );
+
+        assert.equal(result.exitCode, 1);
+        assert.match(result.lines[2], /Missing 24 required asset\(s\)/);
     });
 
     it('fails with the missing-asset list', async () => {

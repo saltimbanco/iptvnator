@@ -258,6 +258,15 @@ pre-publication gate after publication would claim a boundary already crossed.
 in `.github/workflows/build-and-make.yaml` gains or loses a target, update
 `requiredAssetRules()` in the same PR.
 
+Every rule carries a platform group (`macos`, `windows`, `linux`), and the gate
+requires only the groups the tag run's own `Build on <os> <arch>` jobs
+produced — read from the workflow run it already located. A fork that ships
+Windows only is therefore checked against its three Windows assets instead of
+failing on 24 it never builds, while a job that exists but was skipped drops
+only its own group: the run conclusion already reports a failed build. When
+the job list says nothing (for example `--no-wait`), every rule applies, so an
+unknown run can never pass by omission.
+
 | Platform | Assets |
 | --- | --- |
 | macOS | `-mac-{x64,arm64}.{dmg,zip}` + a `.blockmap` for each (8) |

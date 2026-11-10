@@ -13,8 +13,10 @@
  *
  * The required set mirrors what `.github/workflows/build-and-make.yaml`
  * uploads for a complete matrix build (verified against a real full run).
- * When the build matrix gains or loses a target, update REQUIRED_ASSET_RULES
- * in the same PR.
+ * When the build matrix gains or loses a target, update requiredAssetRules()
+ * in the same PR. Every rule names the platform group it belongs to, and only
+ * the groups the tag run itself built are required: a fork that ships Windows
+ * only is verified against its own artifact set instead of the full matrix.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -33,15 +35,19 @@ const workspaceRoot = path.resolve(
 
 export const REPO_SLUG = REPO_URL.replace('https://github.com/', '');
 const WORKFLOW = 'build-and-make.yaml';
+
+/** Platform groups the build matrix can produce. */
+export const ASSET_GROUPS = ['macos', 'windows', 'linux'];
 const CLI_USAGE =
     'Usage: verify-draft-release.mjs [--no-wait] [--repo owner/name] [<version>]';
 
 /**
  * @param {string} version bare semver
- * @returns {{ label: string, matches: (name: string) => boolean }[]}
+ * @returns {{ group: string, label: string, matches: (name: string) => boolean }[]}
  */
 export function requiredAssetRules(version) {
-    const exact = (label, name) => ({
+    const exact = (group, label, name) => ({
+        group,
         label: `${label} (${name})`,
         matches: (candidate) => candidate === name,
     });
@@ -52,32 +58,46 @@ export function requiredAssetRules(version) {
         for (const extension of ['dmg', 'zip']) {
             const base = `iptvnator-${version}-mac-${arch}.${extension}`;
 
-            rules.push(exact('macOS', base));
-            rules.push(exact('macOS blockmap', `${base}.blockmap`));
+            rules.push(exact('macos', 'macOS', base));
+            rules.push(exact('macos', 'macOS blockmap', `${base}.blockmap`));
         }
     }
 
     const windowsSetup = `iptvnator-${version}-windows-x64-setup.exe`;
 
-    rules.push(exact('Windows', windowsSetup));
-    rules.push(exact('Windows blockmap', `${windowsSetup}.blockmap`));
+    rules.push(exact('windows', 'Windows', windowsSetup));
+    rules.push(
+        exact('windows', 'Windows blockmap', `${windowsSetup}.blockmap`)
+    );
 
     for (const arch of ['amd64', 'arm64', 'armv7l']) {
-        rules.push(exact('DEB', `iptvnator-${version}-linux-${arch}.deb`));
+        rules.push(
+            exact('linux', 'DEB', `iptvnator-${version}-linux-${arch}.deb`)
+        );
     }
 
     for (const arch of ['x86_64', 'arm64', 'armv7l']) {
         rules.push(
-            exact('AppImage', `iptvnator-${version}-linux-${arch}.AppImage`)
+            exact(
+                'linux',
+                'AppImage',
+                `iptvnator-${version}-linux-${arch}.AppImage`
+            )
         );
     }
 
     for (const arch of ['amd64', 'armhf']) {
-        rules.push(exact('Snap', `iptvnator-${version}-linux-${arch}.snap`));
+        rules.push(
+            exact('linux', 'Snap', `iptvnator-${version}-linux-${arch}.snap`)
+        );
     }
 
-    rules.push(exact('RPM', `iptvnator-${version}-linux-x86_64.rpm`));
-    rules.push(exact('Flatpak', `iptvnator-${version}-linux-x86_64.flatpak`));
+    rules.push(
+        exact('linux', 'RPM', `iptvnator-${version}-linux-x86_64.rpm`)
+    );
+    rules.push(
+        exact('linux', 'Flatpak', `iptvnator-${version}-linux-x86_64.flatpak`)
+    );
 
     // Electron Builder has shipped both pacman artifact shapes; accept either.
     // Compared as plain strings rather than through a regex built from the
@@ -88,6 +108,7 @@ export function requiredAssetRules(version) {
     const pacmanPrefix = `iptvnator-${version}-linux-x86_64.pkg.tar.`;
 
     rules.push({
+        group: 'linux',
         label: `Pacman (${pacmanExact} or …-linux-x86_64.pkg.tar.*)`,
         matches: (candidate) =>
             candidate === pacmanExact ||
@@ -95,32 +116,70 @@ export function requiredAssetRules(version) {
                 /^[a-z0-9]+$/.test(candidate.slice(pacmanPrefix.length))),
     });
 
-    for (const name of [
-        'latest.yml',
-        'latest-mac.yml',
-        'latest-linux.yml',
-        'latest-linux-arm.yml',
-        'latest-linux-arm64.yml',
-    ]) {
-        rules.push(exact('Updater metadata', name));
+    const metadataGroups = {
+        'latest.yml': 'windows',
+        'latest-mac.yml': 'macos',
+        'latest-linux.yml': 'linux',
+        'latest-linux-arm.yml': 'linux',
+        'latest-linux-arm64.yml': 'linux',
+    };
+
+    for (const [name, group] of Object.entries(metadataGroups)) {
+        rules.push(exact(group, 'Updater metadata', name));
     }
 
     rules.push(
-        exact('Source archive', 'linux-frame-copy-runtime-sources.tar.xz')
+        exact(
+            'linux',
+            'Source archive',
+            'linux-frame-copy-runtime-sources.tar.xz'
+        )
     );
 
     return rules;
 }
 
 /**
+ * Which platform groups a tag run's jobs actually built, or `null` when the
+ * list does not say (then every rule applies).
+ *
+ * A fork whose matrix holds only Windows has no macOS or Linux job at all, so
+ * requiring their assets would fail every release there. A job that exists
+ * but was skipped drops only its own group: the run conclusion already
+ * reports a failed build, and a platform the run never attempted cannot have
+ * produced assets to check.
+ *
+ * @param {{ name?: string, conclusion?: string }[] | undefined} jobs
+ * @returns {Set<string> | null}
+ */
+export function assetGroupsForBuildJobs(jobs) {
+    const groups = new Set();
+
+    for (const job of Array.isArray(jobs) ? jobs : []) {
+        const match = /^Build on (macos|windows|linux)\b/i.exec(job?.name ?? '');
+
+        if (!match || job?.conclusion === 'skipped') {
+            continue;
+        }
+
+        groups.add(match[1].toLowerCase());
+    }
+
+    return groups.size > 0 ? groups : null;
+}
+
+/**
  * @param {string[]} assetNames names attached to the release
  * @param {string} version bare semver
+ * @param {Set<string> | null} [groups] platform groups the tag run built
  * @returns {{ missing: string[], extras: string[] }} `missing` lists unmet
  * rule labels; `extras` lists assets no rule claims (informational only —
  * a new build target shows up here before the rules learn about it)
  */
-export function verifyReleaseAssets(assetNames, version) {
-    const rules = requiredAssetRules(version);
+export function verifyReleaseAssets(assetNames, version, groups = null) {
+    const rules = requiredAssetRules(version).filter(
+        (rule) => groups === null || groups.has(rule.group)
+    );
     const missing = rules
         .filter((rule) => !assetNames.some((name) => rule.matches(name)))
         .map((rule) => rule.label);
@@ -260,21 +319,22 @@ function verifyAuthoredBody(body, version, io) {
 /**
  * Verification pipeline over an injectable gh boundary, so tests never touch
  * the network. `io.watchRun` streams `gh run watch` to the terminal and throws
- * on a failed run, `io.listRuns`/`io.viewRelease` return parsed `--json`
- * payloads, `io.progress` reports transient status while waiting, and
- * `io.sleep` paces the run poll.
+ * on a failed run, `io.listRuns`/`io.listRunJobs`/`io.viewRelease` return
+ * parsed `--json` payloads, `io.progress` reports transient status while
+ * waiting, and `io.sleep` paces the run poll.
  *
  * @param {{ version: string, wait: boolean, repo: string }} options
- * @param {{ listRuns: Function, watchRun: Function, viewRelease: Function, readChangelog: Function, progress: Function, sleep: Function }} io
+ * @param {{ listRuns: Function, listRunJobs: Function, watchRun: Function, viewRelease: Function, readChangelog: Function, progress: Function, sleep: Function }} io
  * @returns {Promise<{ exitCode: number, lines: string[] }>}
  */
 export async function runVerification(options, io) {
     const { version, wait, repo } = options;
     const tag = `v${version}`;
     const lines = [];
+    let run = null;
 
     if (wait) {
-        const run = await findTagRun({ repo, branch: tag }, io);
+        run = await findTagRun({ repo, branch: tag }, io);
 
         if (run === null) {
             return {
@@ -317,8 +377,30 @@ export async function runVerification(options, io) {
 
     lines.push(...verifyAuthoredBody(release.body ?? '', version, io));
 
+    const groups = run
+        ? assetGroupsForBuildJobs(
+              io.listRunJobs({ repo, runId: run.databaseId })
+          )
+        : null;
+
+    if (groups !== null) {
+        const skipped = ASSET_GROUPS.filter((group) => !groups.has(group));
+        lines.push(
+            skipped.length === 0
+                ? 'Tag build produced every platform group.'
+                : `Tag build produced ${[...groups].join(', ')} assets only; not required here: ${skipped.join(', ')}.`
+        );
+    }
+
+    const requiredRules = requiredAssetRules(version).filter(
+        (rule) => groups === null || groups.has(rule.group)
+    );
     const assetNames = release.assets.map((asset) => asset.name);
-    const { missing, extras } = verifyReleaseAssets(assetNames, version);
+    const { missing, extras } = verifyReleaseAssets(
+        assetNames,
+        version,
+        groups
+    );
 
     for (const extra of extras) {
         lines.push(`NOTE: unrecognized asset ${extra} (not required by the rules).`);
@@ -332,7 +414,7 @@ export async function runVerification(options, io) {
     }
 
     lines.push(
-        `All ${requiredAssetRules(version).length} required assets present (${assetNames.length} attached).`
+        `All ${requiredRules.length} required assets present (${assetNames.length} attached).`
     );
 
     // A published release still gets its asset report — auditing one after the
@@ -400,6 +482,18 @@ const liveIo = {
             );
         }
     },
+    listRunJobs: ({ repo, runId }) =>
+        JSON.parse(
+            gh([
+                'run',
+                'view',
+                String(runId),
+                '--repo',
+                repo,
+                '--json',
+                'jobs',
+            ])
+        ).jobs ?? [],
     viewRelease: ({ repo, tag }) => {
         try {
             return JSON.parse(
