@@ -13,12 +13,29 @@ let tray: Tray | null = null;
 let showWindowHandler: (() => void) | null = null;
 let quitting = false;
 
+function joinIfPresent(base: unknown, relative: string): string | null {
+    return typeof base === 'string' && base ? join(base, relative) : null;
+}
+
+/** The test harnesses stub only the Electron calls a spec exercises. */
+function readAppPath(): string | undefined {
+    try {
+        const path = app.getAppPath();
+        return typeof path === 'string' ? path : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 function resolveTrayIcon(): Electron.NativeImage | null {
+    // Both bases are absent outside a packaged app and in unit tests, where
+    // join() would throw instead of reporting a missing icon.
+    const appPath = readAppPath();
     const candidates = [
-        join(process.resourcesPath, 'icon.png'),
-        join(app.getAppPath(), 'apps/web/src/assets/icons/icon.png'),
-        join(app.getAppPath(), 'assets/icons/icon.png'),
-    ];
+        joinIfPresent(process.resourcesPath, 'icon.png'),
+        joinIfPresent(appPath, 'apps/web/src/assets/icons/icon.png'),
+        joinIfPresent(appPath, 'assets/icons/icon.png'),
+    ].filter((candidate): candidate is string => candidate !== null);
     for (const candidate of candidates) {
         if (!existsSync(candidate)) {
             continue;
@@ -29,8 +46,18 @@ function resolveTrayIcon(): Electron.NativeImage | null {
         }
     }
     // Windows can use the executable's own icon.
-    const executable = nativeImage.createFromPath(app.getPath('exe'));
-    return executable.isEmpty() ? null : executable;
+    try {
+        const executablePath = app.getPath?.('exe');
+        if (typeof executablePath === 'string' && executablePath) {
+            const executable = nativeImage.createFromPath(executablePath);
+            if (!executable.isEmpty()) {
+                return executable;
+            }
+        }
+    } catch {
+        // No executable path outside a packaged app.
+    }
+    return null;
 }
 
 function showWindow(): void {
