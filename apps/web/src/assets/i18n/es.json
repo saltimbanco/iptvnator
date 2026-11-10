@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Grabaciones programadas",
         "CANCEL": "Cancelar grabación programada",
         "CANCELED": "Grabación programada cancelada.",
-        "CANCEL_FAILED": "No se pudo cancelar la grabación programada."
+        "CANCEL_FAILED": "No se pudo cancelar la grabación programada.",
+        "RESCHEDULE": "Cambiar hora",
+        "PREPARING": "Preparando el flujo…",
+        "SAVED": "Programado para {{window}}.",
+        "DONE": "Hecho",
+        "STATUS_PENDING": "Programado",
+        "STATUS_STARTED": "Grabando",
+        "STATUS_FAILED": "Falló",
+        "STATUS_CANCELED": "Cancelado"
     },
     "COMMON": {
         "CANCEL": "Cancelar",

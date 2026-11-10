@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Scheduled recordings",
         "CANCEL": "Cancel scheduled recording",
         "CANCELED": "Scheduled recording canceled.",
-        "CANCEL_FAILED": "The scheduled recording could not be canceled."
+        "CANCEL_FAILED": "The scheduled recording could not be canceled.",
+        "RESCHEDULE": "Change time",
+        "PREPARING": "Preparing the stream…",
+        "SAVED": "Scheduled for {{window}}.",
+        "DONE": "Done",
+        "STATUS_PENDING": "Scheduled",
+        "STATUS_STARTED": "Recording",
+        "STATUS_FAILED": "Failed",
+        "STATUS_CANCELED": "Canceled"
     },
     "COMMON": {
         "CANCEL": "Cancel",

@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "已安排的錄影",
         "CANCEL": "取消已安排的錄影",
         "CANCELED": "已取消安排的錄影。",
-        "CANCEL_FAILED": "無法取消已安排的錄影。"
+        "CANCEL_FAILED": "無法取消已安排的錄影。",
+        "RESCHEDULE": "變更時間",
+        "PREPARING": "正在準備串流…",
+        "SAVED": "已安排在 {{window}}。",
+        "DONE": "完成",
+        "STATUS_PENDING": "已安排",
+        "STATUS_STARTED": "錄影中",
+        "STATUS_FAILED": "失敗",
+        "STATUS_CANCELED": "已取消"
     },
     "COMMON": {
         "CANCEL": "取消",

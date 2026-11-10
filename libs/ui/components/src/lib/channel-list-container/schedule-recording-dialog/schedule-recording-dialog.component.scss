@@ -35,6 +35,23 @@
     }
 }
 
+.schedule-recording__preparing {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    opacity: 0.8;
+}
+
+.schedule-recording__saved {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
 .schedule-recording__error {
     margin: 0;
     color: var(--mat-sys-error, #f44336);

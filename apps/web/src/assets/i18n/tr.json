@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Zamanlanmış kayıtlar",
         "CANCEL": "Zamanlanmış kaydı iptal et",
         "CANCELED": "Zamanlanmış kayıt iptal edildi.",
-        "CANCEL_FAILED": "Zamanlanmış kayıt iptal edilemedi."
+        "CANCEL_FAILED": "Zamanlanmış kayıt iptal edilemedi.",
+        "RESCHEDULE": "Saati değiştir",
+        "PREPARING": "Akış hazırlanıyor…",
+        "SAVED": "{{window}} için planlandı.",
+        "DONE": "Tamam",
+        "STATUS_PENDING": "Planlandı",
+        "STATUS_STARTED": "Kaydediliyor",
+        "STATUS_FAILED": "Başarısız",
+        "STATUS_CANCELED": "İptal edildi"
     },
     "COMMON": {
         "CANCEL": "İptal",

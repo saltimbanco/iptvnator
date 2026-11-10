@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Gravações agendadas",
         "CANCEL": "Cancelar gravação agendada",
         "CANCELED": "Gravação agendada cancelada.",
-        "CANCEL_FAILED": "Não foi possível cancelar a gravação agendada."
+        "CANCEL_FAILED": "Não foi possível cancelar a gravação agendada.",
+        "RESCHEDULE": "Alterar hora",
+        "PREPARING": "A preparar o fluxo…",
+        "SAVED": "Agendado para {{window}}.",
+        "DONE": "Concluir",
+        "STATUS_PENDING": "Agendado",
+        "STATUS_STARTED": "A gravar",
+        "STATUS_FAILED": "Falhou",
+        "STATUS_CANCELED": "Cancelado"
     },
     "COMMON": {
         "CANCEL": "Cancelar",

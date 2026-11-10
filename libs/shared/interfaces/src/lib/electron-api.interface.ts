@@ -4,6 +4,7 @@ import type { AppUpdateChannel } from './app-update-channel.util';
 import type {
     RecordingScheduleCreateRequest,
     RecordingScheduleItem,
+    RecordingScheduleRescheduleRequest,
 } from './recording-schedule.interface';
 import type {
     BackgroundRecordingStartRequest,
@@ -1554,6 +1555,9 @@ export interface ElectronBridgeApi {
     ) => Promise<ElectronBridgeErrorResult & { id?: number }>;
     recordingScheduleCancel?: (
         scheduleId: number
+    ) => Promise<ElectronBridgeErrorResult>;
+    recordingScheduleReschedule?: (
+        request: RecordingScheduleRescheduleRequest
     ) => Promise<ElectronBridgeErrorResult>;
     onRecordingSchedulesUpdate?: (callback: () => void) => () => void;
     // Background recording (Windows). `BackgroundRecordingState.available`

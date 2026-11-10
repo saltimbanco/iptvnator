@@ -31,6 +31,7 @@ import type {
 import { DialogService } from '@iptvnator/ui/components';
 import { BehaviorSubject, type Observable, Subject } from 'rxjs';
 import { DownloadLibraryNavigationService } from './download-library-navigation.service';
+import { ScheduleRecordingLauncherService } from '@iptvnator/ui/components';
 import { RecordingSchedulesService } from './recording-schedules.service';
 import type { DownloadActionResult } from './download-actions';
 import { DownloadManagerActionsService } from './download-manager-actions.service';
@@ -170,6 +171,7 @@ describe('DownloadsComponent', () => {
     };
     let snackBar: { open: jest.Mock };
     let scheduledItems: ReturnType<typeof signal<RecordingScheduleItem[]>>;
+    let scheduleLauncher: { reschedule: jest.Mock };
     let recordingSchedules: {
         readonly schedules: typeof scheduledItems;
         readonly pending: ReturnType<typeof computed<RecordingScheduleItem[]>>;
@@ -238,6 +240,7 @@ describe('DownloadsComponent', () => {
         dialogActionListener = undefined;
         snackBar = { open: jest.fn() };
         scheduledItems = signal<RecordingScheduleItem[]>([]);
+        scheduleLauncher = { reschedule: jest.fn() };
         recordingSchedules = {
             schedules: scheduledItems,
             pending: computed(() =>
@@ -330,6 +333,10 @@ describe('DownloadsComponent', () => {
                 {
                     provide: RecordingSchedulesService,
                     useValue: recordingSchedules,
+                },
+                {
+                    provide: ScheduleRecordingLauncherService,
+                    useValue: scheduleLauncher,
                 },
                 {
                     provide: PlaylistsService,
@@ -1132,11 +1139,15 @@ describe('DownloadsComponent', () => {
         };
     }
 
-    it('lists only pending schedules above the recordings manager', () => {
+    it('lists every schedule with its outcome above the recordings manager', () => {
         scheduledItems.set([
             schedule(1),
             schedule(2, { status: 'started' }),
             schedule(3),
+            schedule(4, {
+                status: 'failed',
+                errorMessage: 'The scheduled time has passed.',
+            }),
         ]);
         fixture.detectChanges();
 
@@ -1144,11 +1155,18 @@ describe('DownloadsComponent', () => {
         const list = root.querySelector('[data-test-id="recording-schedule-list"]');
         expect(list).not.toBeNull();
         expect(list?.querySelectorAll('.recording-schedules__row')).toHaveLength(
-            2
+            4
         );
         expect(list?.textContent).toContain('Scheduled channel 1');
-        expect(list?.textContent).toContain('Scheduled channel 3');
-        expect(list?.textContent).not.toContain('Scheduled channel 2');
+        expect(list?.textContent).toContain('Scheduled channel 2');
+        expect(list?.textContent).toContain(
+            'The scheduled time has passed.'
+        );
+        expect(
+            list
+                ?.querySelector('[data-test-id="recording-schedule-2"]')
+                ?.getAttribute('data-status')
+        ).toBe('started');
     });
 
     it('hides the schedule list once nothing is pending', () => {

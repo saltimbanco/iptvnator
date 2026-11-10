@@ -60,6 +60,7 @@ import { RecordingManagerActionsService } from './recording-manager-actions.serv
 import { buildRecordingManagerViewModel } from './recording-manager.viewmodel';
 import { RecordingQueueComponent } from './recording-queue.component';
 import { RecordingScheduleListComponent } from './recording-schedule-list/recording-schedule-list.component';
+import { ScheduleRecordingLauncherService } from '@iptvnator/ui/components';
 import { dialogSize } from '@iptvnator/ui/components/dialog-size';
 
 const FILTER_KEYS = {
@@ -112,6 +113,9 @@ export class DownloadsComponent {
     readonly recordingsService = inject(RecordingsService);
     private readonly recordingActions = inject(RecordingManagerActionsService);
     private readonly schedulesService = inject(RecordingSchedulesService);
+    private readonly scheduleLauncher = inject(
+        ScheduleRecordingLauncherService
+    );
 
     readonly pendingIds = this.actions.pendingIds;
     readonly isClearing = this.actions.isClearing;
@@ -167,7 +171,7 @@ export class DownloadsComponent {
     );
     readonly recordingsAvailable = this.recordingsService.isAvailable;
     readonly recordingPendingIds = this.recordingActions.pendingIds;
-    readonly scheduledRecordings = this.schedulesService.pending;
+    readonly scheduledRecordings = this.schedulesService.schedules;
     readonly schedulePendingIds = this.recordingActions.pendingScheduleIds;
     readonly recordingModel = computed(() =>
         buildRecordingManagerViewModel({
@@ -296,6 +300,10 @@ export class DownloadsComponent {
 
     cancelSchedule(schedule: RecordingScheduleItem): void {
         void this.recordingActions.cancelSchedule(schedule);
+    }
+
+    rescheduleSchedule(schedule: RecordingScheduleItem): void {
+        this.scheduleLauncher.reschedule(schedule);
     }
 
     openRecordingDetail(item: RecordingItem): void {

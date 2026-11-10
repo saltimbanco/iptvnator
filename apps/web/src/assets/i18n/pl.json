@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Zaplanowane nagrania",
         "CANCEL": "Anuluj zaplanowane nagranie",
         "CANCELED": "Anulowano zaplanowane nagranie.",
-        "CANCEL_FAILED": "Nie udało się anulować zaplanowanego nagrania."
+        "CANCEL_FAILED": "Nie udało się anulować zaplanowanego nagrania.",
+        "RESCHEDULE": "Zmień godzinę",
+        "PREPARING": "Przygotowywanie strumienia…",
+        "SAVED": "Zaplanowano na {{window}}.",
+        "DONE": "Gotowe",
+        "STATUS_PENDING": "Zaplanowano",
+        "STATUS_STARTED": "Nagrywanie",
+        "STATUS_FAILED": "Niepowodzenie",
+        "STATUS_CANCELED": "Anulowano"
     },
     "COMMON": {
         "CANCEL": "Anuluj",

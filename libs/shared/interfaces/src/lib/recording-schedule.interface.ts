@@ -45,6 +45,14 @@ export interface RecordingScheduleCreateRequest {
     directory?: string;
 }
 
+export interface RecordingScheduleRescheduleRequest {
+    scheduleId: number;
+    /** ISO instant the recording now starts at. */
+    startAt: string;
+    /** ISO instant the recording now stops at. */
+    endAt: string;
+}
+
 export interface RecordingScheduleItem {
     id: number;
     channelName: string;

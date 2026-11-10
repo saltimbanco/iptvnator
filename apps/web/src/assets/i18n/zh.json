@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "已安排的录制",
         "CANCEL": "取消已安排的录制",
         "CANCELED": "已取消安排的录制。",
-        "CANCEL_FAILED": "无法取消已安排的录制。"
+        "CANCEL_FAILED": "无法取消已安排的录制。",
+        "RESCHEDULE": "更改时间",
+        "PREPARING": "正在准备流…",
+        "SAVED": "已安排在 {{window}}。",
+        "DONE": "完成",
+        "STATUS_PENDING": "已安排",
+        "STATUS_STARTED": "录制中",
+        "STATUS_FAILED": "失败",
+        "STATUS_CANCELED": "已取消"
     },
     "COMMON": {
         "CANCEL": "取消",

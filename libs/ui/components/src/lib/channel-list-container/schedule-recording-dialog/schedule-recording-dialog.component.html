@@ -2,60 +2,96 @@
     {{ 'RECORDING_SCHEDULE.TITLE' | translate: { channel: data.channelName } }}
 </h2>
 
-<mat-dialog-content class="schedule-recording">
-    <p class="schedule-recording__hint">
-        {{ 'RECORDING_SCHEDULE.HINT' | translate }}
-    </p>
+@if (saved()) {
+    <mat-dialog-content class="schedule-recording">
+        <p class="schedule-recording__saved">
+            <mat-icon aria-hidden="true">event_available</mat-icon>
+            <span>
+                {{
+                    'RECORDING_SCHEDULE.SAVED'
+                        | translate: { window: savedWindow() }
+                }}
+            </span>
+        </p>
+    </mat-dialog-content>
 
-    <div class="schedule-recording__fields">
-        <label class="schedule-recording__field">
-            <span>{{ 'RECORDING_SCHEDULE.DATE' | translate }}</span>
-            <input
-                type="date"
-                [value]="date()"
-                [min]="minDate"
-                (input)="setDate($event)"
-            />
-        </label>
+    <mat-dialog-actions align="end">
+        <button mat-flat-button color="primary" type="button" (click)="close()">
+            {{ 'RECORDING_SCHEDULE.DONE' | translate }}
+        </button>
+    </mat-dialog-actions>
+} @else {
+    <mat-dialog-content class="schedule-recording">
+        <p class="schedule-recording__hint">
+            {{ 'RECORDING_SCHEDULE.HINT' | translate }}
+        </p>
 
-        <label class="schedule-recording__field">
-            <span>{{ 'RECORDING_SCHEDULE.START' | translate }}</span>
-            <input
-                type="time"
-                [value]="startTime()"
-                (input)="setStartTime($event)"
-            />
-        </label>
+        @if (preparing()) {
+            <p class="schedule-recording__preparing" role="status">
+                {{ 'RECORDING_SCHEDULE.PREPARING' | translate }}
+            </p>
+        }
 
-        <label class="schedule-recording__field">
-            <span>{{ 'RECORDING_SCHEDULE.END' | translate }}</span>
-            <input
-                type="time"
-                [value]="endTime()"
-                (input)="setEndTime($event)"
-            />
-        </label>
-    </div>
+        <div class="schedule-recording__fields">
+            <label class="schedule-recording__field">
+                <span>{{ 'RECORDING_SCHEDULE.DATE' | translate }}</span>
+                <input
+                    type="date"
+                    [value]="date()"
+                    [min]="minDate"
+                    (input)="setDate($event)"
+                />
+            </label>
 
-    @if (errorKey(); as key) {
-        <p class="schedule-recording__error">{{ key | translate }}</p>
-    }
-    @if (submitError(); as message) {
-        <p class="schedule-recording__error">{{ message | translate }}</p>
-    }
-</mat-dialog-content>
+            <label class="schedule-recording__field">
+                <span>{{ 'RECORDING_SCHEDULE.START' | translate }}</span>
+                <input
+                    type="time"
+                    [value]="startTime()"
+                    (input)="setStartTime($event)"
+                />
+            </label>
 
-<mat-dialog-actions align="end">
-    <button mat-button type="button" (click)="close()">
-        {{ 'COMMON.CANCEL' | translate }}
-    </button>
-    <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        [disabled]="saving() || errorKey() !== null"
-        (click)="submit()"
-    >
-        {{ 'RECORDING_SCHEDULE.SAVE' | translate }}
-    </button>
-</mat-dialog-actions>
+            <label class="schedule-recording__field">
+                <span>{{ 'RECORDING_SCHEDULE.END' | translate }}</span>
+                <input
+                    type="time"
+                    [value]="endTime()"
+                    (input)="setEndTime($event)"
+                />
+            </label>
+        </div>
+
+        @if (prepareFailed()) {
+            <p class="schedule-recording__error">
+                {{ 'RECORDING_SCHEDULE.ERROR_RESOLVE' | translate }}
+            </p>
+        }
+        @if (errorKey(); as key) {
+            <p class="schedule-recording__error">{{ key | translate }}</p>
+        }
+        @if (submitError(); as message) {
+            <p class="schedule-recording__error">{{ message | translate }}</p>
+        }
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end">
+        <button mat-button type="button" (click)="close()">
+            {{ 'COMMON.CANCEL' | translate }}
+        </button>
+        <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="
+                saving() ||
+                preparing() ||
+                prepareFailed() ||
+                errorKey() !== null
+            "
+            (click)="submit()"
+        >
+            {{ submitLabelKey | translate }}
+        </button>
+    </mat-dialog-actions>
+}

@@ -125,6 +125,7 @@
                 [schedules]="scheduledRecordings()"
                 [pendingIds]="schedulePendingIds()"
                 (cancelRequested)="cancelSchedule($event)"
+                (rescheduleRequested)="rescheduleSchedule($event)"
             />
         }
 

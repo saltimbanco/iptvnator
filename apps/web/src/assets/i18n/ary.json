@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "التسجيلات المبرمجة",
         "CANCEL": "إلغاء التسجيل المبرمج",
         "CANCELED": "تلغى التسجيل المبرمج.",
-        "CANCEL_FAILED": "ما قدرناش نلغيو التسجيل المبرمج."
+        "CANCEL_FAILED": "ما قدرناش نلغيو التسجيل المبرمج.",
+        "RESCHEDULE": "بدل الوقت",
+        "PREPARING": "كنحضو البث…",
+        "SAVED": "مجدول لـ {{window}}.",
+        "DONE": "سالا",
+        "STATUS_PENDING": "مجدول",
+        "STATUS_STARTED": "تسجيل جاري",
+        "STATUS_FAILED": "فشل",
+        "STATUS_CANCELED": "ملغى"
     },
     "COMMON": {
         "CANCEL": "إلغاء",

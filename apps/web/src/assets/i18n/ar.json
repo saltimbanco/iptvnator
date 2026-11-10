@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "التسجيلات المجدولة",
         "CANCEL": "إلغاء التسجيل المجدول",
         "CANCELED": "تم إلغاء التسجيل المجدول.",
-        "CANCEL_FAILED": "تعذّر إلغاء التسجيل المجدول."
+        "CANCEL_FAILED": "تعذّر إلغاء التسجيل المجدول.",
+        "RESCHEDULE": "تغيير الوقت",
+        "PREPARING": "جارٍ تحضير البث…",
+        "SAVED": "تمت الجدولة في {{window}}.",
+        "DONE": "تم",
+        "STATUS_PENDING": "مجدول",
+        "STATUS_STARTED": "جارٍ التسجيل",
+        "STATUS_FAILED": "فشل",
+        "STATUS_CANCELED": "ملغى"
     },
     "COMMON": {
         "CANCEL": "إلغاء",

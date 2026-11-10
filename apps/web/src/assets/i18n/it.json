@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Registrazioni programmate",
         "CANCEL": "Annulla registrazione programmata",
         "CANCELED": "Registrazione programmata annullata.",
-        "CANCEL_FAILED": "Non è stato possibile annullare la registrazione programmata."
+        "CANCEL_FAILED": "Non è stato possibile annullare la registrazione programmata.",
+        "RESCHEDULE": "Cambia orario",
+        "PREPARING": "Preparazione del flusso…",
+        "SAVED": "Programmato per {{window}}.",
+        "DONE": "Fatto",
+        "STATUS_PENDING": "Programmato",
+        "STATUS_STARTED": "Registrazione",
+        "STATUS_FAILED": "Non riuscito",
+        "STATUS_CANCELED": "Annullato"
     },
     "COMMON": {
         "CANCEL": "Annulla",

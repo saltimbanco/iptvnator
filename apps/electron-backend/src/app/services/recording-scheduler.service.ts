@@ -6,17 +6,29 @@ import type {
     ResolvedPortalPlayback,
     StalkerScheduleRefresh,
 } from '@iptvnator/shared/interfaces';
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq, ne } from 'drizzle-orm';
 import { getDatabase } from '../database/connection';
 import * as schema from '../database/schema';
 import { broadcastRecordingSchedulesUpdate } from '../events/database/recording-schedule-broadcast';
 import { backgroundRecordingService } from './background-recording.runtime';
+import {
+    type RecordingScheduleNotification,
+    notifyRecordingSchedule,
+} from './recording-schedule-notify';
 import { refreshStalkerSchedulePlayback } from './stalker-schedule-refresh.service';
 
 type ScheduleRow = schema.RecordingSchedule;
 
 /** setTimeout's limit; a schedule further out is re-armed when it fires. */
 const MAX_TIMER_MS = 2_147_483_647;
+
+/** Finished rows the manager keeps showing; pending rows are always all. */
+const RECENT_FINISHED_LIMIT = 25;
+
+export interface RecordingSchedulerDeps {
+    /** Toast for a started or failed schedule; tests replace it. */
+    readonly notify?: (notification: RecordingScheduleNotification) => void;
+}
 
 function parseJson<T>(raw: string | null): T | null {
     if (!raw) {
@@ -43,10 +55,15 @@ function messageOf(error: unknown): string {
  * additionally carries the portal command, so its short-lived `create_link`
  * URL is re-minted right before the start; the stored link is only the
  * fallback for a portal that cannot be reached.
+ *
+ * Every outcome is logged and toasted: a schedule that fails while the
+ * window is hidden would otherwise disappear without a trace.
  */
 export class RecordingSchedulerService {
     private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
     private loaded = false;
+
+    constructor(private readonly deps: RecordingSchedulerDeps = {}) {}
 
     /** Loads pending rows and arms their timers; safe to call repeatedly. */
     async start(): Promise<void> {
@@ -54,10 +71,13 @@ export class RecordingSchedulerService {
             return;
         }
         this.loaded = true;
+        console.info('[Recording schedule] background recorder', {
+            available: backgroundRecordingService.isAvailable(),
+        });
         await this.reload();
     }
 
-    /** Re-reads pending rows; called after a create or a cancel. */
+    /** Re-reads pending rows; called after a create, a reschedule or a cancel. */
     async reload(): Promise<void> {
         this.clearTimers();
         let rows: ScheduleRow[];
@@ -76,16 +96,29 @@ export class RecordingSchedulerService {
         for (const row of rows) {
             this.arm(row);
         }
+        console.info('[Recording schedule] armed', { pending: rows.length });
     }
 
-    /** Newest first, for the manager and the rail badge. */
+    /**
+     * Pending rows first, then the latest finished ones. A long-lived install
+     * accumulates rows, and the manager only needs the recent outcomes, so
+     * the query stays bounded instead of shipping the whole history to the
+     * renderer on every update.
+     */
     async list(): Promise<RecordingScheduleItem[]> {
         const db = await getDatabase();
-        const rows = await db
+        const pending = await db
             .select()
             .from(schema.recordingSchedules)
+            .where(eq(schema.recordingSchedules.status, 'pending'))
             .orderBy(asc(schema.recordingSchedules.startAt));
-        return rows.map((row) => this.toItem(row));
+        const finished = await db
+            .select()
+            .from(schema.recordingSchedules)
+            .where(ne(schema.recordingSchedules.status, 'pending'))
+            .orderBy(desc(schema.recordingSchedules.updatedAt))
+            .limit(RECENT_FINISHED_LIMIT);
+        return [...pending, ...finished].map((row) => this.toItem(row));
     }
 
     shutdown(): void {
@@ -104,12 +137,12 @@ export class RecordingSchedulerService {
         const startMs = Date.parse(row.startAt);
         const endMs = Date.parse(row.endAt);
         if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-            void this.mark(row.id, 'failed', 'The scheduled time is invalid.');
+            void this.fail(row, 'The scheduled time is invalid.');
             return;
         }
         if (Date.now() >= endMs) {
             // Missed entirely (app was off for the whole window).
-            void this.mark(row.id, 'failed', 'The scheduled time has passed.');
+            void this.fail(row, 'The scheduled time has passed.');
             return;
         }
         if (startMs <= Date.now()) {
@@ -151,20 +184,24 @@ export class RecordingSchedulerService {
             return;
         }
         if (!(Date.parse(row.endAt) > Date.now())) {
-            await this.mark(id, 'failed', 'The scheduled time has passed.');
+            await this.fail(row, 'The scheduled time has passed.');
             return;
         }
+
+        console.info('[Recording schedule] starting', {
+            id: row.id,
+            channelName: row.channelName,
+            startAt: row.startAt,
+            endAt: row.endAt,
+            recorderAvailable: backgroundRecordingService.isAvailable(),
+        });
 
         const storedPlayback = parseJson<ResolvedPortalPlayback>(
             row.playbackJson
         );
         const metadata = parseJson<RecordingStartMetadata>(row.metadataJson);
         if (!storedPlayback?.streamUrl || !metadata) {
-            await this.mark(
-                id,
-                'failed',
-                'The channel link could not be restored.'
-            );
+            await this.fail(row, 'The channel link could not be restored.');
             return;
         }
 
@@ -179,9 +216,30 @@ export class RecordingSchedulerService {
         try {
             const state = backgroundRecordingService.start(request);
             await this.mark(id, 'started', undefined, state.recordingId);
+            console.info('[Recording schedule] recording started', {
+                id,
+                channelName: row.channelName,
+                recordingId: state.recordingId,
+            });
+            this.notify({
+                title: 'Recording started',
+                body: `${row.channelName} — ${this.describeWindow(row)}`,
+            });
         } catch (error) {
-            await this.mark(id, 'failed', messageOf(error));
+            await this.fail(row, messageOf(error));
         }
+    }
+
+    private describeWindow(row: ScheduleRow): string {
+        const start = new Date(row.startAt);
+        const end = new Date(row.endAt);
+        if (
+            !Number.isFinite(start.getTime()) ||
+            !Number.isFinite(end.getTime())
+        ) {
+            return '';
+        }
+        return `${start.toLocaleString()} – ${end.toLocaleTimeString()}`;
     }
 
     /**
@@ -243,6 +301,24 @@ export class RecordingSchedulerService {
             console.error('[Recording schedule] playlist lookup failed:', error);
             return null;
         }
+    }
+
+    /** Records why a schedule did not record and tells the user about it. */
+    private async fail(row: ScheduleRow, reason: string): Promise<void> {
+        console.warn('[Recording schedule] failed', {
+            id: row.id,
+            channelName: row.channelName,
+            reason,
+        });
+        this.notify({
+            title: 'Scheduled recording failed',
+            body: `${row.channelName}: ${reason}`,
+        });
+        await this.mark(row.id, 'failed', reason);
+    }
+
+    private notify(notification: RecordingScheduleNotification): void {
+        (this.deps.notify ?? notifyRecordingSchedule)(notification);
     }
 
     private async mark(

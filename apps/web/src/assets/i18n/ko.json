@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "예약된 녹화",
         "CANCEL": "예약된 녹화 취소",
         "CANCELED": "예약된 녹화를 취소했습니다.",
-        "CANCEL_FAILED": "예약된 녹화를 취소하지 못했습니다."
+        "CANCEL_FAILED": "예약된 녹화를 취소하지 못했습니다.",
+        "RESCHEDULE": "시간 변경",
+        "PREPARING": "스트림 준비 중…",
+        "SAVED": "{{window}}에 예약됨.",
+        "DONE": "완료",
+        "STATUS_PENDING": "예약됨",
+        "STATUS_STARTED": "녹화 중",
+        "STATUS_FAILED": "실패",
+        "STATUS_CANCELED": "취소됨"
     },
     "COMMON": {
         "CANCEL": "취소",

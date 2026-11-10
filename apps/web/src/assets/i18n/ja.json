@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "予約済みの録画",
         "CANCEL": "予約した録画をキャンセル",
         "CANCELED": "予約した録画をキャンセルしました。",
-        "CANCEL_FAILED": "予約した録画をキャンセルできませんでした。"
+        "CANCEL_FAILED": "予約した録画をキャンセルできませんでした。",
+        "RESCHEDULE": "時刻を変更",
+        "PREPARING": "ストリームを準備しています…",
+        "SAVED": "{{window}} に予約しました。",
+        "DONE": "完了",
+        "STATUS_PENDING": "予約済み",
+        "STATUS_STARTED": "録画中",
+        "STATUS_FAILED": "失敗",
+        "STATUS_CANCELED": "キャンセル済み"
     },
     "COMMON": {
         "CANCEL": "キャンセル",

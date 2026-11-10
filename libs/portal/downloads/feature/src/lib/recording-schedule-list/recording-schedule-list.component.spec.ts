@@ -8,6 +8,11 @@ const TEST_TRANSLATIONS = {
     RECORDING_SCHEDULE: {
         LIST_TITLE: 'Scheduled recordings',
         CANCEL: 'Cancel scheduled recording',
+        RESCHEDULE: 'Change time',
+        STATUS_PENDING: 'Scheduled',
+        STATUS_STARTED: 'Recording',
+        STATUS_FAILED: 'Failed',
+        STATUS_CANCELED: 'Canceled',
     },
 };
 
@@ -155,6 +160,65 @@ describe('RecordingScheduleListComponent', () => {
         expect(requested).toHaveBeenCalledTimes(1);
         expect(requested.mock.calls[0][0]).toMatchObject({ id: 6 });
         expect(row(6).getAttribute('aria-busy')).toBeNull();
+    });
+
+    it('shows the outcome and the reason of a finished schedule', () => {
+        render([
+            schedule(8, {
+                status: 'failed',
+                errorMessage: 'The scheduled time has passed.',
+            }),
+            schedule(9, { status: 'started' }),
+        ]);
+
+        expect(row(8).getAttribute('data-status')).toBe('failed');
+        expect(
+            row(8)
+                .querySelector('[data-test-id="recording-schedule-reason"]')
+                ?.textContent?.trim()
+        ).toBe('The scheduled time has passed.');
+        expect(
+            row(8).querySelector('[data-test-action="cancel-schedule-8"]')
+        ).toBeNull();
+        expect(
+            row(8).querySelector('[data-test-action="reschedule-schedule-8"]')
+        ).toBeNull();
+        expect(
+            row(9)
+                .querySelector('.recording-schedules__status')
+                ?.textContent?.trim()
+        ).toBe('Recording');
+    });
+
+    it('emits the schedule the reschedule button belongs to', () => {
+        const requested: RecordingScheduleItem[] = [];
+        fixture.componentInstance.rescheduleRequested.subscribe((item) =>
+            requested.push(item)
+        );
+        const first = schedule(10);
+        const second = schedule(11);
+        render([first, second]);
+
+        row(11)
+            .querySelector<HTMLButtonElement>(
+                '[data-test-action="reschedule-schedule-11"]'
+            )
+            ?.click();
+
+        expect(requested).toEqual([second]);
+        expect(requested).not.toContain(first);
+    });
+
+    it('labels the reschedule control for screen readers', () => {
+        render([schedule(12)]);
+
+        expect(
+            row(12)
+                .querySelector<HTMLButtonElement>(
+                    '[data-test-action="reschedule-schedule-12"]'
+                )
+                ?.getAttribute('aria-label')
+        ).toBe('Change time');
     });
 
     it('labels the cancel control for screen readers', () => {

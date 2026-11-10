@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Enregistrements programmés",
         "CANCEL": "Annuler l'enregistrement programmé",
         "CANCELED": "Enregistrement programmé annulé.",
-        "CANCEL_FAILED": "L'enregistrement programmé n'a pas pu être annulé."
+        "CANCEL_FAILED": "L'enregistrement programmé n'a pas pu être annulé.",
+        "RESCHEDULE": "Modifier l'heure",
+        "PREPARING": "Préparation du flux…",
+        "SAVED": "Programmé pour {{window}}.",
+        "DONE": "Terminé",
+        "STATUS_PENDING": "Programmé",
+        "STATUS_STARTED": "Enregistrement",
+        "STATUS_FAILED": "Échec",
+        "STATUS_CANCELED": "Annulé"
     },
     "COMMON": {
         "CANCEL": "Annuler",

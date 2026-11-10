@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Geplante Aufnahmen",
         "CANCEL": "Geplante Aufnahme abbrechen",
         "CANCELED": "Geplante Aufnahme abgebrochen.",
-        "CANCEL_FAILED": "Die geplante Aufnahme konnte nicht abgebrochen werden."
+        "CANCEL_FAILED": "Die geplante Aufnahme konnte nicht abgebrochen werden.",
+        "RESCHEDULE": "Zeit ändern",
+        "PREPARING": "Stream wird vorbereitet…",
+        "SAVED": "Geplant für {{window}}.",
+        "DONE": "Fertig",
+        "STATUS_PENDING": "Geplant",
+        "STATUS_STARTED": "Aufnahme läuft",
+        "STATUS_FAILED": "Fehlgeschlagen",
+        "STATUS_CANCELED": "Abgebrochen"
     },
     "COMMON": {
         "CANCEL": "Abbrechen",

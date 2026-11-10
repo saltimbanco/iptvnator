@@ -7,6 +7,11 @@ import { join } from 'path';
  * scheduled recordings and a running background recording must outlive the
  * window. The tray only exists when an icon can be loaded — without one
  * there is no way back from a hidden window, so closing keeps quitting.
+ *
+ * `nativeImage.createFromPath` reads PNG/JPEG (ICO on Windows) only, and it
+ * cannot read inside `app.asar`, so the packaged build ships the tray image
+ * as a real file in `resources/` — see `extraResources` in
+ * `electron-builder.json`. The web assets are only reachable in a dev run.
  */
 
 let tray: Tray | null = null;
@@ -27,16 +32,24 @@ function readAppPath(): string | undefined {
     }
 }
 
-function resolveTrayIcon(): Electron.NativeImage | null {
-    // Both bases are absent outside a packaged app and in unit tests, where
-    // join() would throw instead of reporting a missing icon.
+/**
+ * Icon files a tray can load, most likely first. A packaged build resolves
+ * both `resources/` entries; a dev run falls back to the workspace assets.
+ */
+export function trayIconCandidates(): string[] {
+    const resourcesPath = process.resourcesPath;
     const appPath = readAppPath();
-    const candidates = [
-        joinIfPresent(process.resourcesPath, 'icon.png'),
-        joinIfPresent(appPath, 'apps/web/src/assets/icons/icon.png'),
-        joinIfPresent(appPath, 'assets/icons/icon.png'),
+    return [
+        joinIfPresent(resourcesPath, 'tray-icon.png'),
+        joinIfPresent(resourcesPath, 'icon.png'),
+        joinIfPresent(appPath, 'web/assets/icons/icon-32.png'),
+        joinIfPresent(appPath, 'apps/web/src/assets/icons/icon-32.png'),
+        joinIfPresent(appPath, 'assets/icons/icon-32.png'),
     ].filter((candidate): candidate is string => candidate !== null);
-    for (const candidate of candidates) {
+}
+
+function resolveTrayIcon(): Electron.NativeImage | null {
+    for (const candidate of trayIconCandidates()) {
         if (!existsSync(candidate)) {
             continue;
         }
@@ -44,18 +57,6 @@ function resolveTrayIcon(): Electron.NativeImage | null {
         if (!image.isEmpty()) {
             return image;
         }
-    }
-    // Windows can use the executable's own icon.
-    try {
-        const executablePath = app.getPath?.('exe');
-        if (typeof executablePath === 'string' && executablePath) {
-            const executable = nativeImage.createFromPath(executablePath);
-            if (!executable.isEmpty()) {
-                return executable;
-            }
-        }
-    } catch {
-        // No executable path outside a packaged app.
     }
     return null;
 }

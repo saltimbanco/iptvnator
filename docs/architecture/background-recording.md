@@ -119,9 +119,18 @@ and end instant, and a status (`pending`, `started`, `canceled`, `failed`).
   and mints a fresh `create_link` right before starting (both ITV and radio).
   The stored link is the fallback for a portal that cannot be reached at the
   start instant — for example a playlist deleted after scheduling.
-- **IPC.** `RECORDING_SCHEDULE_CREATE`, `RECORDING_SCHEDULE_CANCEL`,
-  `RECORDING_SCHEDULE_GET_LIST` (invoke) and `RECORDING_SCHEDULE_UPDATE_EVENT`
-  (push). The capability gate is `supportsRecordingSchedule`.
+- **IPC.** `RECORDING_SCHEDULE_CREATE`, `RECORDING_SCHEDULE_RESCHEDULE`,
+  `RECORDING_SCHEDULE_CANCEL`, `RECORDING_SCHEDULE_GET_LIST` (invoke) and
+  `RECORDING_SCHEDULE_UPDATE_EVENT` (push). Both create and reschedule
+  validate the window through `recording-schedule-window.ts`. The capability
+  gate is `supportsRecordingSchedule`.
+- **Latency.** A Stalker row's `create_link` handshake runs inside the open
+  dialog (`openDeferred`), so the context menu answers at once; Xtream and
+  M3U rows pass their resolved target straight in.
+- **Visibility.** Every outcome is logged under `[Recording schedule]` and a
+  Windows toast reports a schedule that started or failed. The manager lists
+  pending rows plus the latest finished ones (bounded query) with their
+  status and reason, so a missed recording is no longer silent.
 
 ## Tray and window lifetime
 

@@ -67,7 +67,13 @@
         "desktopName": "iptvnator",
         "main": "electron-backend/main.js"
     },
-    "extraResources": ["dist/apps/electron-backend/workers"],
+    "extraResources": [
+        "dist/apps/electron-backend/workers",
+        {
+            "from": "apps/web/src/assets/icons/icon-32.png",
+            "to": "tray-icon.png"
+        }
+    ],
     "mac": {
         "target": [
             {

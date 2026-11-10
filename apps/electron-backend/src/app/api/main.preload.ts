@@ -6,6 +6,7 @@ import type {
     XtreamBackupFavoriteItem,
     XtreamCatalogStateCondition,
     RecordingScheduleCreateRequest,
+    RecordingScheduleRescheduleRequest,
 } from '@iptvnator/shared/interfaces';
 import type { SourceProbeContext } from '@iptvnator/shared/interfaces';
 import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron';
@@ -17,6 +18,7 @@ import {
     RECORDING_ACTIVE_STATE,
     RECORDING_SCHEDULE_CANCEL,
     RECORDING_SCHEDULE_CREATE,
+    RECORDING_SCHEDULE_RESCHEDULE,
     RECORDING_SCHEDULE_GET_LIST,
     RECORDING_SCHEDULE_UPDATE_EVENT,
     APP_UPDATE_CHECK,
@@ -1325,6 +1327,9 @@ const electronApi: ElectronBridgeApi = {
         ipcRenderer.invoke(RECORDING_SCHEDULE_CREATE, request),
     recordingScheduleCancel: (scheduleId: number) =>
         ipcRenderer.invoke(RECORDING_SCHEDULE_CANCEL, scheduleId),
+    recordingScheduleReschedule: (
+        request: RecordingScheduleRescheduleRequest
+    ) => ipcRenderer.invoke(RECORDING_SCHEDULE_RESCHEDULE, request),
     onRecordingSchedulesUpdate: (callback: () => void) => {
         const handler = () => callback();
         ipcRenderer.on(RECORDING_SCHEDULE_UPDATE_EVENT, handler);

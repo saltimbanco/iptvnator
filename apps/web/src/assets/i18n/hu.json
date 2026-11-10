@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Ütemezett felvételek",
         "CANCEL": "Ütemezett felvétel törlése",
         "CANCELED": "Az ütemezett felvétel törölve.",
-        "CANCEL_FAILED": "Nem sikerült törölni az ütemezett felvételt."
+        "CANCEL_FAILED": "Nem sikerült törölni az ütemezett felvételt.",
+        "RESCHEDULE": "Időpont módosítása",
+        "PREPARING": "Adatfolyam előkészítése…",
+        "SAVED": "Ütemezve: {{window}}.",
+        "DONE": "Kész",
+        "STATUS_PENDING": "Ütemezve",
+        "STATUS_STARTED": "Felvétel",
+        "STATUS_FAILED": "Sikertelen",
+        "STATUS_CANCELED": "Törölve"
     },
     "COMMON": {
         "CANCEL": "Mégse",

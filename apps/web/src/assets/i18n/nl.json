@@ -2553,7 +2553,15 @@
         "LIST_TITLE": "Geplande opnames",
         "CANCEL": "Geplande opname annuleren",
         "CANCELED": "Geplande opname geannuleerd.",
-        "CANCEL_FAILED": "De geplande opname kon niet worden geannuleerd."
+        "CANCEL_FAILED": "De geplande opname kon niet worden geannuleerd.",
+        "RESCHEDULE": "Tijd wijzigen",
+        "PREPARING": "Stream voorbereiden…",
+        "SAVED": "Gepland voor {{window}}.",
+        "DONE": "Klaar",
+        "STATUS_PENDING": "Gepland",
+        "STATUS_STARTED": "Opname",
+        "STATUS_FAILED": "Mislukt",
+        "STATUS_CANCELED": "Geannuleerd"
     },
     "COMMON": {
         "CANCEL": "Annuleren",

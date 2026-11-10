@@ -18,6 +18,7 @@
                 <li
                     class="recording-schedules__row"
                     [attr.data-test-id]="'recording-schedule-' + schedule.id"
+                    [attr.data-status]="schedule.status"
                     [attr.aria-busy]="isPending(schedule.id) ? 'true' : null"
                 >
                     <span
@@ -49,21 +50,56 @@
                                 · {{ schedule.playlistName }}
                             }
                         </span>
+                        @if (schedule.errorMessage) {
+                            <span
+                                class="recording-schedules__error"
+                                data-test-id="recording-schedule-reason"
+                            >
+                                {{ schedule.errorMessage }}
+                            </span>
+                        }
                     </div>
 
-                    <button
-                        mat-icon-button
-                        type="button"
-                        class="recording-schedules__cancel"
-                        [disabled]="isPending(schedule.id)"
-                        [attr.aria-label]="
-                            'RECORDING_SCHEDULE.CANCEL' | translate
-                        "
-                        [attr.data-test-action]="'cancel-schedule-' + schedule.id"
-                        (click)="cancel(schedule)"
-                    >
-                        <mat-icon aria-hidden="true">cancel</mat-icon>
-                    </button>
+                    @if (schedule.status !== 'pending') {
+                        <span
+                            class="recording-schedules__status"
+                            [attr.data-status]="schedule.status"
+                        >
+                            {{ statusKey(schedule) | translate }}
+                        </span>
+                    }
+
+                    @if (schedule.status === 'pending') {
+                        <button
+                            mat-icon-button
+                            type="button"
+                            class="recording-schedules__reschedule"
+                            [disabled]="isPending(schedule.id)"
+                            [attr.aria-label]="
+                                'RECORDING_SCHEDULE.RESCHEDULE' | translate
+                            "
+                            [attr.data-test-action]="
+                                'reschedule-schedule-' + schedule.id
+                            "
+                            (click)="reschedule(schedule)"
+                        >
+                            <mat-icon aria-hidden="true">edit_calendar</mat-icon>
+                        </button>
+
+                        <button
+                            mat-icon-button
+                            type="button"
+                            class="recording-schedules__cancel"
+                            [disabled]="isPending(schedule.id)"
+                            [attr.aria-label]="
+                                'RECORDING_SCHEDULE.CANCEL' | translate
+                            "
+                            [attr.data-test-action]="'cancel-schedule-' + schedule.id"
+                            (click)="cancel(schedule)"
+                        >
+                            <mat-icon aria-hidden="true">cancel</mat-icon>
+                        </button>
+                    }
                 </li>
             }
         </ul>
