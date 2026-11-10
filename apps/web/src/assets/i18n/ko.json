@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "그룹 검색...",
             "NO_RESULTS": "일치하는 그룹을 찾을 수 없습니다",
             "SAVE": "저장"
-        }
+        },
+        "SCHEDULE_RECORDING": "녹화 예약…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "프로그램 가이드"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "캐시된 카테고리를 제거하는 중...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "즐겨찾기, 시청 기록, 숨긴 카테고리, 재생 진행률을 동기화 후 복원할 수 있도록 준비합니다.",
             "XTREAM_REFRESH_PROGRESS": "처리된 로컬 레코드: {{current}} / {{total}}",
-            "RAIL_RADIO": "라디오"
+            "RAIL_RADIO": "라디오",
+            "RAIL_RECORDINGS": "녹화"
         },
         "SOURCES": {
             "TITLE": "소스",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "기록을 로컬에 저장함. 서버 사용 불가",
         "STATE_incompatible": "이 서버는 기록 동기화를 지원하지 않습니다",
         "PENDING": "대기 중인 기록 변경: {{count}}개"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "녹화 예약 · {{channel}}",
+        "HINT": "IPTVnator는 백그라운드에서 녹화합니다. 앱을 계속 실행해 두세요. 창을 닫아도 트레이에 남습니다.",
+        "DATE": "날짜",
+        "START": "시작",
+        "END": "종료",
+        "SAVE": "예약",
+        "ERROR_TIMES": "날짜와 시작·종료 시간을 선택하세요.",
+        "ERROR_ORDER": "종료 시간은 시작 시간 이후여야 합니다.",
+        "ERROR_PAST": "미래의 시간을 선택하세요.",
+        "ERROR_SAVE": "녹화를 예약하지 못했습니다.",
+        "ERROR_RESOLVE": "이 채널의 스트림을 녹화용으로 확인하지 못했습니다.",
+        "LIST_TITLE": "예약된 녹화",
+        "CANCEL": "예약된 녹화 취소",
+        "CANCELED": "예약된 녹화를 취소했습니다.",
+        "CANCEL_FAILED": "예약된 녹화를 취소하지 못했습니다."
+    },
+    "COMMON": {
+        "CANCEL": "취소",
+        "SAVE": "저장"
     }
 }

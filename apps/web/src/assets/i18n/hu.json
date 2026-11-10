@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Keresés a csoportok között…",
             "NO_RESULTS": "Nem található a keresésnek megfelelő csoport",
             "SAVE": "Mentés"
-        }
+        },
+        "SCHEDULE_RECORDING": "Felvétel ütemezése…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Műsorújság"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Gyorsítótárazott kategóriák eltávolítása…",
             "XTREAM_REFRESH_DETAIL_LOCAL": "A kedvencek, a megtekintési előzmények, a rejtett kategóriák és a lejátszási előrehaladás megőrzése, hogy a szinkronizálás után visszaállíthatók legyenek.",
             "XTREAM_REFRESH_PROGRESS": "Feldolgozott helyi bejegyzések: {{current}} / {{total}}",
-            "RAIL_RADIO": "Rádió"
+            "RAIL_RADIO": "Rádió",
+            "RAIL_RECORDINGS": "Felvételek"
         },
         "SOURCES": {
             "TITLE": "Források",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Az előzményeket az alkalmazás helyben mentette; a kiszolgáló nem érhető el",
         "STATE_incompatible": "Ez a kiszolgáló nem támogatja a megtekintési előzmények szinkronizálását",
         "PENDING": "Küldésre váró előzménymódosítások: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Felvétel ütemezése · {{channel}}",
+        "HINT": "Az IPTVnator a háttérben rögzít. Hagyja nyitva az alkalmazást; a tálcán marad, ha az ablak be van zárva.",
+        "DATE": "Dátum",
+        "START": "Kezdés",
+        "END": "Befejezés",
+        "SAVE": "Ütemezés",
+        "ERROR_TIMES": "Válasszon dátumot, kezdési és befejezési időpontot.",
+        "ERROR_ORDER": "A befejezésnek a kezdés után kell lennie.",
+        "ERROR_PAST": "Válasszon jövőbeli időpontot.",
+        "ERROR_SAVE": "Nem sikerült ütemezni a felvételt.",
+        "ERROR_RESOLVE": "Ennek a csatornának a streamje nem oldható fel a felvételhez.",
+        "LIST_TITLE": "Ütemezett felvételek",
+        "CANCEL": "Ütemezett felvétel törlése",
+        "CANCELED": "Az ütemezett felvétel törölve.",
+        "CANCEL_FAILED": "Nem sikerült törölni az ütemezett felvételt."
+    },
+    "COMMON": {
+        "CANCEL": "Mégse",
+        "SAVE": "Mentés"
     }
 }

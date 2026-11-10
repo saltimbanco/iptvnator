@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "搜尋群組...",
             "NO_RESULTS": "找不到符合的群組",
             "SAVE": "儲存"
-        }
+        },
+        "SCHEDULE_RECORDING": "安排錄影…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "節目表"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "正在移除快取的分類...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "我的最愛、觀看記錄、隱藏分類和播放進度會保留，以便同步後還原。",
             "XTREAM_REFRESH_PROGRESS": "已處理本機記錄：{{current}} / {{total}}",
-            "RAIL_RADIO": "廣播"
+            "RAIL_RADIO": "廣播",
+            "RAIL_RECORDINGS": "錄影"
         },
         "SOURCES": {
             "TITLE": "來源",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "歷史已儲存在本機；伺服器無法使用",
         "STATE_incompatible": "此伺服器不支援歷史同步",
         "PENDING": "佇列中的歷史變更：{{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "安排錄影 · {{channel}}",
+        "HINT": "IPTVnator 會在背景錄影。請讓應用程式保持執行；關閉視窗後它會留在系統匣。",
+        "DATE": "日期",
+        "START": "開始",
+        "END": "結束",
+        "SAVE": "安排",
+        "ERROR_TIMES": "請選擇日期以及開始與結束時間。",
+        "ERROR_ORDER": "結束時間必須晚於開始時間。",
+        "ERROR_PAST": "請選擇未來的時間。",
+        "ERROR_SAVE": "無法安排錄影。",
+        "ERROR_RESOLVE": "無法解析此頻道的串流以供錄影。",
+        "LIST_TITLE": "已安排的錄影",
+        "CANCEL": "取消已安排的錄影",
+        "CANCELED": "已取消安排的錄影。",
+        "CANCEL_FAILED": "無法取消已安排的錄影。"
+    },
+    "COMMON": {
+        "CANCEL": "取消",
+        "SAVE": "儲存"
     }
 }

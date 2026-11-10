@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "搜索分组…",
             "NO_RESULTS": "未找到匹配的分组",
             "SAVE": "保存"
-        }
+        },
+        "SCHEDULE_RECORDING": "安排录制…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "节目指南"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "正在移除缓存的分类...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "收藏、观看历史、隐藏分类和播放进度会保留，以便同步后恢复。",
             "XTREAM_REFRESH_PROGRESS": "已处理本地记录：{{current}} / {{total}}",
-            "RAIL_RADIO": "电台"
+            "RAIL_RADIO": "电台",
+            "RAIL_RECORDINGS": "录制"
         },
         "SOURCES": {
             "TITLE": "源",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "历史已保存在本地；服务器不可用",
         "STATE_incompatible": "此服务器不支持历史同步",
         "PENDING": "排队中的历史更改：{{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "安排录制 · {{channel}}",
+        "HINT": "IPTVnator 会在后台录制。请保持应用运行；关闭窗口后它会留在系统托盘。",
+        "DATE": "日期",
+        "START": "开始",
+        "END": "结束",
+        "SAVE": "安排",
+        "ERROR_TIMES": "请选择日期以及开始和结束时间。",
+        "ERROR_ORDER": "结束时间必须晚于开始时间。",
+        "ERROR_PAST": "请选择将来的时间。",
+        "ERROR_SAVE": "无法安排录制。",
+        "ERROR_RESOLVE": "无法解析此频道的串流用于录制。",
+        "LIST_TITLE": "已安排的录制",
+        "CANCEL": "取消已安排的录制",
+        "CANCELED": "已取消安排的录制。",
+        "CANCEL_FAILED": "无法取消已安排的录制。"
+    },
+    "COMMON": {
+        "CANCEL": "取消",
+        "SAVE": "保存"
     }
 }

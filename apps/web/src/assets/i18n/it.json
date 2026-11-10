@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Cerca gruppi...",
             "NO_RESULTS": "Nessun gruppo corrispondente",
             "SAVE": "Salva"
-        }
+        },
+        "SCHEDULE_RECORDING": "Programma registrazione…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Guida programmi"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Rimozione delle categorie in cache...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Preferiti, cronologia di visione, categorie nascoste e avanzamento di riproduzione vengono preparati per il ripristino dopo la sincronizzazione.",
             "XTREAM_REFRESH_PROGRESS": "Record locali elaborati: {{current}} / {{total}}",
-            "RAIL_RADIO": "Radio live"
+            "RAIL_RADIO": "Radio live",
+            "RAIL_RECORDINGS": "Registrazioni"
         },
         "SOURCES": {
             "TITLE": "Sorgenti",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Cronologia salvata localmente; server non disponibile",
         "STATE_incompatible": "Questo server non supporta la sincronizzazione della cronologia",
         "PENDING": "Modifiche alla cronologia in coda: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Programma registrazione · {{channel}}",
+        "HINT": "IPTVnator registra in background. Lascia aperta l'app; resta nella barra delle applicazioni quando la finestra è chiusa.",
+        "DATE": "Data",
+        "START": "Inizio",
+        "END": "Fine",
+        "SAVE": "Programma",
+        "ERROR_TIMES": "Scegli una data e un orario di inizio e di fine.",
+        "ERROR_ORDER": "L'orario di fine deve essere successivo a quello di inizio.",
+        "ERROR_PAST": "Scegli un orario futuro.",
+        "ERROR_SAVE": "Non è stato possibile programmare la registrazione.",
+        "ERROR_RESOLVE": "Non è stato possibile risolvere lo stream di questo canale per la registrazione.",
+        "LIST_TITLE": "Registrazioni programmate",
+        "CANCEL": "Annulla registrazione programmata",
+        "CANCELED": "Registrazione programmata annullata.",
+        "CANCEL_FAILED": "Non è stato possibile annullare la registrazione programmata."
+    },
+    "COMMON": {
+        "CANCEL": "Annulla",
+        "SAVE": "Salva"
     }
 }

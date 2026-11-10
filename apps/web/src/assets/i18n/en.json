@@ -2549,7 +2549,7 @@
         "ERROR_ORDER": "The end time must be after the start time.",
         "ERROR_PAST": "Pick a time in the future.",
         "ERROR_SAVE": "The recording could not be scheduled.",
-    "ERROR_RESOLVE": "This channel's stream could not be resolved for recording.",
+        "ERROR_RESOLVE": "This channel's stream could not be resolved for recording.",
         "LIST_TITLE": "Scheduled recordings",
         "CANCEL": "Cancel scheduled recording",
         "CANCELED": "Scheduled recording canceled.",

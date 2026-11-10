@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Grupları ara...",
             "NO_RESULTS": "Eşleşen grup bulunamadı",
             "SAVE": "Kaydet"
-        }
+        },
+        "SCHEDULE_RECORDING": "Kaydı zamanla…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Program rehberi"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Önbelleğe alınmış kategoriler kaldırılıyor...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Favoriler, izleme geçmişi, gizli kategoriler ve oynatma ilerlemesi eşitlemeden sonra geri yüklenmek üzere hazırlanıyor.",
             "XTREAM_REFRESH_PROGRESS": "İşlenen yerel kayıtlar: {{current}} / {{total}}",
-            "RAIL_RADIO": "Canlı radyo"
+            "RAIL_RADIO": "Canlı radyo",
+            "RAIL_RECORDINGS": "Kayıtlar"
         },
         "SOURCES": {
             "TITLE": "Kaynaklar",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Geçmiş yerel kaydedildi; sunucu kullanılamıyor",
         "STATE_incompatible": "Bu sunucu geçmiş eşitlemeyi desteklemiyor",
         "PENDING": "Kuyruktaki geçmiş değişiklikleri: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Kaydı zamanla · {{channel}}",
+        "HINT": "IPTVnator arka planda kaydeder. Uygulamayı açık tutun; pencere kapalıyken sistem tepsisinde kalır.",
+        "DATE": "Tarih",
+        "START": "Başlangıç",
+        "END": "Bitiş",
+        "SAVE": "Zamanla",
+        "ERROR_TIMES": "Bir tarih, başlangıç ve bitiş saati seçin.",
+        "ERROR_ORDER": "Bitiş saati başlangıç saatinden sonra olmalı.",
+        "ERROR_PAST": "Gelecekte bir saat seçin.",
+        "ERROR_SAVE": "Kayıt zamanlanamadı.",
+        "ERROR_RESOLVE": "Bu kanalın akışı kayıt için çözümlenemedi.",
+        "LIST_TITLE": "Zamanlanmış kayıtlar",
+        "CANCEL": "Zamanlanmış kaydı iptal et",
+        "CANCELED": "Zamanlanmış kayıt iptal edildi.",
+        "CANCEL_FAILED": "Zamanlanmış kayıt iptal edilemedi."
+    },
+    "COMMON": {
+        "CANCEL": "İptal",
+        "SAVE": "Kaydet"
     }
 }

@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Pesquisar grupos…",
             "NO_RESULTS": "Nenhum grupo correspondente encontrado",
             "SAVE": "Guardar"
-        }
+        },
+        "SCHEDULE_RECORDING": "Agendar gravação…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Guia TV"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "A remover as categorias em cache…",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Os favoritos, o histórico de visualização, as categorias ocultas e o progresso de reprodução ficam preservados para restauro após a sincronização.",
             "XTREAM_REFRESH_PROGRESS": "Registos locais processados: {{current}} / {{total}}",
-            "RAIL_RADIO": "Rádio"
+            "RAIL_RADIO": "Rádio",
+            "RAIL_RECORDINGS": "Gravações"
         },
         "SOURCES": {
             "TITLE": "Fontes",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Histórico guardado localmente; servidor indisponível",
         "STATE_incompatible": "Este servidor não suporta sincronização do histórico",
         "PENDING": "Alterações do histórico na fila: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Agendar gravação · {{channel}}",
+        "HINT": "O IPTVnator grava em segundo plano. Mantenha a aplicação aberta; fica na bandeja quando a janela é fechada.",
+        "DATE": "Data",
+        "START": "Início",
+        "END": "Fim",
+        "SAVE": "Agendar",
+        "ERROR_TIMES": "Escolha uma data e uma hora de início e de fim.",
+        "ERROR_ORDER": "A hora de fim tem de ser posterior à de início.",
+        "ERROR_PAST": "Escolha uma hora no futuro.",
+        "ERROR_SAVE": "Não foi possível agendar a gravação.",
+        "ERROR_RESOLVE": "Não foi possível resolver o stream deste canal para gravação.",
+        "LIST_TITLE": "Gravações agendadas",
+        "CANCEL": "Cancelar gravação agendada",
+        "CANCELED": "Gravação agendada cancelada.",
+        "CANCEL_FAILED": "Não foi possível cancelar a gravação agendada."
+    },
+    "COMMON": {
+        "CANCEL": "Cancelar",
+        "SAVE": "Guardar"
     }
 }

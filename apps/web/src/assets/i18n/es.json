@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Buscar grupos…",
             "NO_RESULTS": "No se encontraron grupos coincidentes",
             "SAVE": "Guardar"
-        }
+        },
+        "SCHEDULE_RECORDING": "Programar grabación…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Guía de programas"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Eliminando categorías en caché...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Guardamos favoritos, historial de reproducción, categorías ocultas y progreso para restaurarlos después de la sincronización.",
             "XTREAM_REFRESH_PROGRESS": "Registros locales procesados: {{current}} / {{total}}",
-            "RAIL_RADIO": "Radio en directo"
+            "RAIL_RADIO": "Radio en directo",
+            "RAIL_RECORDINGS": "Grabaciones"
         },
         "SOURCES": {
             "TITLE": "Fuentes",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Historial guardado localmente; servidor no disponible",
         "STATE_incompatible": "Este servidor no admite la sincronización del historial",
         "PENDING": "Cambios del historial en cola: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Programar grabación · {{channel}}",
+        "HINT": "IPTVnator graba en segundo plano. Mantén la aplicación abierta; permanece en la bandeja cuando se cierra la ventana.",
+        "DATE": "Fecha",
+        "START": "Inicio",
+        "END": "Fin",
+        "SAVE": "Programar",
+        "ERROR_TIMES": "Elige una fecha y una hora de inicio y de fin.",
+        "ERROR_ORDER": "La hora de fin debe ser posterior a la de inicio.",
+        "ERROR_PAST": "Elige una hora futura.",
+        "ERROR_SAVE": "No se pudo programar la grabación.",
+        "ERROR_RESOLVE": "No se pudo resolver el stream de este canal para grabarlo.",
+        "LIST_TITLE": "Grabaciones programadas",
+        "CANCEL": "Cancelar grabación programada",
+        "CANCELED": "Grabación programada cancelada.",
+        "CANCEL_FAILED": "No se pudo cancelar la grabación programada."
+    },
+    "COMMON": {
+        "CANCEL": "Cancelar",
+        "SAVE": "Guardar"
     }
 }

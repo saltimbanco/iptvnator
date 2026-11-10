@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Pesquisar grupos...",
             "NO_RESULTS": "Nenhum grupo correspondente encontrado",
             "SAVE": "Salvar"
-        }
+        },
+        "SCHEDULE_RECORDING": "Agendar gravação…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Guia de programação"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Removendo categorias em cache...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Favoritos, histórico de visualização, categorias ocultas e progresso de reprodução serão mantidos para restauração após a sincronização.",
             "XTREAM_REFRESH_PROGRESS": "Registros locais processados: {{current}} / {{total}}",
-            "RAIL_RADIO": "Rádio"
+            "RAIL_RADIO": "Rádio",
+            "RAIL_RECORDINGS": "Gravações"
         },
         "SOURCES": {
             "TITLE": "Fontes",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Histórico salvo localmente; servidor indisponível",
         "STATE_incompatible": "Este servidor não oferece sincronização do histórico",
         "PENDING": "Alterações do histórico na fila: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Agendar gravação · {{channel}}",
+        "HINT": "O IPTVnator grava em segundo plano. Mantenha o app aberto; ele fica na bandeja quando a janela é fechada.",
+        "DATE": "Data",
+        "START": "Início",
+        "END": "Fim",
+        "SAVE": "Agendar",
+        "ERROR_TIMES": "Escolha uma data e um horário de início e de fim.",
+        "ERROR_ORDER": "O horário de término deve ser depois do de início.",
+        "ERROR_PAST": "Escolha um horário no futuro.",
+        "ERROR_SAVE": "Não foi possível agendar a gravação.",
+        "ERROR_RESOLVE": "Não foi possível resolver o stream deste canal para gravar.",
+        "LIST_TITLE": "Gravações agendadas",
+        "CANCEL": "Cancelar gravação agendada",
+        "CANCELED": "Gravação agendada cancelada.",
+        "CANCEL_FAILED": "Não foi possível cancelar a gravação agendada."
+    },
+    "COMMON": {
+        "CANCEL": "Cancelar",
+        "SAVE": "Salvar"
     }
 }

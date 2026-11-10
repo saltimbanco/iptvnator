@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "グループを検索...",
             "NO_RESULTS": "一致するグループが見つかりません",
             "SAVE": "保存"
-        }
+        },
+        "SCHEDULE_RECORDING": "録画を予約…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "番組表"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "キャッシュ済みカテゴリを削除しています...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "お気に入り、視聴履歴、非表示カテゴリ、再生進捗を同期後に復元できるよう準備しています。",
             "XTREAM_REFRESH_PROGRESS": "処理済みローカルレコード: {{current}} / {{total}}",
-            "RAIL_RADIO": "ラジオ"
+            "RAIL_RADIO": "ラジオ",
+            "RAIL_RECORDINGS": "録画"
         },
         "SOURCES": {
             "TITLE": "ソース",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "履歴を端末に保存しました。サーバーに接続できません",
         "STATE_incompatible": "このサーバーは履歴の同期に対応していません",
         "PENDING": "送信待ちの履歴変更：{{count}} 件"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "録画を予約 · {{channel}}",
+        "HINT": "IPTVnator はバックグラウンドで録画します。アプリは起動したままにしてください。ウィンドウを閉じてもタスクトレイに残ります。",
+        "DATE": "日付",
+        "START": "開始",
+        "END": "終了",
+        "SAVE": "予約",
+        "ERROR_TIMES": "日付と開始・終了時刻を選んでください。",
+        "ERROR_ORDER": "終了時刻は開始時刻より後にしてください。",
+        "ERROR_PAST": "未来の時刻を選んでください。",
+        "ERROR_SAVE": "録画を予約できませんでした。",
+        "ERROR_RESOLVE": "このチャンネルのストリームを録画用に解決できませんでした。",
+        "LIST_TITLE": "予約済みの録画",
+        "CANCEL": "予約した録画をキャンセル",
+        "CANCELED": "予約した録画をキャンセルしました。",
+        "CANCEL_FAILED": "予約した録画をキャンセルできませんでした。"
+    },
+    "COMMON": {
+        "CANCEL": "キャンセル",
+        "SAVE": "保存"
     }
 }

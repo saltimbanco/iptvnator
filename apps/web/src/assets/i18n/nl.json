@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Zoek groepen...",
             "NO_RESULTS": "Geen overeenkomende groepen gevonden",
             "SAVE": "Opslaan"
-        }
+        },
+        "SCHEDULE_RECORDING": "Opname plannen…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Programmagids"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Gecachte categorieën worden verwijderd...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Favorieten, kijkgeschiedenis, verborgen categorieën en afspeelvoortgang worden klaargezet voor herstel na de synchronisatie.",
             "XTREAM_REFRESH_PROGRESS": "Lokale records verwerkt: {{current}} / {{total}}",
-            "RAIL_RADIO": "Radiozenders"
+            "RAIL_RADIO": "Radiozenders",
+            "RAIL_RECORDINGS": "Opnames"
         },
         "SOURCES": {
             "TITLE": "Bronnen",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Geschiedenis lokaal opgeslagen; server niet bereikbaar",
         "STATE_incompatible": "Deze server ondersteunt geen geschiedenissynchronisatie",
         "PENDING": "Geschiedeniswijzigingen in wachtrij: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Opname plannen · {{channel}}",
+        "HINT": "IPTVnator neemt op de achtergrond op. Laat de app draaien; hij blijft in het systeemvak als het venster gesloten is.",
+        "DATE": "Datum",
+        "START": "Begin",
+        "END": "Einde",
+        "SAVE": "Plannen",
+        "ERROR_TIMES": "Kies een datum en een begin- en eindtijd.",
+        "ERROR_ORDER": "De eindtijd moet na de begintijd liggen.",
+        "ERROR_PAST": "Kies een tijd in de toekomst.",
+        "ERROR_SAVE": "De opname kon niet worden gepland.",
+        "ERROR_RESOLVE": "De stream van dit kanaal kon niet worden opgelost voor de opname.",
+        "LIST_TITLE": "Geplande opnames",
+        "CANCEL": "Geplande opname annuleren",
+        "CANCELED": "Geplande opname geannuleerd.",
+        "CANCEL_FAILED": "De geplande opname kon niet worden geannuleerd."
+    },
+    "COMMON": {
+        "CANCEL": "Annuleren",
+        "SAVE": "Opslaan"
     }
 }

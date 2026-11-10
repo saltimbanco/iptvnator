@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Gruppen suchen...",
             "NO_RESULTS": "Keine passenden Gruppen gefunden",
             "SAVE": "Speichern"
-        }
+        },
+        "SCHEDULE_RECORDING": "Aufnahme planen…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Programmführer"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Zwischengespeicherte Kategorien werden entfernt...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Favoriten, Wiedergabeverlauf, ausgeblendete Kategorien und Wiedergabefortschritt werden für die Wiederherstellung nach der Synchronisierung vorbereitet.",
             "XTREAM_REFRESH_PROGRESS": "Lokale Einträge verarbeitet: {{current}} / {{total}}",
-            "RAIL_RADIO": "Live-Radio"
+            "RAIL_RADIO": "Live-Radio",
+            "RAIL_RECORDINGS": "Aufnahmen"
         },
         "SOURCES": {
             "TITLE": "Quellen",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Verlauf lokal gespeichert; Server nicht erreichbar",
         "STATE_incompatible": "Dieser Server unterstützt keine Verlaufssynchronisierung",
         "PENDING": "Verlaufsänderungen in der Warteschlange: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Aufnahme planen · {{channel}}",
+        "HINT": "IPTVnator nimmt im Hintergrund auf. Lass die App laufen; sie bleibt im Infobereich, wenn das Fenster geschlossen ist.",
+        "DATE": "Datum",
+        "START": "Beginn",
+        "END": "Ende",
+        "SAVE": "Planen",
+        "ERROR_TIMES": "Wähle ein Datum sowie eine Beginn- und eine Endzeit.",
+        "ERROR_ORDER": "Die Endzeit muss nach der Beginnzeit liegen.",
+        "ERROR_PAST": "Wähle eine Zeit in der Zukunft.",
+        "ERROR_SAVE": "Die Aufnahme konnte nicht geplant werden.",
+        "ERROR_RESOLVE": "Der Stream dieses Senders konnte für die Aufnahme nicht aufgelöst werden.",
+        "LIST_TITLE": "Geplante Aufnahmen",
+        "CANCEL": "Geplante Aufnahme abbrechen",
+        "CANCELED": "Geplante Aufnahme abgebrochen.",
+        "CANCEL_FAILED": "Die geplante Aufnahme konnte nicht abgebrochen werden."
+    },
+    "COMMON": {
+        "CANCEL": "Abbrechen",
+        "SAVE": "Speichern"
     }
 }

@@ -1102,7 +1102,8 @@
             "SEARCH_PLACEHOLDER": "Szukaj grup...",
             "NO_RESULTS": "Nie znaleziono pasujących grup",
             "SAVE": "Zapisz"
-        }
+        },
+        "SCHEDULE_RECORDING": "Zaplanuj nagranie…"
     },
     "TOP_MENU": {
         "OPEN_EPG_GUIDE": "Przewodnik po programach"
@@ -2104,7 +2105,8 @@
             "XTREAM_REFRESH_DELETING_CATEGORIES": "Usuwanie kategorii z pamięci podręcznej...",
             "XTREAM_REFRESH_DETAIL_LOCAL": "Ulubione, historia oglądania, ukryte kategorie i postęp odtwarzania są przygotowywane do przywrócenia po synchronizacji.",
             "XTREAM_REFRESH_PROGRESS": "Przetworzone rekordy lokalne: {{current}} / {{total}}",
-            "RAIL_RADIO": "Radio internetowe"
+            "RAIL_RADIO": "Radio internetowe",
+            "RAIL_RECORDINGS": "Nagrania"
         },
         "SOURCES": {
             "TITLE": "Źródła",
@@ -2535,5 +2537,26 @@
         "STATE_offline": "Historia zapisana lokalnie; serwer niedostępny",
         "STATE_incompatible": "Ten serwer nie obsługuje synchronizacji historii",
         "PENDING": "Zmiany historii w kolejce: {{count}}"
+    },
+    "RECORDING_SCHEDULE": {
+        "TITLE": "Zaplanuj nagranie · {{channel}}",
+        "HINT": "IPTVnator nagrywa w tle. Pozostaw aplikację uruchomioną; gdy okno jest zamknięte, działa w zasobniku systemowym.",
+        "DATE": "Data",
+        "START": "Początek",
+        "END": "Koniec",
+        "SAVE": "Zaplanuj",
+        "ERROR_TIMES": "Wybierz datę oraz godzinę początku i końca.",
+        "ERROR_ORDER": "Godzina końca musi być późniejsza niż godzina początku.",
+        "ERROR_PAST": "Wybierz godzinę w przyszłości.",
+        "ERROR_SAVE": "Nie udało się zaplanować nagrania.",
+        "ERROR_RESOLVE": "Nie udało się rozpoznać strumienia tego kanału do nagrania.",
+        "LIST_TITLE": "Zaplanowane nagrania",
+        "CANCEL": "Anuluj zaplanowane nagranie",
+        "CANCELED": "Anulowano zaplanowane nagranie.",
+        "CANCEL_FAILED": "Nie udało się anulować zaplanowanego nagrania."
+    },
+    "COMMON": {
+        "CANCEL": "Anuluj",
+        "SAVE": "Zapisz"
     }
 }
