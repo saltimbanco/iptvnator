@@ -11,12 +11,11 @@ this marker — see `.changes/README.md`.
 
 <!-- next-release -->
 
-# [0.25.6](https://github.com/4gray/iptvnator/compare/v0.25.5...v0.25.6) (2026-11-10)
+# [0.25.7](https://github.com/4gray/iptvnator/compare/v0.25.6...v0.25.7) (2026-11-10)
 
-### Features
+### Fixes
 
-- **recordings** — Playing a finished recording now opens it in IPTVnator's own player instead of the system video app, and the recordings manager lists the recordings that are scheduled but not started yet, each with a cancel button. ([4c9a99e](https://github.com/4gray/iptvnator/commit/4c9a99ea51ee73a61c0aaea1e6e2344ebf5e22a2))
-- **recordings** — Channels offer "Schedule recording…" in the right-click menu (M3U, Xtream and Stalker), IPTVnator keeps running in the tray so a scheduled recording still starts with the window closed, and a Recordings entry in the rail opens past recordings. Stalker links expire, so a Stalker schedule gets a fresh link from the portal right before it starts. ([4c9a99e](https://github.com/4gray/iptvnator/commit/4c9a99ea51ee73a61c0aaea1e6e2344ebf5e22a2))
+- **recordings** — Scheduled recordings now report their outcome — scheduled, recording, canceled, or failed with the reason — in the recordings manager, and a pending one can be rescheduled instead of only canceled. The Windows build ships a tray icon again, so closing the window keeps the app and its schedules alive, and a notification confirms when a scheduled recording starts or fails. ([7dfe05f](https://github.com/4gray/iptvnator/commit/7dfe05f6897834b1e2f3f9f275e6eeb2eb23bad4))
 
 # [0.25.5](https://github.com/4gray/iptvnator/compare/v0.25.5...v0.25.5) (2026-11-09)
 
