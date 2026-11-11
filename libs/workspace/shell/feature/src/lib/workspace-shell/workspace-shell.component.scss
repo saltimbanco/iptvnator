@@ -246,7 +246,7 @@ app-workspace-shell-context-sidebar {
 // shell confirms it in place. Above the content, below CDK overlays/dialogs.
 .workspace-recording-popup {
     position: fixed;
-    top: calc(var(--workspace-header-height, 56px) + 16px);
+    top: 72px;
     right: 20px;
     z-index: 940;
     display: flex;
@@ -255,8 +255,8 @@ app-workspace-shell-context-sidebar {
     max-width: 380px;
     padding: 12px 8px 12px 14px;
     border-radius: 12px;
-    border: 1px solid var(--app-border-subtle, rgba(255, 255, 255, 0.12));
-    background: var(--app-surface-raised, #1c2027);
+    border: 1px solid var(--app-separator, rgba(255, 255, 255, 0.12));
+    background: var(--app-widget-bg, #1c2027);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
