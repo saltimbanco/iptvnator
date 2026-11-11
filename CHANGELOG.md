@@ -11,6 +11,19 @@ this marker — see `.changes/README.md`.
 
 <!-- next-release -->
 
+# [0.25.9](https://github.com/4gray/iptvnator/compare/v0.25.8...v0.25.9) (2026-11-11)
+
+### Features
+
+- **recording** — A scheduled recording now hops to the same channel in another source when its stream fails, pausing while it tries and appending every attempt into one file. A popup confirms a schedule started, the player's record button shows a background recording of the channel being watched, and any EPG programme can be scheduled from its right-click menu. ([912ad54](https://github.com/4gray/iptvnator/commit/912ad54bc8791bb523b9c0f034b1517588708f36))
+
+<details>
+<summary>Internal changes</summary>
+
+- **release** — The draft-release check now requires only the platform assets the tag build actually produced, so a Windows-only release channel is verified against its own artifact set instead of the canonical full matrix. ([f8c1e31](https://github.com/4gray/iptvnator/commit/f8c1e31ae19d76d13d82e707d2c7f8ec9ea8c5e1))
+
+</details>
+
 # [0.25.8](https://github.com/4gray/iptvnator/compare/v0.25.7...v0.25.8) (2026-11-10)
 
 ### Features

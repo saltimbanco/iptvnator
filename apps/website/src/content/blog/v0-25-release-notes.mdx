@@ -118,6 +118,14 @@ There are two ways to try IPTVnator with a TV remote. The dedicated **LG webOS a
 - **Stalker recordings recover from a dropped stream.** A Stalker recording that loses its connection mints a fresh portal link before reconnecting, instead of retrying an expired one.
 - **The channel menu opens where you click.** The right-click menu appears at the pointer on the first attempt of a session, so **Schedule recording** is reachable immediately.
 
+## Recording reliability in 0.25.9
+
+<StatusPill type="new" />
+
+- **A scheduled recording survives a dead source.** When the stream fails, the recording pauses, opens the same channel from another source and appends the new attempt into the same file, so one schedule still produces one recording.
+- **A schedule announces itself.** A popup confirms the recording started, and the player's record button turns red when the channel being watched is the one being recorded, so you can stop the schedule from there.
+- **Any EPG programme can be scheduled.** Right-click a programme in the guide to open the scheduler with its time already filled in. The Downloads menu is now **Recordings**, and finished items are labelled **Stored**.
+
 <Spoiler title="See the full list of changes">
 The [full changelog](https://github.com/4gray/iptvnator/blob/v0.25.0/CHANGELOG.md#0250-2026-11-08) lists every feature, fix and performance entry, with links to the relevant changes and issues.
 </Spoiler>
