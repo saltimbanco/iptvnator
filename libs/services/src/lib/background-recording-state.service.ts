@@ -58,12 +58,6 @@ export class BackgroundRecordingStateService implements OnDestroy {
         this.unsubscribe = window.electron.onBackgroundRecordingState?.(
             (state) => this.apply(state)
         );
-        // A renderer reload during a scheduled recording must still show the
-        // popup once, so seed from the current main-process state.
-        void window.electron
-            .backgroundRecordingGetState?.()
-            .then((state) => this.apply(state))
-            .catch(() => undefined);
     }
 
     private apply(state: BackgroundRecordingState | null): void {

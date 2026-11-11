@@ -11,9 +11,27 @@ import {
 export const RECORDINGS_UPDATE_EVENT = 'RECORDINGS_UPDATE_EVENT';
 
 let mainWindow: BrowserWindow | null = null;
+let stateSource: (() => BackgroundRecordingState) | null = null;
+
+/**
+ * Seeds a freshly loaded renderer, so a reload during a scheduled recording
+ * still shows the start popup. The renderer cannot ask for it on its own: an
+ * extra invoke before the first card is one call more than the launch journey
+ * allows, so the main process pushes the state once the window has loaded.
+ */
+export function setBackgroundRecordingStateSource(
+    source: () => BackgroundRecordingState
+): void {
+    stateSource = source;
+}
 
 export function setRecordingsMainWindow(win: BrowserWindow): void {
     mainWindow = win;
+    win.webContents.on('did-finish-load', () => {
+        if (stateSource) {
+            broadcastBackgroundRecordingState(stateSource());
+        }
+    });
 }
 
 export function broadcastRecordingsUpdate(): void {

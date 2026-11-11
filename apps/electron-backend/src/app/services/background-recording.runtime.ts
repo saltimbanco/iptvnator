@@ -1,6 +1,9 @@
 import { app, powerSaveBlocker } from 'electron';
 import { mkdirSync } from 'fs';
-import { broadcastBackgroundRecordingState } from '../events/database/recording-broadcast';
+import {
+    broadcastBackgroundRecordingState,
+    setBackgroundRecordingStateSource,
+} from '../events/database/recording-broadcast';
 import {
     BackgroundRecordingService,
     type DvrRecordingEngine,
@@ -108,3 +111,5 @@ export const backgroundRecordingService = new BackgroundRecordingService({
     finalizeMerged: (targetPath, error) =>
         void finalizeRecordingRow(targetPath, error),
 });
+
+setBackgroundRecordingStateSource(() => backgroundRecordingService.getState());
