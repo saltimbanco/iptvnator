@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Αναζήτηση προγραμμάτων",
         "CLOSE_PROGRAM_SEARCH": "Κλείσιμο αναζήτησης προγραμμάτων",
         "LIVE_STREAM": "Ζωντανή ροή",
+        "RECORD_PROGRAM": "Εγγραφή προγράμματος",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Η αναπαραγωγή αρχείου δεν είναι διαθέσιμη",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Αυτός ο πάροχος εκθέτει ιστορικό προγράμματος για το κανάλι, αλλά δεν παρέχει αναπαραγωγή αρχείου/catch-up.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Προσθέστε ή αλλάξτε το URL της λίστας EPG στις ρυθμίσεις της εφαρμογής.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Ένα αρχείο άσχετο με αυτή τη λήψη διατηρήθηκε στη διαδρομή: {{path}}. Ανακτήστε ό,τι χρειάζεστε, διαγράψτε αυτό το αντίγραφο ανάκτησης και δοκιμάστε ξανά.",
             "COPY_PATH": "Αντιγραφή διαδρομής ανάκτησης"
         },
-        "TITLE": "Λήψεις",
+        "TITLE": "Εγγραφές",
         "DOWNLOAD": "Λήψη",
         "PLAY_LOCAL": "Τοπική αναπαραγωγή",
         "DOWNLOAD_SEASON": "Λήψη σεζόν ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Σύνθετη αναζήτηση",
             "RAIL_RECENT": "Πρόσφατα προβληθέντα",
             "RAIL_FAVORITES": "Αγαπημένα",
-            "RAIL_DOWNLOADS": "Λήψεις",
+            "RAIL_DOWNLOADS": "Εγγραφές",
             "EXTERNAL_PLAYBACK_CLOSE": "Κλείσιμο player",
             "EXTERNAL_PLAYBACK_DISMISS": "Απόκρυψη",
             "EXTERNAL_PLAYBACK_OPENING": "Άνοιγμα player…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Προγραμματισμένο",
         "STATUS_STARTED": "Εγγραφή",
         "STATUS_FAILED": "Αποτυχία",
-        "STATUS_CANCELED": "Ακυρωμένο"
+        "STATUS_CANCELED": "Ακυρωμένο",
+        "STARTED_TITLE": "Η προγραμματισμένη εγγραφή ξεκίνησε",
+        "STARTED_BODY": "Το {{channel}} εγγράφεται τώρα στο παρασκήνιο.",
+        "STARTED_DISMISS": "Κλείσιμο"
     },
     "COMMON": {
         "CANCEL": "Άκυρο",

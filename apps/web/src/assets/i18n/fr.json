@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Rechercher des programmes",
         "CLOSE_PROGRAM_SEARCH": "Fermer la recherche de programmes",
         "LIVE_STREAM": "Diffusion en direct",
+        "RECORD_PROGRAM": "Enregistrer l’émission",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Lecture des archives indisponible",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Ce fournisseur expose l'historique des programmes pour la chaîne, mais n'expose pas la lecture archive/catch-up.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Ajoutez ou modifiez l’URL de la liste EPG dans les paramètres de l’application.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Un fichier sans rapport avec ce téléchargement a été conservé ici : {{path}}. Récupérez le contenu utile, supprimez cette copie de récupération, puis réessayez.",
             "COPY_PATH": "Copier le chemin de récupération"
         },
-        "TITLE": "Téléchargements",
+        "TITLE": "Enregistrements",
         "DOWNLOAD": "Télécharger",
         "PLAY_LOCAL": "Lire localement",
         "DOWNLOAD_SEASON": "Télécharger la saison ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Recherche avancée",
             "RAIL_RECENT": "Récemment consultés",
             "RAIL_FAVORITES": "Favoris",
-            "RAIL_DOWNLOADS": "Téléchargements",
+            "RAIL_DOWNLOADS": "Enregistrements",
             "EXTERNAL_PLAYBACK_CLOSE": "Fermer le lecteur",
             "EXTERNAL_PLAYBACK_DISMISS": "Masquer",
             "EXTERNAL_PLAYBACK_OPENING": "Ouverture du lecteur…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Programmé",
         "STATUS_STARTED": "Enregistrement",
         "STATUS_FAILED": "Échec",
-        "STATUS_CANCELED": "Annulé"
+        "STATUS_CANCELED": "Annulé",
+        "STARTED_TITLE": "Enregistrement programmé démarré",
+        "STARTED_BODY": "{{channel}} est maintenant enregistré en arrière-plan.",
+        "STARTED_DISMISS": "Fermer"
     },
     "COMMON": {
         "CANCEL": "Annuler",

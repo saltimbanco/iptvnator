@@ -5,6 +5,44 @@
     [appTrafficLightsClearance]="facade.isMacOS"
 >
     <app-playlist-drop-overlay [state]="dropZone.overlayState()" />
+
+    <!-- A schedule starts without any user gesture, so this popup is the
+         in-app answer to "did it start?" — the OS toast is the other one and
+         it is easy to miss while the window is open. -->
+    @if (recordingNotice(); as notice) {
+        <aside
+            class="workspace-recording-popup"
+            role="status"
+            aria-live="polite"
+            data-test-id="scheduled-recording-popup"
+        >
+            <mat-icon
+                class="workspace-recording-popup__icon"
+                aria-hidden="true"
+                >fiber_manual_record</mat-icon
+            >
+            <div class="workspace-recording-popup__body">
+                <strong>{{
+                    'RECORDING_SCHEDULE.STARTED_TITLE' | translate
+                }}</strong>
+                <span>{{
+                    'RECORDING_SCHEDULE.STARTED_BODY'
+                        | translate: { channel: notice.channelName }
+                }}</span>
+            </div>
+            <button
+                type="button"
+                mat-icon-button
+                class="workspace-recording-popup__dismiss"
+                [attr.aria-label]="
+                    'RECORDING_SCHEDULE.STARTED_DISMISS' | translate
+                "
+                (click)="dismissRecordingNotice()"
+            >
+                <mat-icon>close</mat-icon>
+            </button>
+        </aside>
+    }
     @if (facade.showXtreamImportOverlay()) {
         <app-workspace-shell-import-overlay />
     }

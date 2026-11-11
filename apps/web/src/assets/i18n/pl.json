@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Szukaj programów",
         "CLOSE_PROGRAM_SEARCH": "Zamknij wyszukiwanie programów",
         "LIVE_STREAM": "Transmisja na żywo",
+        "RECORD_PROGRAM": "Nagraj program",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Odtwarzanie archiwum niedostępne",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Ten dostawca udostępnia historię programu dla kanału, ale nie udostępnia odtwarzalnego archiwum/catch-up.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Dodaj lub zmień URL listy EPG w ustawieniach aplikacji.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Plik niezwiązany z tym pobieraniem zachowano pod ścieżką: {{path}}. Odzyskaj potrzebną zawartość, usuń tę kopię odzyskiwania i spróbuj ponownie.",
             "COPY_PATH": "Kopiuj ścieżkę odzyskiwania"
         },
-        "TITLE": "Pobrane",
+        "TITLE": "Nagrania",
         "DOWNLOAD": "Pobierz",
         "PLAY_LOCAL": "Odtwórz plik lokalny",
         "DOWNLOAD_SEASON": "Pobierz sezon ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Wyszukiwanie zaawansowane",
             "RAIL_RECENT": "Ostatnio oglądane",
             "RAIL_FAVORITES": "Ulubione",
-            "RAIL_DOWNLOADS": "Pobrane",
+            "RAIL_DOWNLOADS": "Nagrania",
             "EXTERNAL_PLAYBACK_CLOSE": "Zamknij odtwarzacz",
             "EXTERNAL_PLAYBACK_DISMISS": "Ukryj",
             "EXTERNAL_PLAYBACK_OPENING": "Otwieranie odtwarzacza…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Zaplanowano",
         "STATUS_STARTED": "Nagrywanie",
         "STATUS_FAILED": "Niepowodzenie",
-        "STATUS_CANCELED": "Anulowano"
+        "STATUS_CANCELED": "Anulowano",
+        "STARTED_TITLE": "Zaplanowane nagranie rozpoczęte",
+        "STARTED_BODY": "{{channel}} jest teraz nagrywany w tle.",
+        "STARTED_DISMISS": "Zamknij"
     },
     "COMMON": {
         "CANCEL": "Anuluj",

@@ -220,6 +220,11 @@
                         [activeProgram]="activeProgram()"
                         [currentLocale]="currentLocale()"
                         (blockClick)="onBlockClick($event)"
+                        (blockContextMenu)=
+                            "recordMenu()?.open(
+                                $event.block.program,
+                                $event.event
+                            )"
                         (watchClick)="onWatch($event)"
                         (infoClick)="openDetails($event)"
                         (groupExpand)="onGroupExpand($event)"
@@ -239,3 +244,26 @@
         }
     }
 </div>
+
+@if (canRecordProgram()) {
+    <div
+        #recordMenuTrigger="matMenuTrigger"
+        appEpgRecordMenu
+        aria-hidden="true"
+        class="epg-record-menu-anchor"
+        [matMenuTriggerFor]="recordProgramMenu"
+        [epgRecordMenuTrigger]="recordMenuTrigger"
+        (recordProgramRequested)="recordProgramRequested.emit($event)"
+    ></div>
+    <mat-menu #recordProgramMenu="matMenu">
+        <button
+            mat-menu-item
+            type="button"
+            data-test-id="epg-record-program"
+            (click)="recordMenu()?.select()"
+        >
+            <mat-icon>fiber_manual_record</mat-icon>
+            <span>{{ 'EPG.RECORD_PROGRAM' | translate }}</span>
+        </button>
+    </mat-menu>
+}

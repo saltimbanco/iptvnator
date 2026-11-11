@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Пошук перадач",
         "CLOSE_PROGRAM_SEARCH": "Закрыць пошук перадач",
         "LIVE_STREAM": "Прамая трансляцыя",
+        "RECORD_PROGRAM": "Запісаць праграму",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Прайграванне архіва недаступна",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Гэты правайдэр прадастаўляе гісторыю перадач для канала, але не падтрымлівае прайграванне архіва/catch-up.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Дадайце або змяніце URL спіса EPG у наладах праграмы.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Файл, не звязаны з гэтай загрузкай, захаваны па шляху: {{path}}. Захавайце патрэбнае змесціва, выдаліце гэтую рэзервовую копію і паўтарыце дзеянне.",
             "COPY_PATH": "Капіяваць шлях аднаўлення"
         },
-        "TITLE": "Спампаванні",
+        "TITLE": "Запісы",
         "DOWNLOAD": "Спампаваць",
         "PLAY_LOCAL": "Прайграць лакальна",
         "DOWNLOAD_SEASON": "Спампаваць сезон ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Пашыраны пошук",
             "RAIL_RECENT": "Нядаўна праглянутае",
             "RAIL_FAVORITES": "Выбранае",
-            "RAIL_DOWNLOADS": "Спампаванні",
+            "RAIL_DOWNLOADS": "Запісы",
             "EXTERNAL_PLAYBACK_CLOSE": "Закрыць плэер",
             "EXTERNAL_PLAYBACK_DISMISS": "Схаваць",
             "EXTERNAL_PLAYBACK_OPENING": "Плэер адкрываецца…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Запланавана",
         "STATUS_STARTED": "Ідзе запіс",
         "STATUS_FAILED": "Памылка",
-        "STATUS_CANCELED": "Скасавана"
+        "STATUS_CANCELED": "Скасавана",
+        "STARTED_TITLE": "Запланаваны запіс пачаты",
+        "STARTED_BODY": "{{channel}} зараз запісваецца ў фоне.",
+        "STARTED_DISMISS": "Закрыць"
     },
     "COMMON": {
         "CANCEL": "Скасаваць",

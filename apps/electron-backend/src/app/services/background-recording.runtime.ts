@@ -4,7 +4,15 @@ import { broadcastBackgroundRecordingState } from '../events/database/recording-
 import {
     BackgroundRecordingService,
     type DvrRecordingEngine,
+    type DvrRecordingFinal,
 } from './background-recording.service';
+import {
+    appendRecordingSegment,
+    finalizeRecordingRow,
+    findLiveAlternatePlaybacks,
+    touchRecordingRow,
+} from './live-recording-failover';
+import { reserveRecordingTargetPath } from './recording-target-path';
 import { embeddedMpvNativeService } from './embedded-mpv-native.service';
 import { readEmbeddedMpvSessionOptions } from './embedded-mpv-session-options';
 import { embeddedMpvRecordingTracker } from './embedded-mpv-recording-tracker';
@@ -59,7 +67,18 @@ const engine: DvrRecordingEngine = {
     state: (sessionId) =>
         embeddedMpvNativeService.getRecordingSessionState(sessionId),
     onFinalized: (listener) =>
-        embeddedMpvRecordingTracker.onRecordingFinalized(listener),
+        embeddedMpvRecordingTracker.onRecordingFinalized((final) => {
+            const result: DvrRecordingFinal = {
+                sessionId: final.sessionId,
+                targetPath: final.targetPath,
+                status: final.status,
+                fileSizeBytes: final.fileSizeBytes,
+                ...(final.errorMessage
+                    ? { errorMessage: final.errorMessage }
+                    : {}),
+            };
+            listener(result);
+        }),
     activeRowIds: () => embeddedMpvRecordingTracker.activeRowIds(),
 };
 
@@ -75,4 +94,17 @@ export const backgroundRecordingService = new BackgroundRecordingService({
     },
     keepAwake,
     broadcast: broadcastBackgroundRecordingState,
+    reserveTargetPath: (directory, title) =>
+        reserveRecordingTargetPath(directory, title),
+    // A scheduled recording outlives the renderer, so its source failover
+    // reads the desktop catalog in this process instead of asking a player.
+    resolveAlternates: (request) =>
+        findLiveAlternatePlaybacks(
+            request.metadata.channelName,
+            request.metadata.playlistId
+        ),
+    appendSegment: appendRecordingSegment,
+    onSegmentMerged: (targetPath) => void touchRecordingRow(targetPath),
+    finalizeMerged: (targetPath, error) =>
+        void finalizeRecordingRow(targetPath, error),
 });

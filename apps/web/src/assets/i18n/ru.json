@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Поиск программ",
         "CLOSE_PROGRAM_SEARCH": "Закрыть поиск программ",
         "LIVE_STREAM": "Прямая трансляция",
+        "RECORD_PROGRAM": "Записать передачу",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Воспроизведение архива недоступно",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Этот провайдер предоставляет историю программы для канала, но не предоставляет воспроизводимый архив/catch-up.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Добавьте или измените URL списка EPG в настройках приложения.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Файл, не относящийся к этой загрузке, сохранён по пути: {{path}}. Сохраните нужное содержимое, удалите эту резервную копию и повторите действие.",
             "COPY_PATH": "Копировать путь восстановления"
         },
-        "TITLE": "Загрузки",
+        "TITLE": "Записи",
         "DOWNLOAD": "Скачать",
         "PLAY_LOCAL": "Воспроизвести локально",
         "DOWNLOAD_SEASON": "Скачать сезон ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Расширенный поиск",
             "RAIL_RECENT": "Недавно просмотренные",
             "RAIL_FAVORITES": "Избранное",
-            "RAIL_DOWNLOADS": "Загрузки",
+            "RAIL_DOWNLOADS": "Записи",
             "EXTERNAL_PLAYBACK_CLOSE": "Закрыть плеер",
             "EXTERNAL_PLAYBACK_DISMISS": "Скрыть",
             "EXTERNAL_PLAYBACK_OPENING": "Плеер открывается…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Запланировано",
         "STATUS_STARTED": "Идёт запись",
         "STATUS_FAILED": "Ошибка",
-        "STATUS_CANCELED": "Отменено"
+        "STATUS_CANCELED": "Отменено",
+        "STARTED_TITLE": "Плановая запись начата",
+        "STARTED_BODY": "Идёт запись {{channel}} в фоновом режиме.",
+        "STARTED_DISMISS": "Закрыть"
     },
     "COMMON": {
         "CANCEL": "Отмена",

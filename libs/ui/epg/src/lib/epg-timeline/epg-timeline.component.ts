@@ -17,6 +17,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIcon } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltip } from '@angular/material/tooltip';
 import { normalizeDateLocale } from '@iptvnator/pipes';
 import { injectTranslationTick } from '@iptvnator/services';
@@ -31,6 +32,7 @@ import {
 import { EpgItemDialogAction } from '../epg-item-description/epg-item-description.component';
 import type { EpgProgramActivationEvent } from '../epg-program-activation-event';
 import { EpgProgrammeDialogService } from '../epg-programme-dialog.service';
+import { EpgRecordMenuDirective } from '../epg-record-menu.directive';
 import {
     EpgTimelineSummary,
     formatClockTime,
@@ -46,6 +48,7 @@ import {
     EpgTimelineEmptyStateComponent,
 } from './epg-timeline-empty-state.component';
 import { TimelineScrollController } from './epg-timeline-scroll.controller';
+import { timelineRenderState } from './epg-timeline-render-state';
 import { TimelineWindowController } from './epg-timeline-window.controller';
 import {
     TimelineZoomController,
@@ -72,8 +75,6 @@ import {
     timelineZoomLevelForScale,
 } from './epg-timeline.utils';
 
-type RenderState = 'loading' | 'ribbon' | EpgTimelineEmptyReason;
-
 export type { EpgTimelineSummary } from './epg-summary.util';
 
 @Component({
@@ -83,9 +84,11 @@ export type { EpgTimelineSummary } from './epg-summary.util';
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
         DatePipe,
+        EpgRecordMenuDirective,
         EpgTimelineEmptyStateComponent,
         EpgTimelineTrackComponent,
         MatIcon,
+        MatMenuModule,
         MatTooltip,
         TranslatePipe,
     ],
@@ -119,6 +122,9 @@ export class EpgTimelineComponent {
     readonly retry = output<void>();
     readonly collapsedChange = output<boolean>();
     readonly openGuide = output<void>();
+    /** The host can schedule a recording; right-click offers it. */
+    readonly canRecordProgram = input(false);
+    readonly recordProgramRequested = output<EpgProgram>();
 
     private readonly destroyRef = inject(DestroyRef);
     private readonly programmeDialog = inject(EpgProgrammeDialogService);
@@ -133,6 +139,9 @@ export class EpgTimelineComponent {
 
     readonly nowMs = signal(Date.now());
     readonly selectedKey = signal<string | null>(null);
+
+    /** Opens the "Record programme" menu at the pointer on right-click. */
+    readonly recordMenu = viewChild(EpgRecordMenuDirective);
     /** Day centred in the ribbon, seeded from the controlled `selectedDate` so
      * a non-today date survives (re)mount and follows host changes. */
     readonly viewDayKey = linkedSignal(() => {
@@ -233,28 +242,15 @@ export class EpgTimelineComponent {
         () => this.viewDayKey() === getTodayEpgDateKey()
     );
 
-    readonly renderState = computed<RenderState>(() => {
-        if (this.loading()) {
-            return 'loading';
-        }
-        const reason = this.emptyReason();
-        if (reason !== 'none') {
-            return reason;
-        }
-        if (this.programs().length === 0) {
-            return 'channel-unmapped';
-        }
-        if (
-            !hasProgramsForDateKey(
-                this.programs(),
-                this.viewDayKey(),
-                this.offsetMinutes()
-            )
-        ) {
-            return 'empty-day';
-        }
-        return 'ribbon';
-    });
+    readonly renderState = computed(() =>
+        timelineRenderState(
+            this.loading(),
+            this.emptyReason(),
+            this.programs(),
+            this.viewDayKey(),
+            this.offsetMinutes()
+        )
+    );
     readonly emptyStateReason = computed<EpgTimelineEmptyReason>(() => {
         const state = this.renderState();
         return state === 'loading' || state === 'ribbon' ? 'none' : state;
@@ -381,6 +377,8 @@ export class EpgTimelineComponent {
         });
     }
 
+
+
     openDetails(block: TimelineBlock): void {
         const canCatchUp = this.canCatchUp(block);
         const archiveContextKey = this.archiveContextKey();
@@ -415,11 +413,7 @@ export class EpgTimelineComponent {
                         type: result,
                     });
                 } else if (result === 'timeshift') {
-                    this.selectedKey.set(block.key);
-                    this.programActivated.emit({
-                        program: block.program,
-                        type: 'timeshift',
-                    });
+                    this.onWatch(block);
                 }
             });
     }

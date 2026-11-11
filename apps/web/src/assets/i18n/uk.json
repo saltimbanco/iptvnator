@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Пошук програм",
         "CLOSE_PROGRAM_SEARCH": "Закрити пошук програм",
         "LIVE_STREAM": "Прямий етер",
+        "RECORD_PROGRAM": "Записати програму",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Відтворення архіву недоступне",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Цей провайдер надає доступ до історії програм для цього каналу, але не надає можливості перегляду архівних записів або пропущених програм.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Будь ласка, додайте або змініть URL-адресу телегіда в налаштуваннях застосунка.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Файл, що не належить до цього завантаження, збережено за таким шляхом: {{path}}. Збережіть потрібний вміст, видаліть цю резервну копію та повторіть дію.",
             "COPY_PATH": "Скопіювати шлях відновлення"
         },
-        "TITLE": "Завантаження",
+        "TITLE": "Записи",
         "DOWNLOAD": "Завантажити",
         "PLAY_LOCAL": "Відтворити локально",
         "DOWNLOAD_SEASON": "Завантажити сезон ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Розширений пошук",
             "RAIL_RECENT": "Нещодавно переглянуті",
             "RAIL_FAVORITES": "Вподобання",
-            "RAIL_DOWNLOADS": "Завантаження",
+            "RAIL_DOWNLOADS": "Записи",
             "EXTERNAL_PLAYBACK_CLOSE": "Закрити плеєр",
             "EXTERNAL_PLAYBACK_DISMISS": "Відхилити",
             "EXTERNAL_PLAYBACK_OPENING": "Відкривається плеєр…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Заплановано",
         "STATUS_STARTED": "Триває запис",
         "STATUS_FAILED": "Помилка",
-        "STATUS_CANCELED": "Скасовано"
+        "STATUS_CANCELED": "Скасовано",
+        "STARTED_TITLE": "Запланований запис розпочато",
+        "STARTED_BODY": "{{channel}} зараз записується у фоновому режимі.",
+        "STARTED_DISMISS": "Закрити"
     },
     "COMMON": {
         "CANCEL": "Скасувати",

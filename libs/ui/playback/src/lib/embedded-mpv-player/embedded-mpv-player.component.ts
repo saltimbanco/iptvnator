@@ -19,7 +19,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LiveChannelFailoverService } from '@iptvnator/playback/data-access';
-import { injectTranslationTick } from '@iptvnator/services';
+import { liveChannelKey } from '@iptvnator/playback/util/live-channel-match';
+import { injectTranslationTick, RecordingsService } from '@iptvnator/services';
 import {
     EmbeddedMpvAudioTrack,
     RecordingStartMetadata,
@@ -120,6 +121,7 @@ export class EmbeddedMpvPlayerComponent implements OnDestroy {
      */
     private readonly translationsTick = injectTranslationTick();
     readonly controller = inject(EmbeddedMpvSessionController);
+    private readonly recordings = inject(RecordingsService);
     private readonly failover = inject(LiveChannelFailoverService);
     readonly sharedControls = inject(EmbeddedMpvControlsAdapter);
     private readonly shortcuts = new EmbeddedMpvShortcuts();
@@ -362,8 +364,26 @@ export class EmbeddedMpvPlayerComponent implements OnDestroy {
             this.isSupported() &&
             !this.isErrored()
     );
+    /**
+     * A scheduled recording of this channel, running on the main process's
+     * hidden session. The player's own recording state never sees it, so the
+     * record button would otherwise look idle while the channel is being
+     * recorded — and tapping it would start a second, competing recording.
+     */
+    readonly backgroundRecording = computed(() => {
+        const active = this.recordings.activeRecording();
+        const title = this.playback().title?.trim();
+        if (!active || !title) {
+            return null;
+        }
+        return liveChannelKey(active.channelName) === liveChannelKey(title)
+            ? active
+            : null;
+    });
     readonly isRecording = computed(
-        () => this.session()?.recording?.active === true
+        () =>
+            this.session()?.recording?.active === true ||
+            this.backgroundRecording() !== null
     );
     readonly showSeriesNavigation = computed(
         () => !this.isLivePlayback() && this.seriesNavigation() !== null
@@ -379,7 +399,9 @@ export class EmbeddedMpvPlayerComponent implements OnDestroy {
             this.seriesNavigation()?.canNext === true
     );
     readonly recordingElapsed = computed(() => {
-        const startedAt = this.session()?.recording?.startedAt;
+        const startedAt =
+            this.session()?.recording?.startedAt ??
+            this.backgroundRecording()?.startedAt;
         this.recordingTick();
         if (!startedAt) {
             return 0;
@@ -852,13 +874,48 @@ export class EmbeddedMpvPlayerComponent implements OnDestroy {
         this.legacyInteractions.scheduleControlsHide();
     }
 
+    /** Stops the scheduled recording this player's button is showing. */
+    private async stopBackgroundRecording(recording: {
+        id: number;
+    }): Promise<void> {
+        const result = await this.recordings.stopRecording(recording.id);
+        if (result.success) {
+            this.feedback.flash(
+                'check_circle',
+                this.translate.instant('EMBEDDED_MPV.PLAYER.RECORDING_SAVED'),
+                1200
+            );
+            this.setRecordingMessage(
+                this.translate.instant('EMBEDDED_MPV.PLAYER.RECORDING_SAVED'),
+                { autoDismiss: true }
+            );
+            return;
+        }
+        this.setRecordingMessage(
+            result.error ??
+                this.translate.instant(
+                    'EMBEDDED_MPV.PLAYER.RECORDING_FAILED_TO_STOP'
+                )
+        );
+        this.flashRecordingFailed();
+    }
+
     async toggleRecording(): Promise<void> {
         if (!this.canRecord()) {
             return;
         }
 
         this.legacyInteractions.revealControls(false);
-        if (this.isRecording()) {
+        const ownRecording = this.session()?.recording?.active === true;
+        if (!ownRecording) {
+            const background = this.backgroundRecording();
+            if (background) {
+                this.legacyInteractions.scheduleControlsHide();
+                await this.stopBackgroundRecording(background);
+                return;
+            }
+        }
+        if (ownRecording) {
             const recording = await this.controller.stopRecording();
             if (recording?.targetPath) {
                 // recordingStopped is emitted by the session watcher in the

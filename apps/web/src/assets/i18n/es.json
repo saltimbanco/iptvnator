@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Buscar programas",
         "CLOSE_PROGRAM_SEARCH": "Cerrar búsqueda de programas",
         "LIVE_STREAM": "Transmisión en vivo",
+        "RECORD_PROGRAM": "Grabar programa",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "La reproducción del archivo no está disponible",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Este proveedor expone el historial de programación del canal, pero no permite la reproducción del archivo/Catchup.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Añade o cambia la URL de la lista EPG en los ajustes de la aplicación.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Se ha conservado un archivo ajeno a esta descarga en: {{path}}. Recupera el contenido que necesites, elimina esta copia de recuperación y vuelve a intentarlo.",
             "COPY_PATH": "Copiar ruta de recuperación"
         },
-        "TITLE": "Descargas",
+        "TITLE": "Grabaciones",
         "DOWNLOAD": "Descargar",
         "PLAY_LOCAL": "Reproducir localmente",
         "DOWNLOAD_SEASON": "Descargar temporada ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Búsqueda avanzada",
             "RAIL_RECENT": "Vistos recientemente",
             "RAIL_FAVORITES": "Favoritos",
-            "RAIL_DOWNLOADS": "Descargas",
+            "RAIL_DOWNLOADS": "Grabaciones",
             "EXTERNAL_PLAYBACK_CLOSE": "Cerrar reproductor",
             "EXTERNAL_PLAYBACK_DISMISS": "Ocultar",
             "EXTERNAL_PLAYBACK_OPENING": "Abriendo reproductor…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Programado",
         "STATUS_STARTED": "Grabando",
         "STATUS_FAILED": "Falló",
-        "STATUS_CANCELED": "Cancelado"
+        "STATUS_CANCELED": "Cancelado",
+        "STARTED_TITLE": "Grabación programada iniciada",
+        "STARTED_BODY": "{{channel}} se está grabando en segundo plano.",
+        "STARTED_DISMISS": "Cerrar"
     },
     "COMMON": {
         "CANCEL": "Cancelar",

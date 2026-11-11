@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "番組を検索",
         "CLOSE_PROGRAM_SEARCH": "番組検索を閉じる",
         "LIVE_STREAM": "ライブストリーム",
+        "RECORD_PROGRAM": "番組を録画",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "アーカイブ再生は利用できません",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "このプロバイダーはチャンネルの番組履歴を提供していますが、アーカイブ／Catchup再生には対応していません。",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "アプリの設定で EPG リストの URL を追加または変更してください。",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "このダウンロードとは無関係なファイルが {{path}} に保存されています。必要な内容を取り出し、この復元用コピーを削除してから、もう一度お試しください。",
             "COPY_PATH": "復元パスをコピー"
         },
-        "TITLE": "ダウンロード",
+        "TITLE": "録画",
         "DOWNLOAD": "ダウンロード",
         "PLAY_LOCAL": "ローカル再生",
         "DOWNLOAD_SEASON": "シーズンをダウンロード（{{count}}）",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "詳細検索",
             "RAIL_RECENT": "最近表示した項目",
             "RAIL_FAVORITES": "お気に入り",
-            "RAIL_DOWNLOADS": "ダウンロード",
+            "RAIL_DOWNLOADS": "録画",
             "EXTERNAL_PLAYBACK_CLOSE": "プレーヤーを閉じる",
             "EXTERNAL_PLAYBACK_DISMISS": "非表示",
             "EXTERNAL_PLAYBACK_OPENING": "プレーヤーを起動中…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "予約済み",
         "STATUS_STARTED": "録画中",
         "STATUS_FAILED": "失敗",
-        "STATUS_CANCELED": "キャンセル済み"
+        "STATUS_CANCELED": "キャンセル済み",
+        "STARTED_TITLE": "予約録画を開始しました",
+        "STARTED_BODY": "{{channel}} をバックグラウンドで録画しています。",
+        "STARTED_DISMISS": "閉じる"
     },
     "COMMON": {
         "CANCEL": "キャンセル",

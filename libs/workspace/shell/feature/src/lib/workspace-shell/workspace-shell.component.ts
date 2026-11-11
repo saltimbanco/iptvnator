@@ -9,8 +9,11 @@ import {
     viewChild,
     ChangeDetectionStrategy,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterOutlet } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { BackgroundRecordingStateService } from '@iptvnator/services';
 import { ExternalPlaybackDockComponent } from '@iptvnator/ui/components';
 // File-level entry: the @iptvnator/ui/playback barrel would put the web players on the first route.
 import { EmbeddedMpvOverlayVisibilityService } from '@iptvnator/ui/playback/embedded-mpv-player';
@@ -45,6 +48,8 @@ import { LIVE_CATEGORIES_POPOVER } from '@iptvnator/portal/shared/util';
         CdkTrapFocus,
         ExternalPlaybackDockComponent,
         LayoutSlideDirective,
+        MatButtonModule,
+        MatIconModule,
         TranslatePipe,
         PlaylistDropOverlayComponent,
         PlaylistDropZoneDirective,
@@ -81,8 +86,17 @@ import { LIVE_CATEGORIES_POPOVER } from '@iptvnator/portal/shared/util';
 })
 export class WorkspaceShellComponent {
     readonly facade = inject(WorkspaceShellFacade);
+
+    dismissRecordingNotice(): void {
+        this.backgroundRecording.dismissNotice();
+    }
+
     readonly keyboardShortcuts = inject(WorkspaceKeyboardShortcutsService);
     readonly contextDrawer = inject(WorkspaceShellContextDrawerService);
+    private readonly backgroundRecording = inject(
+        BackgroundRecordingStateService
+    );
+    readonly recordingNotice = this.backgroundRecording.notice;
     private readonly mpvOverlayVisibility = inject(
         EmbeddedMpvOverlayVisibilityService
     );

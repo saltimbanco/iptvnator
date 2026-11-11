@@ -241,3 +241,40 @@ app-workspace-shell-context-sidebar {
         grid-row: 4;
     }
 }
+
+// Scheduled-recording popup: the recorder starts without a click, so the
+// shell confirms it in place. Above the content, below CDK overlays/dialogs.
+.workspace-recording-popup {
+    position: fixed;
+    top: calc(var(--workspace-header-height, 56px) + 16px);
+    right: 20px;
+    z-index: 940;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 380px;
+    padding: 12px 8px 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--app-border-subtle, rgba(255, 255, 255, 0.12));
+    background: var(--app-surface-raised, #1c2027);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.workspace-recording-popup__icon {
+    flex: 0 0 auto;
+    color: var(--app-live-color, #d32f2f);
+}
+
+.workspace-recording-popup__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.workspace-recording-popup__dismiss {
+    flex: 0 0 auto;
+    margin-top: -6px;
+}

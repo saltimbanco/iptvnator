@@ -24,7 +24,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { StorageMap } from '@ngx-pwa/local-storage';
 import { TranslatePipe } from '@ngx-translate/core';
-import { ResizableDirective } from '@iptvnator/ui/components';
+import {
+    buildM3uRecordingMetadata,
+    buildM3uSchedulePlayback,
+    ResizableDirective,
+    ScheduleRecordingLauncherService,
+} from '@iptvnator/ui/components';
 import {
     applyChannelNameStrip,
     getM3uArchiveDays,
@@ -262,6 +267,31 @@ export class VideoPlayerComponent
     private readonly debugLog = createDevLogger('VideoPlayerComponent');
 
     /** Active selected channel */
+    private readonly scheduleLauncher = inject(
+        ScheduleRecordingLauncherService
+    );
+    get supportsScheduleRecording(): boolean {
+        return this.scheduleLauncher.isAvailable;
+    }
+
+    /** EPG right-click: record this channel for the programme's window. */
+    openScheduleForProgram(program: {
+        start: string;
+        stop: string;
+    }): void {
+        const channel = this.activeChannel();
+        if (!channel) {
+            return;
+        }
+        this.scheduleLauncher.open(
+            {
+                playback: buildM3uSchedulePlayback(channel),
+                metadata: buildM3uRecordingMetadata(channel),
+            },
+            { startAt: program.start, endAt: program.stop }
+        );
+    }
+
     readonly activeChannel = this.store.selectSignal(selectActive);
     readonly activePlaybackUrl = this.store.selectSignal(
         selectActivePlaybackUrl

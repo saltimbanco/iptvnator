@@ -48,6 +48,14 @@ dispose it.
   reloads the stream and restarts the recording into a fresh file; the
   tracker files the partial as `interrupted`. A recording that cannot
   recover ends and the DVR service reports the engine's error.
+- **Scheduled source failover:** when a scheduled recording's stream errors
+  or ends, the DVR service pauses recording and opens the same channel from
+  the next alternate source (`live-recording-failover.ts`: Xtream and M3U
+  live rows in the desktop catalog, ranked with the shared fuzzy channel
+  matcher). Each source gets 20 s to reach `recording` before the next one
+  is tried; every continuation segment records without its own row and is
+  appended into the first file, so one schedule still yields one recording.
+  Stalker channels have no catalog rows and are not hop candidates.
 - **Stop:** `stopRecording()` closes the file, then the hidden session is
   disposed. The tracker finalizes the row (`completed` after a requested
   stop) and reports `{ sessionId, status, fileSizeBytes, errorMessage }`;

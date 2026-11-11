@@ -15,6 +15,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIcon } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltip } from '@angular/material/tooltip';
 import { normalizeDateLocale } from '@iptvnator/pipes';
 import { injectTranslationTick } from '@iptvnator/services';
@@ -29,6 +30,7 @@ import {
 import { EpgItemDialogAction } from '../epg-item-description/epg-item-description.component';
 import type { EpgProgramActivationEvent } from '../epg-program-activation-event';
 import { EpgProgrammeDialogService } from '../epg-programme-dialog.service';
+import { EpgRecordMenuDirective } from '../epg-record-menu.directive';
 import { epgDialogActionFor } from '../epg-timeline/epg-archive.util';
 import {
     EpgTimelineSummary,
@@ -68,8 +70,10 @@ type RenderState = 'loading' | 'list' | EpgTimelineEmptyReason;
     imports: [
         DatePipe,
         EpgListViewRowComponent,
+        EpgRecordMenuDirective,
         EpgTimelineEmptyStateComponent,
         MatIcon,
+        MatMenuModule,
         MatTooltip,
         TranslatePipe,
     ],
@@ -106,6 +110,9 @@ export class EpgListViewComponent {
     readonly retry = output<void>();
     readonly collapsedChange = output<boolean>();
     readonly openGuide = output<void>();
+    /** The host can schedule a recording; right-click offers it. */
+    readonly canRecordProgram = input(false);
+    readonly recordProgramRequested = output<EpgProgram>();
 
     private readonly destroyRef = inject(DestroyRef);
     private readonly programmeDialog = inject(EpgProgrammeDialogService);
@@ -115,6 +122,9 @@ export class EpgListViewComponent {
     readonly nowMs = signal(Date.now());
     readonly selectedKey = signal<string | null>(null);
     readonly nowStripVisible = signal(false);
+
+    /** Opens the "Record programme" menu at the pointer on right-click. */
+    readonly recordMenu = viewChild(EpgRecordMenuDirective);
 
     /** Day shown, seeded from the controlled `selectedDate` so a non-today
      * date survives (re)mount and follows host changes — same as the timeline. */

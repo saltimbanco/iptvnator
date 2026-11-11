@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "搜尋節目",
         "CLOSE_PROGRAM_SEARCH": "關閉節目搜尋",
         "LIVE_STREAM": "現場直播",
+        "RECORD_PROGRAM": "錄製節目",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "無法播放存檔內容",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "此供應商有提供本頻道的歷史節目表，但未提供可播放的存檔／Catchup 播放功能。",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "請在應用程式設定中增加/更改 EPG 列表的URL。",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "與此下載無關的檔案已保存在：{{path}}。請儲存所需內容，刪除此復原副本，然後重試。",
             "COPY_PATH": "複製復原路徑"
         },
-        "TITLE": "下載",
+        "TITLE": "錄製檔",
         "DOWNLOAD": "下載",
         "PLAY_LOCAL": "播放本機檔案",
         "DOWNLOAD_SEASON": "下載整季（{{count}}）",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "進階搜尋",
             "RAIL_RECENT": "最近觀看",
             "RAIL_FAVORITES": "我的最愛",
-            "RAIL_DOWNLOADS": "下載",
+            "RAIL_DOWNLOADS": "錄製檔",
             "EXTERNAL_PLAYBACK_CLOSE": "關閉播放器",
             "EXTERNAL_PLAYBACK_DISMISS": "隱藏",
             "EXTERNAL_PLAYBACK_OPENING": "正在開啟播放器…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "已安排",
         "STATUS_STARTED": "錄影中",
         "STATUS_FAILED": "失敗",
-        "STATUS_CANCELED": "已取消"
+        "STATUS_CANCELED": "已取消",
+        "STARTED_TITLE": "排程錄影已開始",
+        "STARTED_BODY": "正在背景錄製 {{channel}}。",
+        "STARTED_DISMISS": "關閉"
     },
     "COMMON": {
         "CANCEL": "取消",

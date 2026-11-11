@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "البحث في البرامج",
         "CLOSE_PROGRAM_SEARCH": "إغلاق بحث البرامج",
         "LIVE_STREAM": "بث مباشر",
+        "RECORD_PROGRAM": "تسجيل البرنامج",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "تشغيل الأرشيف غير متاح",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "يكشف هذا المزود عن سجل الجدول لهذه القناة، لكنه لا يوفر تشغيلًا قابلًا للأرشيف أو Catchup.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "يرجى إضافة أو تغيير رابط قائمة EPG في إعدادات التطبيق.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "تم الاحتفاظ بملف غير مرتبط بهذا التنزيل في: {{path}}. استعد المحتوى الذي تحتاجه، ثم احذف نسخة الاستعادة هذه وأعد المحاولة.",
             "COPY_PATH": "نسخ مسار الاستعادة"
         },
-        "TITLE": "التنزيلات",
+        "TITLE": "التسجيلات",
         "DOWNLOAD": "تنزيل",
         "PLAY_LOCAL": "تشغيل محلي",
         "DOWNLOAD_SEASON": "تنزيل الموسم ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "بحث متقدم",
             "RAIL_RECENT": "تمت مشاهدتها مؤخرًا",
             "RAIL_FAVORITES": "المفضلة",
-            "RAIL_DOWNLOADS": "التنزيلات",
+            "RAIL_DOWNLOADS": "التسجيلات",
             "EXTERNAL_PLAYBACK_CLOSE": "إغلاق المشغل",
             "EXTERNAL_PLAYBACK_DISMISS": "إخفاء",
             "EXTERNAL_PLAYBACK_OPENING": "جارٍ فتح المشغل…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "مجدول",
         "STATUS_STARTED": "جارٍ التسجيل",
         "STATUS_FAILED": "فشل",
-        "STATUS_CANCELED": "ملغى"
+        "STATUS_CANCELED": "ملغى",
+        "STARTED_TITLE": "بدأ التسجيل المجدول",
+        "STARTED_BODY": "يتم الآن تسجيل {{channel}} في الخلفية.",
+        "STARTED_DISMISS": "إغلاق"
     },
     "COMMON": {
         "CANCEL": "إلغاء",

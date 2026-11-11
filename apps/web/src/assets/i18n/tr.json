@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Programları ara",
         "CLOSE_PROGRAM_SEARCH": "Program aramayı kapat",
         "LIVE_STREAM": "Canlı yayın",
+        "RECORD_PROGRAM": "Programı kaydet",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Arşiv oynatma kullanılamıyor",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Bu sağlayıcı kanal için yayın akışı geçmişini sunar, ancak oynatılabilir arşiv/Catchup oynatma sunmaz.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Uygulama ayarlarında EPG listesi URL’sini ekleyin veya değiştirin.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Bu indirmeyle ilgisi olmayan bir dosya şurada korundu: {{path}}. Gerekli içeriği kurtarın, bu kurtarma kopyasını silin ve yeniden deneyin.",
             "COPY_PATH": "Kurtarma yolunu kopyala"
         },
-        "TITLE": "İndirilenler",
+        "TITLE": "Kayıtlar",
         "DOWNLOAD": "İndir",
         "PLAY_LOCAL": "Yerel olarak oynat",
         "DOWNLOAD_SEASON": "Sezonu indir ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Gelişmiş arama",
             "RAIL_RECENT": "Son izlenenler",
             "RAIL_FAVORITES": "Favoriler",
-            "RAIL_DOWNLOADS": "İndirilenler",
+            "RAIL_DOWNLOADS": "Kayıtlar",
             "EXTERNAL_PLAYBACK_CLOSE": "Oynatıcıyı kapat",
             "EXTERNAL_PLAYBACK_DISMISS": "Gizle",
             "EXTERNAL_PLAYBACK_OPENING": "Oynatıcı açılıyor…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Planlandı",
         "STATUS_STARTED": "Kaydediliyor",
         "STATUS_FAILED": "Başarısız",
-        "STATUS_CANCELED": "İptal edildi"
+        "STATUS_CANCELED": "İptal edildi",
+        "STARTED_TITLE": "Planlanan kayıt başladı",
+        "STARTED_BODY": "{{channel}} artık arka planda kaydediliyor.",
+        "STARTED_DISMISS": "Kapat"
     },
     "COMMON": {
         "CANCEL": "İptal",

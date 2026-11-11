@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Search programs",
         "CLOSE_PROGRAM_SEARCH": "Close program search",
         "LIVE_STREAM": "Live stream",
+        "RECORD_PROGRAM": "Record programme",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Archive playback is unavailable",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "This provider exposes schedule history for the channel, but does not expose playable archive/catch-up playback.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Please add/change the URL of the EPG list in the settings of the app.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "A file unrelated to this download was preserved at: {{path}}. Recover any content you need, delete this recovery copy, then try again.",
             "COPY_PATH": "Copy recovery path"
         },
-        "TITLE": "Downloads",
+        "TITLE": "Recordings",
         "DOWNLOAD": "Download",
         "PLAY_LOCAL": "Play Local",
         "DOWNLOAD_SEASON": "Download season ({{count}})",
@@ -1748,7 +1749,7 @@
         },
         "RECORDING_NOW": "Recording now",
         "RECORDINGS": "Recordings",
-        "RECORDING_BADGE": "Recording",
+        "RECORDING_BADGE": "Stored",
         "RECORDING_CHIP": "REC",
         "STOP_RECORDING": "Stop recording",
         "REMOVE_RECORDING_DIALOG": {
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Advanced search",
             "RAIL_RECENT": "Recently viewed",
             "RAIL_FAVORITES": "Favorites",
-            "RAIL_DOWNLOADS": "Downloads",
+            "RAIL_DOWNLOADS": "Recordings",
             "EXTERNAL_PLAYBACK_CLOSE": "Close player",
             "EXTERNAL_PLAYBACK_DISMISS": "Dismiss",
             "EXTERNAL_PLAYBACK_OPENING": "Opening player…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Scheduled",
         "STATUS_STARTED": "Recording",
         "STATUS_FAILED": "Failed",
-        "STATUS_CANCELED": "Canceled"
+        "STATUS_CANCELED": "Canceled",
+        "STARTED_TITLE": "Scheduled recording started",
+        "STARTED_BODY": "{{channel}} is now recording in the background.",
+        "STARTED_DISMISS": "Dismiss"
     },
     "COMMON": {
         "CANCEL": "Cancel",

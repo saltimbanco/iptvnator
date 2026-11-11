@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "프로그램 검색",
         "CLOSE_PROGRAM_SEARCH": "프로그램 검색 닫기",
         "LIVE_STREAM": "라이브 스트림",
+        "RECORD_PROGRAM": "프로그램 녹화",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "아카이브 재생을 사용할 수 없습니다",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "이 공급자는 채널의 편성 이력을 제공하지만 재생 가능한 아카이브/Catchup 재생은 제공하지 않습니다.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "앱 설정에서 EPG 목록 URL을 추가하거나 변경해 주세요.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "이 다운로드와 관련 없는 파일이 {{path}}에 보관되었습니다. 필요한 내용을 복구하고 이 복구용 사본을 삭제한 후 다시 시도하세요.",
             "COPY_PATH": "복구 경로 복사"
         },
-        "TITLE": "다운로드",
+        "TITLE": "녹화",
         "DOWNLOAD": "다운로드",
         "PLAY_LOCAL": "로컬 재생",
         "DOWNLOAD_SEASON": "시즌 다운로드 ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "고급 검색",
             "RAIL_RECENT": "최근 본 항목",
             "RAIL_FAVORITES": "즐겨찾기",
-            "RAIL_DOWNLOADS": "다운로드",
+            "RAIL_DOWNLOADS": "녹화",
             "EXTERNAL_PLAYBACK_CLOSE": "플레이어 닫기",
             "EXTERNAL_PLAYBACK_DISMISS": "숨기기",
             "EXTERNAL_PLAYBACK_OPENING": "플레이어 여는 중…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "예약됨",
         "STATUS_STARTED": "녹화 중",
         "STATUS_FAILED": "실패",
-        "STATUS_CANCELED": "취소됨"
+        "STATUS_CANCELED": "취소됨",
+        "STARTED_TITLE": "예약 녹화가 시작되었습니다",
+        "STARTED_BODY": "{{channel}}을(를) 백그라운드에서 녹화 중입니다.",
+        "STARTED_DISMISS": "닫기"
     },
     "COMMON": {
         "CANCEL": "취소",

@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Programma's zoeken",
         "CLOSE_PROGRAM_SEARCH": "Programmazoekopdracht sluiten",
         "LIVE_STREAM": "Live stream",
+        "RECORD_PROGRAM": "Programma opnemen",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Archiefweergave is niet beschikbaar",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Deze provider toont de programmageschiedenis voor het kanaal, maar biedt geen afspeelbare archief-/catch-up-weergave.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Voeg de URL van de EPG-lijst toe of wijzig deze in de instellingen van de app.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Een bestand dat niet bij deze download hoort, is bewaard op: {{path}}. Bewaar de benodigde inhoud, verwijder deze herstelkopie en probeer het opnieuw.",
             "COPY_PATH": "Herstelpad kopiëren"
         },
-        "TITLE": "Downloads",
+        "TITLE": "Opnames",
         "DOWNLOAD": "Downloaden",
         "PLAY_LOCAL": "Lokaal bestand afspelen",
         "DOWNLOAD_SEASON": "Seizoen downloaden ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Geavanceerd zoeken",
             "RAIL_RECENT": "Recent bekeken",
             "RAIL_FAVORITES": "Favorieten",
-            "RAIL_DOWNLOADS": "Downloads",
+            "RAIL_DOWNLOADS": "Opnames",
             "EXTERNAL_PLAYBACK_CLOSE": "Speler sluiten",
             "EXTERNAL_PLAYBACK_DISMISS": "Verbergen",
             "EXTERNAL_PLAYBACK_OPENING": "Speler wordt geopend…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Gepland",
         "STATUS_STARTED": "Opname",
         "STATUS_FAILED": "Mislukt",
-        "STATUS_CANCELED": "Geannuleerd"
+        "STATUS_CANCELED": "Geannuleerd",
+        "STARTED_TITLE": "Geplande opname gestart",
+        "STARTED_BODY": "{{channel}} wordt nu op de achtergrond opgenomen.",
+        "STARTED_DISMISS": "Sluiten"
     },
     "COMMON": {
         "CANCEL": "Annuleren",

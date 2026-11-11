@@ -54,7 +54,6 @@ import {
     SettingsStore,
     injectTranslationTick,
 } from '@iptvnator/services';
-import { RecordingStoppedEvent } from '@iptvnator/shared/interfaces';
 import {
     createUnifiedLiveCatchup,
     UnifiedLiveTimeshift,
@@ -66,6 +65,7 @@ import {
 } from './unified-live-epg-map';
 import { createUnifiedLiveEpgView } from './unified-live-epg-view';
 import { createUnifiedLiveRecording } from './unified-live-recording-metadata';
+import { createUnifiedLiveScheduleRecording } from './unified-live-schedule';
 import { createUnifiedLiveSelection } from './unified-live-selection';
 import { createUnifiedLiveSelectionGeneration } from './unified-live-selection-generation';
 import { createUnifiedLiveSelectionView } from './unified-live-selection-view';
@@ -127,7 +127,6 @@ export class UnifiedLiveTabComponent implements FullscreenChannelPanelHost {
     private readonly languageTick = injectTranslationTick();
     private readonly router = inject(Router);
     private readonly portalPlayer = inject(PORTAL_PLAYER);
-
     readonly epgVisibility = createUnifiedLiveEpgVisibility();
     readonly supportsEpg = this.runtime.supportsEpg;
 
@@ -220,7 +219,7 @@ export class UnifiedLiveTabComponent implements FullscreenChannelPanelHost {
     readonly timelineArchiveDays = this.epgView.timelineArchiveDays;
     readonly catchupTimelineSegments = this.epgView.catchupTimelineSegments;
 
-    private readonly recording = createUnifiedLiveRecording({
+    readonly recording = createUnifiedLiveRecording({
         activeItem: this.activeItem,
         timelinePrograms: this.epgView.timelinePrograms,
         timelineChannelLogo: this.epgView.timelineChannelLogo,
@@ -229,7 +228,15 @@ export class UnifiedLiveTabComponent implements FullscreenChannelPanelHost {
     });
     readonly recordingMetadata = this.recording.metadata;
 
-    private readonly epgPrograms = createUnifiedLiveEpgMap({
+    readonly schedule = createUnifiedLiveScheduleRecording({
+        metadata: this.recording.metadata,
+        activeDetail: this.activeDetail,
+        activeTimeshift: this.activeTimeshift,
+    });
+    /** EPG right-click: record this channel for the programme's window. */
+    readonly openScheduleForProgram = this.schedule.open;
+
+    readonly epgPrograms = createUnifiedLiveEpgMap({
         supportsEpg:
             this.runtime.supportsEpg || this.runtime.supportsProviderEpg,
         items: this.items,
@@ -419,26 +426,17 @@ export class UnifiedLiveTabComponent implements FullscreenChannelPanelHost {
         this.catchup.returnToLive();
     }
 
-    /** Stop enrichment: programs overlapping the recorded window. */
-    onRecordingStopped(event: RecordingStoppedEvent): void {
-        this.recording.handleRecordingStopped(event);
-    }
-
     handleExternalFallbackRequest(request: PlaybackFallbackRequest): void {
-        const launch = this.portalPlayer.openExternalPlayback(
-            request.playback,
-            request.player
+        request.trackLaunch(
+            this.portalPlayer.openExternalPlayback(
+                request.playback,
+                request.player
+            )
         );
-        request.trackLaunch(launch);
-        void launch;
     }
 
     onClose(): void {
         this.selection.close();
-    }
-
-    onEpgMappingChanged(): void {
-        this.epgPrograms.load(this.items());
     }
 
     private openInPlaylist(item: UnifiedCollectionItem): void {

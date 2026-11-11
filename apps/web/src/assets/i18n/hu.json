@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Műsorok keresése",
         "CLOSE_PROGRAM_SEARCH": "Műsorkeresés bezárása",
         "LIVE_STREAM": "Élő adás",
+        "RECORD_PROGRAM": "Műsor felvétele",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "A műsor visszanézése nem érhető el",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "A szolgáltató elérhetővé teszi a csatorna korábbi műsorrendjét, de lejátszható archív vagy visszanézhető műsort nem biztosít.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Az alkalmazás beállításaiban adja hozzá vagy módosítsa az EPG-lista URL-címét.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Egy, a letöltéshez nem tartozó fájlt megőriztünk a következő helyen: {{path}}. Mentse ki belőle a szükséges adatokat, törölje a helyreállítási másolatot, majd próbálja újra.",
             "COPY_PATH": "Helyreállítási útvonal másolása"
         },
-        "TITLE": "Letöltések",
+        "TITLE": "Felvételek",
         "DOWNLOAD": "Letöltés",
         "PLAY_LOCAL": "Helyi fájl lejátszása",
         "DOWNLOAD_SEASON": "Évad letöltése ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Részletes keresés",
             "RAIL_RECENT": "Legutóbb megtekintett tartalmak",
             "RAIL_FAVORITES": "Kedvencek",
-            "RAIL_DOWNLOADS": "Letöltések",
+            "RAIL_DOWNLOADS": "Felvételek",
             "EXTERNAL_PLAYBACK_CLOSE": "Lejátszó bezárása",
             "EXTERNAL_PLAYBACK_DISMISS": "Elrejtés",
             "EXTERNAL_PLAYBACK_OPENING": "Lejátszó megnyitása…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Ütemezve",
         "STATUS_STARTED": "Felvétel",
         "STATUS_FAILED": "Sikertelen",
-        "STATUS_CANCELED": "Törölve"
+        "STATUS_CANCELED": "Törölve",
+        "STARTED_TITLE": "Az ütemezett felvétel elindult",
+        "STARTED_BODY": "A(z) {{channel}} most a háttérben rögzítésre kerül.",
+        "STARTED_DISMISS": "Bezárás"
     },
     "COMMON": {
         "CANCEL": "Mégse",

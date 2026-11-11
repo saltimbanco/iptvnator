@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Pesquisar programas",
         "CLOSE_PROGRAM_SEARCH": "Fechar pesquisa de programas",
         "LIVE_STREAM": "Transmissão em direto",
+        "RECORD_PROGRAM": "Gravar programa",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Não é possível rever os programas anteriores",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Este fornecedor disponibiliza o histórico de programação do canal, mas não permite reproduzir programas anteriores.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Adiciona ou altera o URL da fonte de EPG nas definições da aplicação.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Foi preservado um ficheiro não relacionado com esta transferência em: {{path}}. Recupera o conteúdo de que precisas, elimina esta cópia de recuperação e tenta novamente.",
             "COPY_PATH": "Copiar caminho de recuperação"
         },
-        "TITLE": "Transferências",
+        "TITLE": "Gravações",
         "DOWNLOAD": "Transferir",
         "PLAY_LOCAL": "Reproduzir ficheiro local",
         "DOWNLOAD_SEASON": "Transferir temporada ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Pesquisa avançada",
             "RAIL_RECENT": "Visualizados recentemente",
             "RAIL_FAVORITES": "Favoritos",
-            "RAIL_DOWNLOADS": "Transferências",
+            "RAIL_DOWNLOADS": "Gravações",
             "EXTERNAL_PLAYBACK_CLOSE": "Fechar leitor",
             "EXTERNAL_PLAYBACK_DISMISS": "Ocultar",
             "EXTERNAL_PLAYBACK_OPENING": "A abrir o leitor…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Agendado",
         "STATUS_STARTED": "A gravar",
         "STATUS_FAILED": "Falhou",
-        "STATUS_CANCELED": "Cancelado"
+        "STATUS_CANCELED": "Cancelado",
+        "STARTED_TITLE": "Gravação agendada iniciada",
+        "STARTED_BODY": "{{channel}} está a ser gravado em segundo plano.",
+        "STARTED_DISMISS": "Fechar"
     },
     "COMMON": {
         "CANCEL": "Cancelar",

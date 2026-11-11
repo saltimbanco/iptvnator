@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "قلب على البرامج",
         "CLOSE_PROGRAM_SEARCH": "سد البحث على البرامج",
         "LIVE_STREAM": "بث مباشر",
+        "RECORD_PROGRAM": "تسجيل البرنامج",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "تشغيل الأرشيف ما متوفرش",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "هاد المزود كيوفر تاريخ جدول البرامج للقناة، ولكن ما كيوفرش تشغيل أرشيف/Catchup.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "عفاك زيد ولا بدل رابط قائمة EPG فإعدادات التطبيق.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "تحفظ واحد الملف ما عندوش علاقة بهاد التحميل فـ: {{path}}. رجّع المحتوى اللي محتاج، مسح هاد النسخة الاحتياطية، وعاود جرّب.",
             "COPY_PATH": "نسخ مسار الاسترجاع"
         },
-        "TITLE": "التحميلات",
+        "TITLE": "التسجيلات",
         "DOWNLOAD": "تحميل",
         "PLAY_LOCAL": "شغل محلياً",
         "DOWNLOAD_SEASON": "تحميل الموسم ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "بحث متقدم",
             "RAIL_RECENT": "متشافين مؤخراً",
             "RAIL_FAVORITES": "المفضلة",
-            "RAIL_DOWNLOADS": "التحميلات",
+            "RAIL_DOWNLOADS": "التسجيلات",
             "EXTERNAL_PLAYBACK_CLOSE": "سد المشغل",
             "EXTERNAL_PLAYBACK_DISMISS": "خبّي",
             "EXTERNAL_PLAYBACK_OPENING": "جاري حل المشغل…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "مجدول",
         "STATUS_STARTED": "تسجيل جاري",
         "STATUS_FAILED": "فشل",
-        "STATUS_CANCELED": "ملغى"
+        "STATUS_CANCELED": "ملغى",
+        "STARTED_TITLE": "بدا التسجيل المبرمج",
+        "STARTED_BODY": "{{channel}} كيتسجل دابا فالخلفية.",
+        "STARTED_DISMISS": "سد"
     },
     "COMMON": {
         "CANCEL": "إلغاء",

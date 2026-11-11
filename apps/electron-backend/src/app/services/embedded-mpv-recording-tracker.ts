@@ -16,6 +16,11 @@ interface RecordingStartedEvent {
     metadata?: RecordingStartMetadata;
     /** Set by a DVR recording; the player's own recordings leave it unset. */
     origin?: BackgroundRecordingOrigin;
+    /**
+     * `false` for a continuation segment: it is appended into the recording's
+     * main file, so only that file owns a row. Defaults to `true`.
+     */
+    trackRow?: boolean;
 }
 
 interface OpenRecordingEntry {
@@ -166,7 +171,9 @@ export class EmbeddedMpvRecordingTracker {
 
         const startedAt = new Date().toISOString();
         const metadata = event.metadata;
-        const rowId = this.enqueue(async () => {
+        const rowId = event.trackRow === false
+            ? Promise.resolve(null)
+            : this.enqueue(async () => {
             const db = await getDatabase();
             const result = await db.insert(schema.recordings).values({
                 sessionId: event.sessionId,
@@ -189,8 +196,8 @@ export class EmbeddedMpvRecordingTracker {
                 programStop: metadata?.currentProgram?.stop,
                 startedAt,
             });
-            return Number(result.lastInsertRowid);
-        });
+                  return Number(result.lastInsertRowid);
+              });
 
         this.open.set(event.sessionId, {
             sessionId: event.sessionId,
@@ -379,11 +386,20 @@ export class EmbeddedMpvRecordingTracker {
 
         void this.enqueue(async () => {
             const rowId = await entry.rowId;
-            if (rowId === null) {
-                return null;
-            }
 
             const probe = await this.probeFinalFile(entry.targetPath);
+            if (rowId === null) {
+                // A continuation segment has no row of its own; the DVR
+                // service appends its bytes into the main file and reports
+                // the size it saw.
+                return {
+                    status,
+                    fileSizeBytes:
+                        probe.kind === 'size' && probe.size > 0
+                            ? probe.size
+                            : null,
+                };
+            }
             let finalStatus: RecordingFinalStatus = status;
             let fileSize: number | null = null;
             if (probe.kind === 'size' && probe.size > 0) {

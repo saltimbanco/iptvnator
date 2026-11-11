@@ -730,6 +730,10 @@ export class EmbeddedMpvNativeService {
         title: string;
         metadata?: RecordingStartMetadata;
         origin: BackgroundRecordingOrigin;
+        /** Continue an existing recording into this file. */
+        targetPath?: string;
+        /** Continuation segments never own a `recordings` row. */
+        trackRow?: boolean;
         options?: EmbeddedMpvSessionOptions;
         /** Minted afresh before every reconnect; absent for stable links. */
         refreshPlayback?: () => Promise<ResolvedPortalPlayback | null>;
@@ -758,6 +762,8 @@ export class EmbeddedMpvNativeService {
                 title: input.title,
                 metadata: input.metadata,
                 origin: input.origin,
+                ...(input.targetPath ? { targetPath: input.targetPath } : {}),
+                ...(input.trackRow === false ? { trackRow: false } : {}),
             });
         } catch (error) {
             this.disposeSession(sessionId);
@@ -1167,10 +1173,9 @@ export class EmbeddedMpvNativeService {
 
         const fallbackChannelName =
             options.title || session.title || 'IPTVnator recording';
-        const targetPath = reserveRecordingTargetPath(
-            directory,
-            fallbackChannelName
-        );
+        const targetPath =
+            options.targetPath?.trim() ||
+            reserveRecordingTargetPath(directory, fallbackChannelName);
         try {
             addon.startRecording(sessionId, targetPath);
         } catch (error) {
@@ -1186,6 +1191,7 @@ export class EmbeddedMpvNativeService {
             fallbackChannelName,
             metadata: options.metadata,
             origin: options.origin,
+            ...(options.trackRow === false ? { trackRow: false } : {}),
         });
         session.lastRecordingStart = { ...options };
         return this.refreshSession(sessionId);

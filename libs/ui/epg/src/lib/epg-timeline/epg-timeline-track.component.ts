@@ -63,6 +63,11 @@ export class EpgTimelineTrackComponent {
     readonly blockClick = output<TimelineBlock>();
     readonly watchClick = output<TimelineBlock>();
     readonly infoClick = output<TimelineBlock>();
+    /** Right-click on a programme block; the parent owns the menu. */
+    readonly blockContextMenu = output<{
+        block: TimelineBlock;
+        event: MouseEvent;
+    }>();
     readonly groupExpand = output<TimelineRenderGroup>();
 
     /**
@@ -119,6 +124,11 @@ export class EpgTimelineTrackComponent {
         if (event.target === event.currentTarget) {
             this.blockClick.emit(block);
         }
+    }
+
+    onBlockContextMenu(event: MouseEvent, block: TimelineBlock): void {
+        event.preventDefault();
+        this.blockContextMenu.emit({ block, event });
     }
 
     onBlockEnter(item: TimelineRenderBlock, event: Event): void {

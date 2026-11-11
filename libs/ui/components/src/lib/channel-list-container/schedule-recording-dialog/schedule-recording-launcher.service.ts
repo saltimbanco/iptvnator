@@ -8,11 +8,37 @@ import { RuntimeCapabilitiesService } from '@iptvnator/services';
 import {
     ScheduleRecordingDialogComponent,
     type ScheduleRecordingDialogData,
+    type ScheduleRecordingInitialWindow,
     type ScheduleRecordingRange,
     type ScheduleRecordingTarget,
     toScheduleDateInput,
     toScheduleTimeInput,
 } from './schedule-recording-dialog.component';
+
+/** A window the caller already knows, as ISO instants (an EPG programme). */
+export interface ScheduleRecordingWindow {
+    startAt: string;
+    endAt: string;
+}
+
+function toInitialWindow(
+    window: ScheduleRecordingWindow
+): ScheduleRecordingInitialWindow | undefined {
+    const start = new Date(window.startAt);
+    const end = new Date(window.endAt);
+    if (
+        !Number.isFinite(start.getTime()) ||
+        !Number.isFinite(end.getTime()) ||
+        end <= start
+    ) {
+        return undefined;
+    }
+    return {
+        date: toScheduleDateInput(start),
+        startTime: toScheduleTimeInput(start),
+        endTime: toScheduleTimeInput(end),
+    };
+}
 
 /** A channel whose stream still has to be resolved when the dialog opens. */
 export interface DeferredScheduleRecordingRequest {
@@ -42,13 +68,18 @@ export class ScheduleRecordingLauncherService {
         return this.runtime.supportsRecordingSchedule;
     }
 
-    open(target: ScheduleRecordingTarget): void {
+    open(
+        target: ScheduleRecordingTarget,
+        window?: ScheduleRecordingWindow
+    ): void {
         if (!this.isAvailable || !target.playback.streamUrl) {
             return;
         }
+        const initial = window ? toInitialWindow(window) : undefined;
         this.openDialog({
             channelName: target.metadata.channelName,
             channelLogoUrl: target.metadata.channelLogoUrl,
+            ...(initial ? { initial } : {}),
             resolve: async () => target,
             submit: (range) => this.create(target, range),
         });

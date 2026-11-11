@@ -176,6 +176,8 @@
                     <div class="epg-content">
                         @if (epgViewMode() === 'list') {
                             <app-epg-list-view
+                                [canRecordProgram]="supportsScheduleRecording"
+                                (recordProgramRequested)="openScheduleForProgram($event)"
                                 [programs]="epgPrograms()"
                                 [offsetMinutes]="epgOffsetMinutes()"
                                 [channelName]="timelineChannelName()"
@@ -213,6 +215,8 @@
                             />
                         } @else {
                             <app-epg-timeline
+                                [canRecordProgram]="supportsScheduleRecording"
+                                (recordProgramRequested)="openScheduleForProgram($event)"
                                 [programs]="epgPrograms()"
                                 [offsetMinutes]="epgOffsetMinutes()"
                                 [channelName]="timelineChannelName()"

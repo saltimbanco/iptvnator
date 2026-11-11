@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Sendungen suchen",
         "CLOSE_PROGRAM_SEARCH": "Sendungssuche schließen",
         "LIVE_STREAM": "Live stream",
+        "RECORD_PROGRAM": "Sendung aufnehmen",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Archivwiedergabe nicht verfügbar",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Dieser Anbieter stellt zwar den Programmverlauf für den Sender bereit, jedoch keine abspielbare Archiv-/Catchup-Wiedergabe.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Füge die URL der EPG-Liste in den App-Einstellungen hinzu oder ändere sie.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Eine fremde Datei wurde hier gesichert: {{path}}. Sichern Sie benötigte Inhalte, löschen Sie diese Wiederherstellungskopie und versuchen Sie es erneut.",
             "COPY_PATH": "Wiederherstellungspfad kopieren"
         },
-        "TITLE": "Downloads",
+        "TITLE": "Aufnahmen",
         "DOWNLOAD": "Herunterladen",
         "PLAY_LOCAL": "Lokal abspielen",
         "DOWNLOAD_SEASON": "Staffel herunterladen ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Erweiterte Suche",
             "RAIL_RECENT": "Zuletzt angesehen",
             "RAIL_FAVORITES": "Favoriten",
-            "RAIL_DOWNLOADS": "Downloads",
+            "RAIL_DOWNLOADS": "Aufnahmen",
             "EXTERNAL_PLAYBACK_CLOSE": "Player schließen",
             "EXTERNAL_PLAYBACK_DISMISS": "Ausblenden",
             "EXTERNAL_PLAYBACK_OPENING": "Player wird geöffnet…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Geplant",
         "STATUS_STARTED": "Aufnahme läuft",
         "STATUS_FAILED": "Fehlgeschlagen",
-        "STATUS_CANCELED": "Abgebrochen"
+        "STATUS_CANCELED": "Abgebrochen",
+        "STARTED_TITLE": "Geplante Aufnahme gestartet",
+        "STARTED_BODY": "{{channel}} wird jetzt im Hintergrund aufgenommen.",
+        "STARTED_DISMISS": "Schließen"
     },
     "COMMON": {
         "CANCEL": "Abbrechen",

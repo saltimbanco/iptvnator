@@ -411,3 +411,11 @@
         transition: none;
     }
 }
+
+// Anchor a right-click menu at the pointer; it is never painted itself.
+.epg-record-menu-anchor {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+}

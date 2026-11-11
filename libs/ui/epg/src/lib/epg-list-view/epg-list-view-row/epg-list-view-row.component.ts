@@ -30,6 +30,7 @@ import { EpgListRow } from '../epg-list-view.utils';
         '[class.sel]': 'selected()',
         '[class.playing]': 'isPlaying()',
         '(click)': 'onRowClick()',
+        '(contextmenu)': 'onContextMenu($event)',
         '(keydown.enter)': 'onKeydown($event)',
         '(keydown.space)': 'onKeydown($event)',
     },
@@ -44,6 +45,8 @@ export class EpgListViewRowComponent {
     readonly activate = output<void>();
     readonly watch = output<void>();
     readonly info = output<void>();
+    /** Right-click on the row; the list owns the menu and its position. */
+    readonly contextMenu = output<MouseEvent>();
 
     /** Archive-playback highlight: the active programme is a past one. */
     readonly isPlaying = computed(() => {
@@ -86,5 +89,11 @@ export class EpgListViewRowComponent {
     onInfo(event: Event): void {
         event.stopPropagation();
         this.info.emit();
+    }
+
+    onContextMenu(event: MouseEvent): void {
+        event.preventDefault();
+        event.stopPropagation();
+        this.contextMenu.emit(event);
     }
 }

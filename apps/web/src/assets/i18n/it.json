@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "Cerca programmi",
         "CLOSE_PROGRAM_SEARCH": "Chiudi ricerca programmi",
         "LIVE_STREAM": "Stream live",
+        "RECORD_PROGRAM": "Registra programma",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "Riproduzione archivio non disponibile",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "Questo fornitore espone la cronologia della programmazione del canale, ma non la riproduzione di archivio/catch-up.",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "Aggiungi o modifica l’URL della lista EPG nelle impostazioni dell’app.",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "Un file estraneo a questo download è stato conservato in: {{path}}. Recupera i contenuti necessari, elimina questa copia di recupero e riprova.",
             "COPY_PATH": "Copia percorso di recupero"
         },
-        "TITLE": "Download",
+        "TITLE": "Registrazioni",
         "DOWNLOAD": "Scarica",
         "PLAY_LOCAL": "Riproduci localmente",
         "DOWNLOAD_SEASON": "Scarica la stagione ({{count}})",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "Ricerca avanzata",
             "RAIL_RECENT": "Visti di recente",
             "RAIL_FAVORITES": "Preferiti",
-            "RAIL_DOWNLOADS": "Download",
+            "RAIL_DOWNLOADS": "Registrazioni",
             "EXTERNAL_PLAYBACK_CLOSE": "Chiudi player",
             "EXTERNAL_PLAYBACK_DISMISS": "Nascondi",
             "EXTERNAL_PLAYBACK_OPENING": "Apertura del lettore…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "Programmato",
         "STATUS_STARTED": "Registrazione",
         "STATUS_FAILED": "Non riuscito",
-        "STATUS_CANCELED": "Annullato"
+        "STATUS_CANCELED": "Annullato",
+        "STARTED_TITLE": "Registrazione programmata avviata",
+        "STARTED_BODY": "{{channel}} viene registrato in background.",
+        "STARTED_DISMISS": "Chiudi"
     },
     "COMMON": {
         "CANCEL": "Annulla",

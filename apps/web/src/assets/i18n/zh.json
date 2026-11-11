@@ -1118,6 +1118,7 @@
         "SEARCH_PROGRAMS": "搜索节目",
         "CLOSE_PROGRAM_SEARCH": "关闭节目搜索",
         "LIVE_STREAM": "正在直播",
+        "RECORD_PROGRAM": "录制节目",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_TITLE": "归档播放不可用",
         "ARCHIVE_PLAYBACK_UNAVAILABLE_DESCRIPTION": "此提供商提供了该频道的节目历史，但不提供可播放的归档/Catchup 回看。",
         "EPG_NOT_AVAILABLE_CHANNEL_DESCRIPTION": "请在设置中添加或更改 EPG URL",
@@ -1674,7 +1675,7 @@
             "MESSAGE": "与此下载无关的文件已保存在：{{path}}。请保存所需内容，删除此恢复副本，然后重试。",
             "COPY_PATH": "复制恢复路径"
         },
-        "TITLE": "下载",
+        "TITLE": "录制内容",
         "DOWNLOAD": "下载",
         "PLAY_LOCAL": "播放本地文件",
         "DOWNLOAD_SEASON": "下载整季（{{count}}）",
@@ -1967,7 +1968,7 @@
             "RAIL_SEARCH": "高级搜索",
             "RAIL_RECENT": "最近观看",
             "RAIL_FAVORITES": "收藏",
-            "RAIL_DOWNLOADS": "下载",
+            "RAIL_DOWNLOADS": "录制内容",
             "EXTERNAL_PLAYBACK_CLOSE": "关闭播放器",
             "EXTERNAL_PLAYBACK_DISMISS": "隐藏",
             "EXTERNAL_PLAYBACK_OPENING": "正在打开播放器…",
@@ -2561,7 +2562,10 @@
         "STATUS_PENDING": "已安排",
         "STATUS_STARTED": "录制中",
         "STATUS_FAILED": "失败",
-        "STATUS_CANCELED": "已取消"
+        "STATUS_CANCELED": "已取消",
+        "STARTED_TITLE": "计划录制已开始",
+        "STARTED_BODY": "正在后台录制 {{channel}}。",
+        "STARTED_DISMISS": "关闭"
     },
     "COMMON": {
         "CANCEL": "取消",

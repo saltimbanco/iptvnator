@@ -22,7 +22,7 @@
         (channelSelected)="onChannelSelected($event)"
         (playbackRequested)="onChannelPlaybackRequested($event)"
         (channelsReordered)="onReorder($event)"
-        (epgMappingChanged)="onEpgMappingChanged()"
+        (epgMappingChanged)="epgPrograms.load(items())"
         (favoriteToggled)="onFavoriteToggled($event)"
         (removeRequested)="onRemoveRequested($event)"
         (openInPlaylistRequested)="onOpenInPlaylistRequested($event)"
@@ -72,7 +72,7 @@
                         (externalFallbackRequested)="
                             handleExternalFallbackRequest($event)
                         "
-                        (recordingStopped)="onRecordingStopped($event)"
+                        (recordingStopped)="recording.handleRecordingStopped($event)"
                     />
                 }
             </div>
@@ -90,6 +90,8 @@
                 <div class="epg-content">
                     @if (epgViewMode() === 'list') {
                         <app-epg-list-view
+                            [canRecordProgram]="schedule.available"
+                            (recordProgramRequested)="openScheduleForProgram($event)"
                             [programs]="timelinePrograms()"
                             [offsetMinutes]="epgOffsetMinutes()"
                             [channelName]="timelineChannelName()"
@@ -132,6 +134,8 @@
                         </app-epg-list-view>
                     } @else {
                         <app-epg-timeline
+                            [canRecordProgram]="schedule.available"
+                            (recordProgramRequested)="openScheduleForProgram($event)"
                             [programs]="timelinePrograms()"
                             [offsetMinutes]="epgOffsetMinutes()"
                             [channelName]="timelineChannelName()"
@@ -203,7 +207,7 @@
         [sortMode]="sortMode()"
         (channelSelected)="onChannelSelected($event)"
         (playbackRequested)="onChannelPlaybackRequested($event)"
-        (epgMappingChanged)="onEpgMappingChanged()"
+        (epgMappingChanged)="epgPrograms.load(items())"
         (favoriteToggled)="onFavoriteToggled($event)"
         (removeRequested)="onRemoveRequested($event)"
         (openInPlaylistRequested)="onOpenInPlaylistRequested($event)"

@@ -2,6 +2,7 @@ import type {
     BackgroundRecordingOutcome,
     BackgroundRecordingStartRequest,
     BackgroundRecordingState,
+    ResolvedPortalPlayback,
 } from '@iptvnator/shared/interfaces';
 import {
     BackgroundRecordingService,
@@ -80,7 +81,7 @@ class FakeEngine implements DvrRecordingEngine {
 
 const started: BackgroundRecordingService[] = [];
 
-function createHarness() {
+function createHarness(options: { alternates?: ResolvedPortalPlayback[] } = {}) {
     const engine = new FakeEngine();
     const states: BackgroundRecordingState[] = [];
     const deps = {
@@ -92,6 +93,11 @@ function createHarness() {
         broadcast: jest.fn((state: BackgroundRecordingState) => {
             states.push(state);
         }),
+        reserveTargetPath: jest.fn(() => '/rec/main.ts'),
+        resolveAlternates: jest.fn(async () => options.alternates ?? []),
+        appendSegment: jest.fn(async () => undefined),
+        onSegmentMerged: jest.fn(),
+        finalizeMerged: jest.fn(),
     };
     const service = new BackgroundRecordingService(deps);
     started.push(service);
@@ -305,6 +311,109 @@ describe('BackgroundRecordingService', () => {
         expect(() => harness.service.start(request())).toThrow(
             'Background recording is not available. Embedded MPV is not available.'
         );
+    });
+
+    it('continues a dead scheduled recording in another source and appends into its file', async () => {
+        const first: ResolvedPortalPlayback = {
+            streamUrl: 'http://other.example.test/live/1.ts',
+            title: 'News',
+            isLive: true,
+        };
+        const second: ResolvedPortalPlayback = {
+            streamUrl: 'http://third.example.test/live/1.ts',
+            title: 'News',
+            isLive: true,
+        };
+        const harness = createHarness({ alternates: [first, second] });
+        harness.service.start(request({ origin: 'schedule', scheduleId: 7 }));
+        harness.engine.setState('dvr-1', {
+            status: 'error',
+            error: 'The stream closed.',
+        });
+
+        await jest.advanceTimersByTimeAsync(2_000);
+
+        expect(harness.engine.stopped).toEqual(['dvr-1']);
+        expect(harness.engine.opened).toHaveLength(2);
+        expect(harness.engine.opened[1]).toMatchObject({
+            playback: first,
+            targetPath: '/rec/main.ts',
+            trackRow: false,
+            origin: 'schedule',
+        });
+        expect(harness.service.getState()).toMatchObject({
+            status: 'reconnecting',
+            recordingId: 'dvr-2',
+        });
+
+        // The second source dies too; the recorder moves to the next one.
+        harness.engine.setState('dvr-2', { status: 'error', error: 'died' });
+        await jest.advanceTimersByTimeAsync(2_000);
+        expect(harness.engine.opened).toHaveLength(3);
+        expect(harness.engine.opened[2]).toMatchObject({
+            playback: second,
+            trackRow: false,
+        });
+
+        // That dead segment's bytes belong in the main file, not in a
+        // recording of their own, and the recording keeps running.
+        harness.engine.finalize('dvr-2', {
+            targetPath: '/rec/dvr-2.ts',
+            fileSizeBytes: 700,
+        });
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(harness.deps.appendSegment).toHaveBeenCalledWith(
+            '/rec/main.ts',
+            '/rec/dvr-2.ts'
+        );
+        expect(harness.deps.onSegmentMerged).toHaveBeenCalledWith(
+            '/rec/main.ts'
+        );
+        expect(harness.service.getState()).toMatchObject({
+            recordingId: 'dvr-3',
+        });
+
+        harness.engine.setState('dvr-3', { status: 'playing', active: true });
+        await jest.advanceTimersByTimeAsync(2_000);
+        expect(harness.service.getState().status).toBe('recording');
+
+        await harness.service.stop();
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(harness.deps.finalizeMerged).toHaveBeenCalledWith(
+            '/rec/main.ts',
+            undefined
+        );
+    });
+
+    it('moves to the next source when an alternate never becomes playable', async () => {
+        const first: ResolvedPortalPlayback = {
+            streamUrl: 'http://other.example.test/live/1.ts',
+            title: 'News',
+            isLive: true,
+        };
+        const second: ResolvedPortalPlayback = {
+            streamUrl: 'http://third.example.test/live/1.ts',
+            title: 'News',
+            isLive: true,
+        };
+        const harness = createHarness({ alternates: [first, second] });
+        harness.service.start(request({ origin: 'schedule', scheduleId: 7 }));
+        harness.engine.setState('dvr-1', { status: 'error', error: 'died' });
+        await jest.advanceTimersByTimeAsync(2_000);
+        expect(harness.engine.opened).toHaveLength(2);
+
+        // dvr-2 never leaves `loading`; after the grace window the recorder
+        // must not keep waiting on it.
+        await jest.advanceTimersByTimeAsync(20_500);
+
+        expect(harness.engine.stopped).toContain('dvr-2');
+        expect(harness.engine.opened).toHaveLength(3);
+        expect(harness.engine.opened[2]).toMatchObject({
+            playback: second,
+            trackRow: false,
+        });
     });
 
     it('leaves rows the tracker still owns to startup recovery', async () => {

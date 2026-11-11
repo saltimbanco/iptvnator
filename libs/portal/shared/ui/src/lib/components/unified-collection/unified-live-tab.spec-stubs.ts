@@ -86,10 +86,12 @@ export class StubEpgTimelineComponent {
     readonly summary = input<any>(null);
     readonly summaryLabelKey = input('');
     readonly offsetMinutes = input(0);
+    readonly canRecordProgram = input(false);
     readonly selectedDateChange = output<string>();
     readonly collapsedChange = output<boolean>();
     readonly programActivated = output<EpgProgramActivationEvent>();
     readonly returnToLive = output<void>();
+    readonly recordProgramRequested = output<EpgProgram>();
 }
 
 @Component({

@@ -136,6 +136,17 @@ export interface EmbeddedMpvRecordingStartOptions {
     directory?: string;
     title?: string;
     /**
+     * Records into this already-reserved file instead of reserving a new one.
+     * Used by a DVR recording's continuation segment after a source hop, so
+     * the bytes land next to the file they belong to.
+     */
+    targetPath?: string;
+    /**
+     * Whether the tracker files a `recordings` row. A continuation segment
+     * belongs to the row of the file it is appended to, so it skips its own.
+     */
+    trackRow?: boolean;
+    /**
      * Where the recording was started from. DVR recordings are started by the
      * main process on a hidden session and carry their origin into the
      * `recordings` row; a recording from the player leaves it unset.
